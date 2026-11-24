@@ -60,8 +60,8 @@ struct OnboardingView: View {
     }
 }
 
-/// Where a step's card sits: centred in the window, offered the window less `OnboardingLayout.margin`, so it keeps that
-/// margin at every size. A tall step (the Gmail step's set-up, the key step's "What the AI sees", the carousel) makes
+/// Where a step's card sits: centred in the window (at the foot on the iPhone, `OnboardingLayout.cardAlignment`),
+/// offered the window less `OnboardingLayout.margin`, so it keeps that margin at every size. A tall step (the Gmail step's set-up, the key step's "What the AI sees", the carousel) makes
 /// room by scrolling or shrinking inside rather than reaching the edge.
 struct OnboardingFrame<Content: View>: View {
     @ViewBuilder var content: Content
@@ -69,7 +69,7 @@ struct OnboardingFrame<Content: View>: View {
     var body: some View {
         ZStack { content }
             .padding(OnboardingLayout.margin)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: OnboardingLayout.cardAlignment)
     }
 }
 
@@ -84,4 +84,18 @@ enum OnboardingLayout {
             EdgeInsets(top: 16, leading: 0, bottom: 16, trailing: 0)
         #endif
     }()
+
+    /// Whether the first run's cards sit at the foot of the screen rather than in its middle: on the iPhone, within
+    /// reach of a thumb (owner's words of 2026-11-24: "in iphone, move the cards to bottom of screen instead of
+    /// center"). The welcome sits at the foot on both already.
+    static let cardsAtFoot: Bool = {
+        #if os(iOS)
+            true
+        #else
+            false
+        #endif
+    }()
+
+    /// Where a card sits in the room it is given.
+    static var cardAlignment: Alignment { cardsAtFoot ? .bottom : .center }
 }

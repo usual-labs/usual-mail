@@ -135,12 +135,18 @@ public struct ServerInfo: Codable, Hashable, Sendable {
     public var apiVersion: Int
     /// Whether Gmail can be connected by signing in with Google here. A server that leaves it out can't.
     public var googleSignIn: GoogleSignInInfo?
+    /// Whether the owner has a password and whether the server can be claimed. A server that leaves it out has no
+    /// password (`OwnerInfo.none`).
+    public var owner: OwnerInfo?
 
-    public init(name: String, version: String, apiVersion: Int, googleSignIn: GoogleSignInInfo? = nil) {
+    public init(
+        name: String, version: String, apiVersion: Int, googleSignIn: GoogleSignInInfo? = nil, owner: OwnerInfo? = nil
+    ) {
         self.name = name
         self.version = version
         self.apiVersion = apiVersion
         self.googleSignIn = googleSignIn
+        self.owner = owner
     }
 }
 

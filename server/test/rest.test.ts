@@ -63,10 +63,17 @@ describe("routes", () => {
 
   test("health and info need no token", async () => {
     assert.deepEqual(await json(call("GET", "/healthz")), { status: 200, body: { ok: true } });
-    // A server its host gave no Google client and no address says Google sign-in isn't available, and why.
+    // A server its host gave no Google client and no address says Google sign-in isn't available, and why. Paired
+    // before any password (the test server pairs a person's device), it has none and can't be claimed.
     assert.deepEqual(await json(call("GET", "/v1/info")), {
       status: 200,
-      body: { name: "usual-mail", version: "0.0.0", apiVersion: 1, googleSignIn: { available: false, missing: ["client", "address"] } },
+      body: {
+        name: "usual-mail",
+        version: "0.0.0",
+        apiVersion: 1,
+        googleSignIn: { available: false, missing: ["client", "address"] },
+        owner: { password: false, claimable: false },
+      },
     });
   });
 });

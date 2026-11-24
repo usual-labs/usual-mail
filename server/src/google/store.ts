@@ -18,6 +18,11 @@ export interface Entry {
   expiresAt: number;
   phase: "waiting" | "finishing" | "done";
   outcome?: Omit<GoogleSignIn, "id" | "expiresAt">;
+  /**
+   * A sign-in that proves the host's owner email before the server is claimed (`owner-claim.ts`), not one that
+   * connects Gmail: no caller, no device. Once Google's verified email matched, the proof's hash and how long it works.
+   */
+  claim?: { proofHash?: string; email?: string; proofExpiresAt?: number; redirect?: string };
 }
 
 /** What the page Google sends the person to says. */
@@ -25,6 +30,8 @@ export interface CallbackPage {
   status: number;
   title: string;
   message: string;
+  /** Where the browser goes on instead of reading the page: the dashboard's claim page, with the proof. */
+  redirect?: string;
 }
 
 export class SignIns {
@@ -43,6 +50,11 @@ export class SignIns {
   byState(hash: string): Entry | undefined {
     const id = this.#byState.get(hash);
     return id === undefined ? undefined : this.#byId.get(id);
+  }
+
+  /** Every sign-in this process knows. */
+  all(): IterableIterator<Entry> {
+    return this.#byId.values();
   }
 
   /** Forgets sign-ins whose outcome can no longer be read. */

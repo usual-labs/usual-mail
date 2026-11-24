@@ -30,6 +30,17 @@ export const ROUTES = {
   createPairingCode: { method: "POST", path: "/v1/pairing-codes", auth: "person", calls: "createPairingCode" },
   revokeDevice: { method: "DELETE", path: "/v1/devices/:id", auth: "any", calls: "revokeDevice" },
 
+  /** No token: an unclaimed server's first visitor (or, with an owner email, Google's proof) becomes its owner. */
+  claimOwner: { method: "POST", path: "/v1/owner/claim", auth: "none", calls: "claimOwner" },
+  /** No token: Google's address, to prove the host's owner email before claiming. */
+  startOwnerClaim: { method: "POST", path: "/v1/owner/claim/google", auth: "none", calls: "startOwnerClaim" },
+  /** No token: the owner's password pairs the caller's device. */
+  signInOwner: { method: "POST", path: "/v1/owner/sign-in", auth: "none", calls: "signInOwner" },
+  owner: { method: "GET", path: "/v1/owner", auth: "person", calls: "owner" },
+  setOwnerPassword: { method: "PUT", path: "/v1/owner/password", auth: "person", calls: "setOwnerPassword" },
+  /** No token: a recovery code, made where the host keeps the owner's code, never in the answer. */
+  requestRecoveryCode: { method: "POST", path: "/v1/owner/recovery-code", auth: "none", calls: "requestRecoveryCode" },
+
   listInboxes: { method: "GET", path: "/v1/inboxes", auth: "any", calls: "listInboxes" },
   connectInbox: { method: "POST", path: "/v1/inboxes", auth: "person", calls: "connectInbox" },
   updateInbox: { method: "PATCH", path: "/v1/inboxes/:id", auth: "any", calls: "updateInbox" },
@@ -141,6 +152,11 @@ export type RouteName = keyof typeof ROUTES;
 export const DASHBOARD_PATHS = {
   /** One inbox's page: its state, connection, trust, agent access and guide. */
   inbox: "/inboxes/:id",
+  /**
+   * Setting up an unclaimed server. The server's Google callback sends the browser here with `?proof=<proof>` once
+   * Google proved the host's owner email (docs/contract.md, "The owner's password").
+   */
+  claim: "/claim",
 } as const;
 
 /** Every error response has this body. A `rate_limited` answer also has a `Retry-After` header in seconds. */

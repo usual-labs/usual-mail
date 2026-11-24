@@ -26,7 +26,7 @@ themselves, and publishing the image.
   starting the new one (as Render and Railway do for a service with a disk) are right for it.
 - **A folder that persists, at `/data`.** It holds the database (`usual-mail.db` with its `-wal` and `-shm` files),
   `secret.key` (the key that seals mailbox passwords and the AI key, unless `USUAL_MAIL_SECRET_KEY` gives it),
-  `google-client.json`, `settings.json`, `owner-pairing-code` while one waits, and `pictures/`. The server makes the
+  `google-client.json`, `settings.json`, `owner-pairing-code` while an owner's or recovery code waits, and `pictures/`. The server makes the
   folder `0700` and its files `0600`, owned by the image's `node` user (uid 1000); files copied in keep the modes
   they came with. The image starts as root only long enough to give `node` a folder that belongs to root (as some
   hosts mount it) and anything in `node`'s folder that isn't `node`'s yet, then runs the server as `node`. It takes a
@@ -60,6 +60,25 @@ give another.
 run commands as root, so a file root writes in `/data` stays root's until the next start, when the image gives it
 back to `node`. Reading (`cat /data/owner-pairing-code`) is fine; run anything that writes there as `node`:
 `docker compose exec -u node usual-mail …`, or in a platform's shell `su node -c '…'`.
+
+## Claiming your server
+
+A new server has no owner. **Whoever opens its address first and sets a password owns it**, and scanners that read
+new HTTPS certificates find new addresses within minutes. So either:
+
+- **set `USUAL_MAIL_OWNER_EMAIL`** to your email before the server first starts (Render and Coolify ask for it; with
+  Compose, in `.env`). Then the server is set up only by signing in with Google as that address, which needs the
+  Google client (`USUAL_MAIL_GOOGLE_CLIENT_ID` and `_SECRET`, or the file); or
+- **open the address and set the password at once**, as soon as the server is up.
+
+Then sign in to the dashboard and the apps with that password. The owner's code (each host's steps below) still
+works too, and is the way in when nobody can sign in.
+
+**If someone else got there first,** the dashboard's sign-in says the server already has an owner. Choose **Forgot
+your password?**: the server writes a recovery code where only its host can read it (`/data/owner-pairing-code`, read
+as each host's steps below say, and its log), never on the page. Sign in with it, remove their devices on the Devices
+and agents page, and set your own password on the Account page. A new server is empty until you connect an inbox, so
+nothing of yours was there to see.
 
 ## Which to choose
 

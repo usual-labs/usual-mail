@@ -67,6 +67,14 @@ From the contract's third revision. The contract has the details.
   which inboxes it sees.
 - **The owner is never locked out.** Whenever no person's device remains, the server makes a new owner code at
   once, prints it and writes it to a file the command can read.
+- **The owner has a password; the first visitor claims an unclaimed server** (the owner's decisions of 2026-11-24,
+  [server-owner.md](server-owner.md)): finding the owner's code in a file, a log or Data Studio was too hard. Signing
+  in with the password pairs the device as a person's, so the paired devices stay the only sessions (no Better Auth).
+  `USUAL_MAIL_OWNER_EMAIL`, proven by Google, closes the claim window; the deploy files ask for it ("first visitor +
+  email prompt", chosen over requiring the owner's code for the first claim). Claimable only with no password and no
+  person's device, so servers paired before can't be taken over after the upgrade. A forgotten password is replaced
+  from any signed-in device, or through a recovery code put where the owner's code goes (one mechanism, instead of a
+  reset command and a Cloudflare secret first proposed).
 - **Mounted interfaces get the full URL,** so each sees the URL its client used, whatever the web framework.
   REST always keeps `/v1` and `/healthz`, so no interface can shadow the API.
 - **Only built providers are named.** `ProviderKind` is `imap` or `gmail`; Outlook returns when it exists.

@@ -4,6 +4,30 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
+- **Whoever opens a new server first owns it, unless `USUAL_MAIL_OWNER_EMAIL` is set** (by design, the owner's choice
+  of 2026-11-24; [server-owner.md](server-owner.md)). Scanners read Certificate Transparency logs and reach new
+  hostnames (a custom domain, `onrender.com`, Coolify's `sslip.io`, `workers.dev`) within minutes. The deploy files ask
+  for the email (Render, Coolify, Caddy); Cloudflare's Deploy form can't ask for an optional value, so there it is set
+  by hand; the docs say to set it first or claim at once. Recovery: "Forgot your password?" writes a recovery code
+  where only the host can read it; sign in with it, remove the other devices, set a password. The server logs each
+  claim with the claiming device's name.
+- **The owner's password is PBKDF2-SHA256 at 100,000 iterations** (2026-11-24), below OWASP's 600,000, because Workers
+  refuse more. Online guessing is capped by the pairing limit (ten wrong passwords or codes in ten minutes for
+  everyone; five per address on Cloudflare); a stolen database could be attacked offline faster than with a stronger
+  hash. The stored form names the count, so a later build can raise it on Node and re-hash at sign-in.
+- **An owner email set without a Google client closes claiming** (2026-11-24, by design): the server can't prove the
+  email, so the claim page says Google sign-in isn't set up and the owner's code is the way in. A fresh Cloudflare
+  deploy has no Google client, so an owner email there means Data Studio once, then a password.
+- **Ten wrong passwords lock signing in for everyone for ten minutes** (2026-11-24, by design, shared with pairing's
+  lock): anyone can lock the owner out of new sign-ins for a while; devices already signed in keep working. On
+  Cloudflare the per-address limit (five) keeps one address from reaching it.
+- **A restart forgets where a recovery code waits** (2026-11-24): the host hears null and removes the file or the row,
+  while the code itself stays valid in the store until its 30 minutes end. Ask for another.
+- **The claim proof travels in the address once** (`/claim?proof=`, 2026-11-24): it can sit in the browser's history.
+  It works once, for ten minutes, only while the server is unclaimed, and the redirect and the page send no referrer.
+- **`server/src/service/server.ts` is at 609 lines** (2026-11-24, six thin owner methods added to the 574 the entry
+  below counted) and `dashboard/test/fake-service.ts` at 593 (the owner's fake is its own file, `fake-owner.ts`).
+
 - **A server an agent started dies when the agent's session ends, even detached** (operations, found 2026-11-22;
   open, in this project's T3 Code/Claude environment). Node mode's `usual-mail start` spawns the server with
   `detached: true` and `unref()` (`startDetached` in `cli/src/runner.ts`), so it leads its own session and process

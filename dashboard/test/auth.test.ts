@@ -101,7 +101,7 @@ describe("signing in", () => {
     app.fake.failNext("pair", new ServiceError("rate_limited", "Too many attempts", { retryAfter: 541 }));
     const res = await signIn(app, { code: "WRONG" });
     assert.equal(res.status, 429);
-    assert.match(await res.text(), /Too many wrong codes\. Wait 10 minutes, then try again\./);
+    assert.match(await res.text(), /Too many wrong codes or passwords\. Wait 10 minutes, then try again\./);
     app.fake.failNext("pair", new ServiceError("rate_limited", "Too many attempts", { retryAfter: 45 }));
     assert.match(await (await signIn(app, { code: "WRONG" })).text(), /Wait 45 seconds, then try again\./);
     // Without a wait, the contract's longest: ten minutes.

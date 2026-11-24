@@ -12,6 +12,8 @@ export interface SignInOptions {
   done?: string;
   /** Plain HTTP on a host that isn't this machine: the browser won't keep the Secure cookie. */
   insecure?: boolean;
+  /** The server has the owner's password: link back to signing in with it. */
+  password?: boolean;
 }
 
 export function signInPage(view: View, o: SignInOptions): Html {
@@ -39,7 +41,7 @@ ${textField({
   id: "code",
   name: "code",
   label: "Pairing code",
-  hint: `Whenever no app or browser is paired, the server makes an owner's code: it ${ownerCodeWhere(view)}. A browser that is already signed in can make another on the Devices page. A code works once.`,
+  hint: `Whenever no app or browser is paired, the server makes an owner's code: it ${ownerCodeWhere(view)}. A recovery code ("Forgot your password?") waits there too. A browser that is already signed in can make another code on the Devices page. A code works once.`,
   required: true,
   autocomplete: "one-time-code",
   maxlength: 64,
@@ -54,7 +56,10 @@ ${textField({
   maxlength: 80,
 })}
 <div class="actions"><button class="button primary large" type="submit">Sign in</button></div>
-</form>`,
+</form>
+${o.password
+  ? html`<p class="prose"><a href="${href(view, `/sign-in${o.next !== "/" ? `?next=${encodeURIComponent(o.next)}` : ""}`)}">Sign in with your password</a> · <a href="${href(view, "/forgot")}">Forgot your password?</a></p>`
+  : ""}`,
   });
 }
 

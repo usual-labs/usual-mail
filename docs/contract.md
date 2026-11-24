@@ -619,7 +619,12 @@ version rises.**
 | `GET /healthz` | none | `{ "ok": true }` |
 | `POST /v1/google/sign-ins` | `GoogleSignInInput` | `GoogleSignInStart` |
 | `GET /v1/google/sign-ins/:id` | none | `GoogleSignIn` |
-| `GET /v1/google/callback` | none (Google's `state`, `code`, `scope` or `error` in the query) | a page, `200` or `400` |
+| `GET /v1/google/callback` | none (Google's `state`, `code`, `scope` or `error` in the query) | a page, `200` or `400`; for a sign-in that proved the owner's email, `303` to the dashboard's `/claim?proof=<proof>` |
+| `POST /v1/owner/claim` | `OwnerClaimInput` (`{ password, name, email?, proof? }`) | `PairResult` ([the owner's password](#the-owners-password)) |
+| `POST /v1/owner/claim/google` | none | `OwnerClaimStart`: Google's address, to prove the host's owner email |
+| `POST /v1/owner/sign-in` | `OwnerSignInInput` (`{ password, name }`) | `PairResult` |
+| `GET /v1/owner`, `PUT /v1/owner/password` | none; `{ password }` | `Owner`: the owner's email, whether a password is set and when, never the password |
+| `POST /v1/owner/recovery-code` | none | `RecoveryCodeAnswer`: which code waits (`owner` or `recovery`) and until when; never the code |
 | `GET /v1/google/setup` | none | `GoogleSetup`: the browser agent's prompt with the redirect address filled in, the manual steps, the client's state and what is missing ([sync and providers](contract-sync.md#connecting-gmail-by-signing-in-with-google)) |
 | `PUT /v1/google/client` | the JSON file Google's console downloads for a Web application client, as it is (`?replace=true` to replace a saved client file, used or not, or the client inboxes were signed in with) | `GoogleClientSaved`: the client's id, `replaced`, `googleSignIn` after the change, a redirect hint; never the secret |
 
@@ -643,13 +648,15 @@ version rises.**
   inbox (status, name, trust and so on) raises its version and sends the event.
 - **Times** are ISO 8601 in UTC with whole seconds and `Z`, for example `2026-11-16T09:30:00Z`. No fractions.
 - **Ids** are opaque strings.
-- **The dashboard** is mounted at the server's root. One of its paths is part of the contract, so other
-  interfaces may link to it: an inbox's page, `/inboxes/<id>` under the server's root (`DASHBOARD_PATHS.inbox` in
-  `core/src/api.ts`). Every other dashboard path may change.
+- **The dashboard** is mounted at the server's root. Two of its paths are part of the contract, so other
+  interfaces may link to them: an inbox's page, `/inboxes/<id>` under the server's root (`DASHBOARD_PATHS.inbox` in
+  `core/src/api.ts`), and setting up an unclaimed server, `/claim` (`DASHBOARD_PATHS.claim`), where the server's
+  Google callback sends a proven owner. Every other dashboard path may change.
 
 ## Pairing and sign-in
 
-- Every route but `/healthz`, `/v1/info`, `/v1/pair` and `/v1/google/callback` needs `Authorization: Bearer <token>`. A token belongs
+- Every route but `/healthz`, `/v1/info`, `/v1/pair`, `/v1/google/callback`, and the owner's `/v1/owner/claim`,
+  `/v1/owner/claim/google`, `/v1/owner/sign-in` and `/v1/owner/recovery-code` needs `Authorization: Bearer <token>`. A token belongs
   to one device: a person's app or browser, or an agent. `GET /v1/me` returns the device the token belongs to.
 - A token comes from `POST /v1/pair` with a pairing code a person created. A code works once.
   - A wrong, used or expired code answers `unauthorized`.
@@ -668,6 +675,42 @@ version rises.**
     code is read, never the log. Without the file, or with a code no longer valid, it makes a new one.
   - Demo mode prints the code and writes no file (its store is new at every start, so every code is new).
 - `DELETE /v1/devices/:id` with a caller's own id ends that caller's token. Only a person may revoke others.
+
+### The owner's password
+
+Decided by the owner on 2026-11-24. One owner per server, with a password (and an email, optional). Signing in with
+it pairs the device as a person's: a browser or an app signed in that way is listed, kept and removed like any paired
+device. Pairing codes stay: for agents, for the owner's other devices, and as the way back in.
+- **`GET /v1/info`** answers `owner: OwnerInfo`: `password` (one is set), `claimable` (no password and no person's
+  device), and while claimable `claim`: `"password"` or `"google"`. A server without it has no password.
+- **Claiming** (`POST /v1/owner/claim`, no token): an unclaimed server's first claim makes its caller the owner and
+  answers `PairResult`, like pairing. Once the server has a password or a person's device it answers `conflict`: a
+  server paired before passwords existed can't be claimed, and gets its password from a signed-in device.
+  - **First visitor:** without an owner email, whoever claims first owns the server. The server's log says that it
+    was claimed and from which device's name.
+  - **The host's owner email** (`USUAL_MAIL_OWNER_EMAIL`, optional, every host): claiming then needs `proof`, which
+    only Sign in with Google gives (`POST /v1/owner/claim/google`, no token: the identity scope `openid email`
+    through the host's Google client and its usual redirect address). When the ID token's verified email (issuer,
+    audience, expiry and `email_verified` checked; it comes straight from Google's token endpoint) is the owner
+    email, the callback sends the browser to the dashboard's `/claim?proof=<proof>`. A proof works once, for ten
+    minutes, and is kept only as its hash, in memory. Without it `claimOwner` answers `forbidden`; with an unknown,
+    used or expired one, `unauthorized`. The owner's email is then Google's, not one typed. A typed email is never
+    proof. A value that isn't an email address keeps claiming closed. Without a Google client nothing can be claimed
+    that way, and the owner's code still pairs.
+- **The password:** at least `OWNER_PASSWORD_MIN` (12) characters, at most 256, compared after Unicode NFKC. Kept only
+  as PBKDF2-SHA256 with a 16-byte salt and 100,000 iterations (the most Workers allow), in a form that names the
+  scheme and the count.
+- **Signing in** (`POST /v1/owner/sign-in`, no token): the right password answers `PairResult`; a wrong one
+  `unauthorized`; none set yet `conflict`. Wrong passwords count with wrong pairing codes: ten of either in ten
+  minutes and both answer `rate_limited` for everyone, as pairing does.
+- **Setting it** (`PUT /v1/owner/password`, a person): a first password or a new one, without the old one, since a
+  person's device already has the owner's whole access. `GET /v1/owner` answers the owner, never the password.
+- **A recovery code** (`POST /v1/owner/recovery-code`, no token), when the password is forgotten and no device is at
+  hand: a pairing code of kind `person` that the server puts where its host puts the owner's code (the file and once
+  in the log on Node; the owner's code's table on Cloudflare, never logged there) and never in the answer. While no
+  person's device is paired, the owner's code already waits there and no other is made. One recovery code waits at a
+  time, for 30 minutes (`RECOVERY_CODE_TTL_MS`), and works once; it is removed from its place once used or expired,
+  and a restart forgets it from there. A person's code made on another device doesn't end it.
 
 ## Changing the contract
 

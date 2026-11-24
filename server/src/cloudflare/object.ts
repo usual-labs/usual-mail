@@ -3,6 +3,7 @@
 // deploy. Requests and alarms wait on the start (start.ts): the migrations first, then the server's creation and
 // `start()`; a start that fails or is cut off is tried again a bounded number of times, never in a reset loop.
 
+import { ownerEmailSetting } from "../service/owner.ts";
 import { DurableObject } from "cloudflare:workers";
 import type { GmailProviderOptions } from "@usualmail/mail/gmail";
 import { sdkModelAccess } from "../ai/sdk.ts";
@@ -113,6 +114,10 @@ export class UsualMailServer extends DurableObject<Env> {
     const models = sdkModelAccess();
     // Google sign-in: the client a person's device gives (sealed in storage) or the Worker's secrets; the redirect
     // address from the request being answered.
+    // USUAL_MAIL_OWNER_EMAIL: only Google's proof of it claims an unclaimed server. One that isn't an address keeps
+    // claiming closed (no Google account matches it), and says so.
+    const owner = ownerEmailSetting(this.env.USUAL_MAIL_OWNER_EMAIL);
+    if (owner.invalid) consoleLog.info("USUAL_MAIL_OWNER_EMAIL isn't an email address, so no one can claim this server until it is fixed; the owner's code still pairs.");
     const google = cloudflareGoogle({ kv: storage.kv, secrets: host.secrets, env: this.env, log: consoleLog, redirectUri: requestRedirectUri });
     const server = await MailServer.create(host, {
       providers: providerRegistry(parts),
@@ -122,6 +127,7 @@ export class UsualMailServer extends DurableObject<Env> {
       syncWindowSetBy: firstSync.from,
       saveSyncWindowDays: async (days) => saveFirstSyncDays(storage.kv, days),
       version: SERVER_VERSION,
+      ownerEmail: owner.email,
     });
     await server.start();
     const app = createApp(server, { scheduler: plainTimers, log: consoleLog, interfaces: parts.interfaces });

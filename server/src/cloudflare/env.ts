@@ -16,4 +16,9 @@ export interface Env extends GoogleEnv, SettingsEnv {
   USUAL_MAIL_SECRET_KEY?: string;
   /** Optional plain variable: the HTTPS origin of a custom domain routed to the Worker (address.ts). */
   USUAL_MAIL_PUBLIC_URL?: string;
+  /**
+   * Optional, a variable or a secret: the owner's email. An unclaimed server is then claimed only by signing in with
+   * Google as that address (docs/contract.md, "The owner's password"); without it, the first visitor claims it.
+   */
+  USUAL_MAIL_OWNER_EMAIL?: string;
 }

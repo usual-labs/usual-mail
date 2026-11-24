@@ -38,6 +38,7 @@ import type {
   TriageItem,
   TrustLevel,
 } from "./domain.ts";
+import type { Owner, OwnerClaimInput, OwnerClaimStart, OwnerPasswordInput, OwnerSignInInput, RecoveryCodeAnswer } from "./owner.ts";
 import type { MailEvent } from "./events.ts";
 import type { FirstSyncWindow, FirstSyncWindowPatch } from "./first-sync.ts";
 import type { GoogleSignIn, GoogleSignInInput, GoogleSignInStart } from "./google.ts";
@@ -390,6 +391,25 @@ export interface MailService {
   latestBrief(caller: Caller): Promise<Brief | null>;
   brief(caller: Caller, id: Id): Promise<Brief>;
   writeBrief(caller: Caller, input: BriefInput): Promise<Brief>;
+
+  // The owner's password (docs/contract.md, "The owner's password"). Claiming, signing in and asking for a recovery
+  // code need no caller; the rest need a person.
+  /**
+   * Makes the caller the owner of an unclaimed server and pairs its device as a person's. `conflict` once the server
+   * has a password or a person's device; `forbidden` without Google's proof when the host named the owner's email.
+   */
+  claimOwner(input: OwnerClaimInput): Promise<PairResult>;
+  /**
+   * Starts Sign in with Google to prove the host's owner email, before claiming. `conflict` when the server can't be
+   * claimed that way, or Google sign-in isn't set up.
+   */
+  startOwnerClaim(): Promise<OwnerClaimStart>;
+  /** Pairs the caller's device as a person's with the owner's password. Wrong passwords count as wrong pairing codes. */
+  signInOwner(input: OwnerSignInInput): Promise<PairResult>;
+  owner(caller: Caller): Promise<Owner>;
+  setOwnerPassword(caller: Caller, input: OwnerPasswordInput): Promise<Owner>;
+  /** Makes a recovery code where the host keeps the owner's code; never answers the code itself. */
+  requestRecoveryCode(): Promise<RecoveryCodeAnswer>;
 
   // Devices and agents. Person only, except `pair`, which needs no caller, `me`, and revoking oneself.
   /** The device the caller's token belongs to, a person's or an agent's. */

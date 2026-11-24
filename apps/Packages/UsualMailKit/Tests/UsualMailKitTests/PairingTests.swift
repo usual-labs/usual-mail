@@ -57,6 +57,8 @@ struct PairingTests {
         await session.pair(address: "mail.local:8787", code: "WRONG")
         #expect(session.pairingProblem?.hasPrefix("That code didn't work.") == true)
         #expect(session.pairingProblem?.contains("run usual-mail pair") == true)
+        // The Cloudflare server has neither the command nor the file (2026-11-24).
+        #expect(session.pairingProblem?.contains("On Cloudflare") == true)
         #expect(try credentials.load() == nil)
         #expect(session.store == nil)
     }

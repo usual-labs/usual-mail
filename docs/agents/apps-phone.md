@@ -67,7 +67,13 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   button) in the middle of its row, not the Mac's link at the row's top (owner's words of 2026-11-24, "like a button.
   not primary though, secondary", the iPhone only; `BlockedRow`).
 - **First run:** the cards are as wide as the screen leaves (`onboardingCard`), pairing's wordmark sits below the
-  status bar, and its fields don't capitalise.
+  status bar, and its fields don't capitalise. The cards sit at the foot of the screen, not in its middle (owner's
+  words of 2026-11-24; `OnboardingLayout.cardsAtFoot`): pairing's 24 from the screen's foot, and the screen keeps the
+  keyboard's room, so "Connect to your server" rises above the keyboard whole (seen in the simulator); the steps after
+  pairing at the foot of their safe area, 16 above it (not seen: the simulator's app is paired). Their two bottom
+  corners follow the screen's (`OnboardingCardShape`, a `ConcentricRectangle`: the screen's radius less the card's
+  distance from its edges, at least 16; the top 16; owner's words of 2026-11-24): about 31 on pairing's cards on an
+  iPhone 18 Pro, 16 once the keyboard lifts the card away from the corners (both seen in the simulator).
 
 ## Seen in the simulator (2026-11-20, the sample)
 
@@ -88,8 +94,8 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   - The card stopped at the keyboard: its ground now runs under it.
 - **Seen and left:** in the switcher's menu the Personal inbox's person icon draws solid (its grey fill, as a
   template); an inbox's address doesn't show under its name there; no badges showed (the sample's counts weren't
-  checked). The pairing card is centred and doesn't move for the keyboard: on this screen "Connect" stays just clear of
-  it, on a shorter one it wouldn't (Return in the code field connects).
+  checked). The pairing card was centred and didn't move for the
+  keyboard (since 2026-11-24 it sits at the foot and rises above it).
 - **Not seen on the sample:** the undo strip (the sample takes actions back and shows none; seen later on the
   owner's server, below), snooze's menu, actions against a
   server, Sign in with Google, the first run after pairing, a custom or dark wallpaper, other screen sizes.

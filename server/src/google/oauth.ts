@@ -2,7 +2,7 @@
 // a sign-in, the code exchange with PKCE, and revocation. Nothing here logs or returns a secret.
 
 import { GOOGLE_GMAIL_SCOPE } from "@usualmail/core";
-import { base64url } from "../util.ts";
+import { base64url, fromBase64url } from "../util.ts";
 import { GOOGLE_AUTH_URL, GOOGLE_REVOKE_URL, GOOGLE_TOKEN_URL, type GoogleClient, type GoogleFetch } from "./config.ts";
 
 const TIMEOUT_MS = 30_000;
@@ -26,27 +26,42 @@ export function authorizationUrl(input: {
   state: string;
   challenge: string;
   loginHint?: string;
+  /**
+   * "identity": only who the person is (`openid email`), online, to prove the owner's email before claiming; no
+   * mail. Default "gmail".
+   */
+  purpose?: "gmail" | "identity";
 }): string {
+  const identity = input.purpose === "identity";
   const params = new URLSearchParams({
     client_id: input.clientId,
     redirect_uri: input.redirectUri,
     response_type: "code",
-    scope: GOOGLE_GMAIL_SCOPE,
+    scope: identity ? IDENTITY_SCOPE : GOOGLE_GMAIL_SCOPE,
     state: input.state,
     code_challenge: input.challenge,
     code_challenge_method: "S256",
-    access_type: "offline",
-    prompt: input.loginHint ? "consent" : "consent select_account",
   });
+  if (identity) {
+    params.set("prompt", "select_account");
+  } else {
+    params.set("access_type", "offline");
+    params.set("prompt", input.loginHint ? "consent" : "consent select_account");
+  }
   if (input.loginHint) params.set("login_hint", input.loginHint);
   return `${input.base ?? GOOGLE_AUTH_URL}?${params}`;
 }
+
+/** Who the person is, nothing of their mail: OpenID Connect's email, for the owner's email. Not sensitive at Google. */
+export const IDENTITY_SCOPE = "openid email";
 
 /** What the token endpoint answered for a code. Only what the server reads. */
 export interface ExchangedCode {
   refreshToken: string | null;
   /** The scopes granted, space-separated as Google sends them, or null when Google sent none. */
   scope: string | null;
+  /** The OpenID Connect ID token, with the `openid` scope. */
+  idToken: string | null;
 }
 
 /** Google refused the exchange or couldn't be reached. `code` is Google's error code when it sent one. */
@@ -84,12 +99,35 @@ export async function exchangeCode(
   } catch {
     throw new GoogleExchangeError(null);
   }
-  const data = (await response.json().catch(() => ({}))) as { refresh_token?: unknown; scope?: unknown; error?: unknown };
+  const data = (await response.json().catch(() => ({}))) as { refresh_token?: unknown; scope?: unknown; id_token?: unknown; error?: unknown };
   if (!response.ok) throw new GoogleExchangeError(typeof data.error === "string" ? data.error.slice(0, 60) : null);
   return {
     refreshToken: typeof data.refresh_token === "string" && data.refresh_token ? data.refresh_token : null,
     scope: typeof data.scope === "string" ? data.scope : null,
+    idToken: typeof data.id_token === "string" && data.id_token ? data.id_token : null,
   };
+}
+
+/**
+ * The verified email an ID token names, or null. The token came straight from Google's token endpoint over TLS, in
+ * exchange for this server's own code, so its signature needn't be checked (OpenID Connect Core 1.0, 3.1.3.7, item 6);
+ * its issuer, audience, expiry and `email_verified` are.
+ */
+export function verifiedEmail(idToken: string, clientId: string, now: number): string | null {
+  const payload = idToken.split(".")[1];
+  if (!payload) return null;
+  let claims: { iss?: unknown; aud?: unknown; exp?: unknown; email?: unknown; email_verified?: unknown };
+  try {
+    claims = JSON.parse(new TextDecoder().decode(fromBase64url(payload)));
+  } catch {
+    return null;
+  }
+  if (claims.iss !== "https://accounts.google.com" && claims.iss !== "accounts.google.com") return null;
+  const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud];
+  if (!audience.includes(clientId)) return null;
+  if (typeof claims.exp !== "number" || claims.exp * 1000 <= now) return null;
+  if (claims.email_verified !== true && claims.email_verified !== "true") return null;
+  return typeof claims.email === "string" && claims.email ? claims.email.trim().toLowerCase() : null;
 }
 
 /** Whether the granted scopes, as Google lists them, include the one the server needs. */

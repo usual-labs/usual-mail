@@ -3,8 +3,8 @@ import UsualMailDesign
 import UsualMailKit
 
 /// Settings' Accounts tab: the inboxes (each with its icon, `InboxIconPicker`, and for Gmail signing in with Google
-/// again), "Add a Gmail account…" (the rail's plus's sheet, `AddGmailSheet`), then the server this Mac is paired with
-/// and, at the foot, disconnecting from it.
+/// again), "Add a Gmail account…" (the rail's plus's sheet, `AddGmailSheet`), then the server this Mac is paired with,
+/// its password (`ServerPassword`) and, at the foot, disconnecting from it.
 struct AccountsTab: View {
     let session: AppSession
     @Environment(MailStore.self) private var store
@@ -27,6 +27,7 @@ struct AccountsTab: View {
             }
             SettingsView.group("Server") {
                 SettingsView.words(session.credentials?.server.displayName ?? "Not paired")
+                ServerPassword()
             }
             Button("Disconnect from this server…") { confirming = true }
                 .pointer()

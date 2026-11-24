@@ -20,11 +20,13 @@ import {
   writeSession,
 } from "./http/session.ts";
 import { errorPage, formRefusedPage, notFoundPage } from "./pages/errors.ts";
+import { passwordSignInPage } from "./pages/owner.ts";
 import { agentRefusedPage, signInPage } from "./pages/sign-in.ts";
 import { aiRoutes } from "./routes/ai.ts";
 import { deviceRoutes } from "./routes/devices.ts";
 import { homeRoutes } from "./routes/home.ts";
 import { inboxRoutes } from "./routes/inboxes.ts";
+import { accountRoutes, ownerInfoOf, ownerOpenRoutes } from "./routes/owner.ts";
 import { ruleRoutes } from "./routes/rules.ts";
 import { render, type Ctx } from "./routes/shared.ts";
 import type { View } from "./view/layout.ts";
@@ -43,12 +45,14 @@ export interface DashboardOptions {
 /** Forms are small; the largest is an inbox's guide. */
 const MAX_BODY = 256 * 1024;
 
-/** Sign-in's own words for the two refusals a pairing code gets. */
-function signInError(error: ServiceError): string {
-  if (error.code === "unauthorized") return "That code didn't work. It may be mistyped, already used or expired.";
+/** Sign-in's own words for the two refusals a pairing code or the owner's password gets. */
+function signInError(error: ServiceError, withPassword: boolean): string {
+  if (error.code === "unauthorized") {
+    return withPassword ? "That password is wrong." : "That code didn't work. It may be mistyped, already used or expired.";
+  }
   if (error.code === "rate_limited") {
     // The server says how long the pairing limit holds; without that, the contract's ten minutes is the most.
-    return `Too many wrong codes. Wait ${waitWords(error.retryAfter) ?? "up to ten minutes"}, then try again.`;
+    return `Too many wrong codes or passwords. Wait ${waitWords(error.retryAfter) ?? "up to ten minutes"}, then try again.`;
   }
   return messageOf(error);
 }
@@ -93,6 +97,8 @@ export function createDashboard(interfaceDeps: InterfaceDeps, options: Dashboard
 
   // --- Signing in ------------------------------------------------------------------------------
 
+  // Signing in: with the owner's password when the server has one, else (or with `?with=code`) with a pairing code. A
+  // server nobody owns yet sends the visitor to set it up (routes/owner.ts).
   app.get("/sign-in", async (c) => {
     const scope = cookieScope(c.req.raw, base);
     const next = safePath(c.req.query("next") ?? "/", "/");
@@ -101,8 +107,13 @@ export function createDashboard(interfaceDeps: InterfaceDeps, options: Dashboard
     if (caller?.actor.kind === "person") return c.redirect(`${base}${next}`, 303);
     const url = new URL(c.req.url);
     const insecure = url.protocol === "http:" && !isLocalHost(url.hostname) && c.req.header("x-forwarded-proto") !== "https";
+    const owner = await ownerInfoOf(deps);
+    const withCode = c.req.query("with") === "code";
+    if (owner.claimable && !withCode) return c.redirect(`${base}/claim`, 303);
     const formTokenValue = signInToken(c, scope);
-    return render(c, signInPage(bareView(), { formToken: formTokenValue, next, insecure, done: c.req.query("done") }));
+    const done = c.req.query("done");
+    if (owner.password && !withCode) return render(c, passwordSignInPage(bareView(), { formToken: formTokenValue, next, insecure, done }));
+    return render(c, signInPage(bareView(), { formToken: formTokenValue, next, insecure, done, password: owner.password }));
   });
 
   app.post("/sign-in", async (c) => {
@@ -112,22 +123,27 @@ export function createDashboard(interfaceDeps: InterfaceDeps, options: Dashboard
     const next = safePath(text(form, "next"), "/");
     const name = text(form, "name").trim().slice(0, 80) || "Web dashboard";
     const expected = readSignInToken(c, scope);
+    // The password form sends `password`; the code form `code`.
+    const withPassword = "password" in form;
     const again = (status: Parameters<typeof render>[2], error: string) =>
-      render(c, signInPage(bareView(), { formToken: signInToken(c, scope), next, name, error }), status);
+      render(c, withPassword
+        ? passwordSignInPage(bareView(), { formToken: signInToken(c, scope), next, name, error })
+        : signInPage(bareView(), { formToken: signInToken(c, scope), next, name, error }), status);
 
     if (!expected || !sameToken(expected, text(form, "_csrf"))) {
-      return again(403, "This sign-in form had expired. Type the code again.");
+      return again(403, `This sign-in form had expired. Type the ${withPassword ? "password" : "code"} again.`);
     }
     const code = text(form, "code").trim();
-    if (!code) return again(400, "Type the pairing code.");
+    const password = text(form, "password");
+    if (withPassword ? !password : !code) return again(400, withPassword ? "Type the password." : "Type the pairing code.");
 
     let paired;
     try {
-      paired = await deps.service.pair({ code, name });
+      paired = withPassword ? await deps.service.signInOwner({ password, name }) : await deps.service.pair({ code, name });
     } catch (error) {
       const serviceError = asServiceError(error);
       if (!serviceError) throw error;
-      return again(statusOf(serviceError), signInError(serviceError));
+      return again(statusOf(serviceError), signInError(serviceError, withPassword));
     }
     if (paired.device.kind !== "person") {
       // The code was made for an agent. Its new token is ended at once, so it can't be used from here.
@@ -139,6 +155,8 @@ export function createDashboard(interfaceDeps: InterfaceDeps, options: Dashboard
     clearSignInToken(c, scope);
     return c.redirect(`${base}${next}`, 303);
   });
+
+  ownerOpenRoutes(app, deps, () => bareView());
 
   // --- Everything below needs a person's session ---------------------------------------------------
 
@@ -181,6 +199,7 @@ export function createDashboard(interfaceDeps: InterfaceDeps, options: Dashboard
   ruleRoutes(app, deps);
   aiRoutes(app, deps);
   deviceRoutes(app, deps);
+  accountRoutes(app, deps);
 
   app.notFound((c) => {
     const view = c.get("view");

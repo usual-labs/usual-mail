@@ -42,7 +42,13 @@ import {
   type ListQuery,
   type MailEvent,
   type MailService,
+  type Owner,
+  type OwnerClaimInput,
+  type OwnerClaimStart,
+  type OwnerPasswordInput,
+  type OwnerSignInInput,
   type Page,
+  type RecoveryCodeAnswer,
   type PairingCode,
   type PairingCodeInput,
   type PairInput,
@@ -74,6 +80,7 @@ import { attachments, messages } from "../db/index.ts";
 import type { GoogleOptions } from "../google/config.ts";
 import * as googleClient from "../google/setup.ts";
 import * as google from "../google/sign-in.ts";
+import { startOwnerClaim } from "../google/owner-claim.ts";
 import type { CallbackPage } from "../google/store.ts";
 import { upgradeStore } from "../db/upgrade.ts";
 import type { Host, ServedPicture, WebPicture } from "../host.ts";
@@ -92,6 +99,7 @@ import { ChangeNotifier } from "./changes.ts";
 import { Ctx, type ServiceOptions } from "./context.ts";
 import { countsFor } from "./counts.ts";
 import * as devices from "./devices.ts";
+import * as owner from "./owner.ts";
 import * as drafts from "./drafts.ts";
 import * as firstSync from "./first-sync.ts";
 import * as inboxes from "./inboxes.ts";
@@ -258,7 +266,8 @@ export class MailServer implements MailService {
   }
 
   async info(): Promise<ServerInfo> {
-    return { name: "usual-mail", version: this.#ctx.options.version, apiVersion: 1, googleSignIn: await google.googleSignInInfo(this.#ctx) };
+    const ctx = this.#ctx;
+    return { name: "usual-mail", version: ctx.options.version, apiVersion: 1, googleSignIn: await google.googleSignInInfo(ctx), owner: await owner.ownerInfo(ctx) };
   }
 
   // --- Inboxes -------------------------------------------------------------------------------------------
@@ -527,6 +536,32 @@ export class MailServer implements MailService {
 
   revokeDevice(caller: Caller, id: Id): Promise<void> {
     return this.#ctx.lock.run(() => devices.revokeDevice(this.#ctx, caller, id));
+  }
+
+  // --- The owner's password (owner.ts) ---------------------------------------------------------------------
+
+  claimOwner(input: OwnerClaimInput): Promise<PairResult> {
+    return this.#ctx.lock.run(() => owner.claimOwner(this.#ctx, input));
+  }
+
+  startOwnerClaim(): Promise<OwnerClaimStart> {
+    return this.#ctx.lock.run(() => startOwnerClaim(this.#ctx));
+  }
+
+  signInOwner(input: OwnerSignInInput): Promise<PairResult> {
+    return this.#ctx.lock.run(() => owner.signInOwner(this.#ctx, input));
+  }
+
+  owner(caller: Caller): Promise<Owner> {
+    return owner.getOwner(this.#ctx, caller);
+  }
+
+  setOwnerPassword(caller: Caller, input: OwnerPasswordInput): Promise<Owner> {
+    return this.#ctx.lock.run(() => owner.setOwnerPassword(this.#ctx, caller, input));
+  }
+
+  requestRecoveryCode(): Promise<RecoveryCodeAnswer> {
+    return this.#ctx.lock.run(() => devices.requestRecoveryCode(this.#ctx));
   }
 
   // --- Events --------------------------------------------------------------------------------------------

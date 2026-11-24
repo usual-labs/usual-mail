@@ -6,6 +6,7 @@ import type { AiJob } from "./ai.ts";
 import type { Avatar } from "./avatars.ts";
 import type { FirstSyncProgress } from "./first-sync.ts";
 import type { GoogleSignInInfo } from "./google.ts";
+import type { OwnerInfo } from "./owner.ts";
 import type { RemotePictures } from "./pictures.ts";
 
 /** Opaque identifier. Never parse it. */
@@ -668,6 +669,8 @@ export interface ServerInfo {
   apiVersion: 1;
   /** Whether Gmail can be connected by signing in with Google here. A server that leaves it out can't. */
   googleSignIn: GoogleSignInInfo;
+  /** Whether the owner has a password and whether the server can be claimed (docs/contract.md, "The owner's password"). */
+  owner: OwnerInfo;
 }
 
 export interface Page<T> {

@@ -48,7 +48,8 @@ async function pair(address: string, code: string, o: { headers?: Record<string,
 
 /** The dashboard's sign-in with `code`, its form token and cookie taken from the page first. */
 async function signIn(address: string, code: string) {
-  const form = await server.mf.dispatchFetch(`${BASE}/sign-in`, { headers: { "cf-connecting-ip": address } });
+  // `?with=code`: an unclaimed server's sign-in page otherwise sends the visitor to set it up.
+  const form = await server.mf.dispatchFetch(`${BASE}/sign-in?with=code`, { headers: { "cf-connecting-ip": address } });
   const page = await form.text();
   const csrf = /name="_csrf" value="([^"]+)"/.exec(page)?.[1];
   const cookie = form.headers.getSetCookie().map((line) => line.split(";")[0]!).find((line) => line.includes("usual-mail-sign-in="));
@@ -70,7 +71,7 @@ async function kv(key: string): Promise<unknown> {
 test("keeps the owner's code out of the log; the sign-in page says where it waits", async () => {
   assert.equal((await server.call("GET", "/v1/info")).status, 200);
   await ownerCode();
-  const page = await server.call("GET", "/sign-in");
+  const page = await server.call("GET", "/sign-in?with=code");
   assert.match(page.body, /the server makes an owner&#39;s code: it keeps it out of its log, in the Cloudflare dashboard: Durable Objects, this Worker&#39;s namespace for the class UsualMailServer, Data Studio, the object named &quot;server&quot;, the table owner_pairing_code\./);
   assert.doesNotMatch(page.body, /data folder/);
   assert.equal(server.logged(/^The server's time zone is UTC until the first person's device pairs/).length, 1);
@@ -108,12 +109,12 @@ test("five wrong codes from one address get the host's 429, whatever the client 
   const limited = await pair(x, WRONG);
   assert.equal(limited.status, 429);
   assert.equal(limited.body.error.code, "rate_limited");
-  assert.match(limited.body.error.message, /^Too many wrong pairing codes from this address\. Try again in \d+ seconds\.$/);
+  assert.match(limited.body.error.message, /^Too many wrong pairing codes or passwords from this address\. Try again in \d+ seconds\.$/);
   const retry = Number(limited.headers.get("retry-after"));
   assert.ok(retry >= 1 && retry <= 600, `Retry-After ${retry}`);
   const page = await signIn(x, WRONG);
   assert.equal(page.status, 429);
-  assert.match(page.text, /Too many wrong codes from this address\. Wait \d+ minutes, then try again\./);
+  assert.match(page.text, /Too many wrong codes or passwords from this address\. Wait \d+ minutes, then try again\./);
   // What a client sends can't move it to another count: only CF-Connecting-IP, which Cloudflare's edge sets, counts.
   const claims = { "x-usual-mail-client-address": "192.0.2.200", "x-forwarded-for": "192.0.2.201", "true-client-ip": "192.0.2.202", "x-real-ip": "192.0.2.203" };
   assert.equal((await pair(x, WRONG, { headers: claims })).status, 429);
@@ -163,7 +164,7 @@ test("pairing at a percent-encoded path is counted per address too, so one addre
   }
   const limited = await pair(x, WRONG, { path: "/v1/%70air" });
   assert.equal(limited.status, 429);
-  assert.match(limited.body.error.message, /^Too many wrong pairing codes from this address/, "the host's count, not the service's lock");
+  assert.match(limited.body.error.message, /^Too many wrong pairing codes or passwords from this address/, "the host's count, not the service's lock");
   // The service's own lock wasn't reached: another address still gets its answer to a wrong code.
   const other = await pair("198.51.100.77", WRONG);
   assert.equal(other.status, 401, JSON.stringify(other.body));
@@ -178,4 +179,39 @@ test("a person's first-sync window is kept in the object's storage, across a res
   await server.evict();
   const kept = await server.call("GET", "/v1/first-sync", undefined, token);
   assert.deepEqual(kept.body, { days: 60, setBy: "settings", changeable: true });
+});
+
+test("a recovery code goes to the owner's code's table, never to the log or the answer, and pairs once", async () => {
+  const from = server.logs.length;
+  const asked = await server.call("POST", "/v1/owner/recovery-code", {});
+  assert.equal(asked.status, 200, JSON.stringify(asked.body));
+  assert.equal(asked.body.kind, "recovery");
+  assert.doesNotMatch(JSON.stringify(asked.body), /[0-9A-Z]{4}-[0-9A-Z]{4}/, "the answer holds no code");
+  const row = await ownerCode();
+  assert.equal(row.expires_at, asked.body.expiresAt);
+  assert.ok(!server.logs.slice(from).some((line) => line.includes(row.code)), "the code isn't logged");
+  assert.equal(server.logged(/^A recovery code is waiting, until \S+; it isn't written to the log\. Read it in the Cloudflare dashboard: .*owner_pairing_code\.$/, from).length, 1);
+
+  const paired = await pair("198.51.100.90", row.code);
+  assert.equal(paired.status, 200, JSON.stringify(paired.body));
+  await until("the row is removed", async () => (await server.sql("SELECT code FROM owner_pairing_code")).length === 0);
+  assert.equal((await pair("198.51.100.91", row.code)).status, 401, "it works once");
+});
+
+test("wrong owner's passwords count per address with wrong codes", async () => {
+  await server.evict(); // forgets both counts
+  const x = "203.0.113.44";
+  const signIn = (address: string) =>
+    server.mf.dispatchFetch(`${BASE}/v1/owner/sign-in`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "cf-connecting-ip": address },
+      body: JSON.stringify({ password: "not the password at all", name: "Password test" }),
+    });
+  const owner = await server.call("PUT", "/v1/owner/password", { password: "the owner's long password" }, token);
+  assert.equal(owner.status, 200, JSON.stringify(owner.body));
+  for (let i = 0; i < 3; i++) assert.equal((await signIn(x)).status, 401);
+  for (let i = 0; i < 2; i++) assert.equal((await pair(x, WRONG)).status, 401);
+  const limited = await signIn(x);
+  assert.equal(limited.status, 429);
+  assert.match(((await limited.json()) as any).error.message, /^Too many wrong pairing codes or passwords from this address/);
 });

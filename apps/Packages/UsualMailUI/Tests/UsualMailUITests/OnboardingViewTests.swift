@@ -34,7 +34,8 @@ struct OnboardingViewTests {
         #expect(
             ServerStep.help
                 == "Get a code with usual-mail pair on your server, or from the file owner-pairing-code in its data "
-                + "folder. A code works once.")
+                + "folder. On Cloudflare, the first code is in the Worker's Data Studio, table owner_pairing_code; "
+                + "later ones come from the dashboard's Devices and agents page. A code works once.")
         #expect(AiKeyStep.words.hasSuffix("The key stays on your server; no app or device sees it again."))
         #expect(HistoryStep.title == "How much old mail?")
         #expect(

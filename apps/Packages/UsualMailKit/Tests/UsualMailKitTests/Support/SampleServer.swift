@@ -24,6 +24,9 @@ final class SampleServer: HTTPTransport {
         var teach: TeachPrompt?
         var before: [String: ThreadPlacement] = [:]
         var pairingCode = "ABCD-1234"
+        /// The owner's password, and what `GET /v1/info` says of the owner (`SampleServer+Owner.swift`).
+        var ownerPassword: String?
+        var ownerInfo: OwnerInfo?
         /// "POST /v1/actions" → a gate that route's answers wait for.
         var holds: [String: Gate] = [:]
         /// Like `holds`, but the answer is worked out first and waits afterwards, so it arrives stale.
@@ -145,7 +148,10 @@ final class SampleServer: HTTPTransport {
         }
 
         if route("GET v1/info") != nil {
-            return .json(ServerInfo(name: "usual-mail", version: "0.1.0", apiVersion: 1))
+            let owner = state.withLock { $0.ownerInfo }
+            return .json(ServerInfo(name: "usual-mail", version: "0.1.0", apiVersion: 1, owner: owner))
+        } else if let reply = try ownerReply(method: method, parts: parts, body: body) {
+            return reply
         } else if route("POST v1/pair") != nil {
             let input = try MailJSON.decoder().decode(PairInput.self, from: body)
             guard input.code == state.withLock({ $0.pairingCode }) else {

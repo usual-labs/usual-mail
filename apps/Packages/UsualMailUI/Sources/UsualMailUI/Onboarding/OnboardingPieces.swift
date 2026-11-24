@@ -15,14 +15,29 @@ extension View {
             #else
                 .frame(maxWidth: width, alignment: .leading)
             #endif
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 16))
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+            .background(Theme.card, in: OnboardingCardShape.shape)
+            .background(.ultraThinMaterial, in: OnboardingCardShape.shape)
             .shadow(color: .black.opacity(0.05), radius: 10, y: 4)
             .layoutMark(.card)
             #if os(iOS)
                 .padding(.horizontal, 16)
             #endif
     }
+}
+
+/// The first run's card's outline: rounded 16 all round on the Mac. On the iPhone, where the cards sit at the foot of
+/// the screen (`OnboardingLayout.cardsAtFoot`), the two bottom corners follow the screen's own, their radius the
+/// screen's less the card's distance from its edges (`ConcentricRectangle`), never under 16; the top stays 16 (owner's
+/// words of 2026-11-24: "make the bottom border radiuses to fit the iphone screen, ... not top just bottom").
+enum OnboardingCardShape {
+    #if os(iOS)
+        static let shape = ConcentricRectangle(
+            topLeadingCorner: .fixed(16), topTrailingCorner: .fixed(16),
+            bottomLeadingCorner: .concentric(minimum: .fixed(16)),
+            bottomTrailingCorner: .concentric(minimum: .fixed(16)))
+    #else
+        static let shape = RoundedRectangle(cornerRadius: 16)
+    #endif
 }
 
 /// A step's title, at the size a mail's subject is read.

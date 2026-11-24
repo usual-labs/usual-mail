@@ -32,6 +32,11 @@ services:
       # and never change it: the data can't be read without it.
       - key: USUAL_MAIL_SECRET_KEY
         generateValue: true
+      # Your email (strongly suggested): the server is then set up only by signing in with Google as this address.
+      # Left empty, whoever opens the server's address first sets its password and owns it; scanners find new
+      # addresses within minutes (docs/deploy.md, "Claiming your server"). Needs the Google client below.
+      - key: USUAL_MAIL_OWNER_EMAIL
+        sync: false
       # Your Google client for Gmail (docs/google-setup.md), both or neither; or leave them empty and give it from
       # the Mac app.
       - key: USUAL_MAIL_GOOGLE_CLIENT_ID

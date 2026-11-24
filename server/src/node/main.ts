@@ -128,6 +128,8 @@ const server = await MailServer.create(host, {
   // A person may change the window while the server runs; it is kept in settings.json. Not in demo mode.
   ...(!config.demo && { saveSyncWindowDays: (days: number) => saveFirstSyncDays(config.dataDir, days) }),
   version: SERVER_VERSION,
+  // USUAL_MAIL_OWNER_EMAIL: only Google's proof of it claims an unclaimed server.
+  ownerEmail: config.ownerEmail,
   // Demo mode keeps the sample as it is: only new mail goes to the (fake) AI.
   aiHistory: !config.demo,
   // Demo mode's made-up mail is all at .example domains: its own list, so its sample pictures show.
@@ -171,8 +173,8 @@ if (google) {
 let files: Promise<void> = Promise.resolve();
 const ownerFile = config.demo ? null : ownerCodePath(config.dataDir);
 const kept = config.demo ? null : await readOwnerCode(config.dataDir);
-await server.keepOwnerCode((code, made) => {
-  for (const line of ownerCodeLines(code, made, ownerFile)) console.log(line);
+await server.keepOwnerCode((code, made, kind) => {
+  for (const line of ownerCodeLines(code, made, ownerFile, kind)) console.log(line);
   if (config.demo || (code && !made)) return;
   const dataDir = config.dataDir;
   files = files

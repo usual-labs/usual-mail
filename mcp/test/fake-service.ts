@@ -149,7 +149,7 @@ export class FakeMailService implements MailService {
   }
 
   async info() {
-    return { name: "usual-mail" as const, version: "0.0.0", apiVersion: 1 as const, googleSignIn: { available: false, missing: ["client" as const, "address" as const] } };
+    return { name: "usual-mail" as const, version: "0.0.0", apiVersion: 1 as const, googleSignIn: { available: false, missing: ["client" as const, "address" as const] }, owner: { password: true, claimable: false } };
   }
 
   // The connector never asks for the words shown before a key is saved: only a person may (docs/contract-ai.md).
@@ -585,6 +585,33 @@ export class FakeMailService implements MailService {
   }
   async revokeDevice(caller: Caller, id: Id) {
     this.enter("revokeDevice", caller, [id]);
+  }
+  // The owner's password: the connector offers none of it.
+  async claimOwner(input: unknown): Promise<never> {
+    this.enter("claimOwner", undefined, [input]);
+    throw new ServiceError("conflict", "Already claimed.");
+  }
+  async startOwnerClaim(): Promise<never> {
+    this.enter("startOwnerClaim", undefined, []);
+    throw new ServiceError("conflict", "Already claimed.");
+  }
+  async signInOwner(input: unknown): Promise<never> {
+    this.enter("signInOwner", undefined, [input]);
+    throw new ServiceError("unauthorized", "Wrong password.");
+  }
+  async owner(caller: Caller) {
+    this.enter("owner", caller, []);
+    this.personOnly(caller, "see the owner's account");
+    return { email: null, password: true };
+  }
+  async setOwnerPassword(caller: Caller, input: unknown) {
+    this.enter("setOwnerPassword", caller, [input]);
+    this.personOnly(caller, "set the owner's password");
+    return { email: null, password: true };
+  }
+  async requestRecoveryCode() {
+    this.enter("requestRecoveryCode", undefined, []);
+    return { kind: "recovery" as const, expiresAt: NOW };
   }
   subscribe(caller: Caller) {
     this.enter("subscribe", caller, []);

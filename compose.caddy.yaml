@@ -26,6 +26,9 @@ services:
     environment:
       # The address people reach the server at. Google sends people back to it followed by /v1/google/callback.
       USUAL_MAIL_PUBLIC_URL: https://${USUAL_MAIL_DOMAIN:?Set USUAL_MAIL_DOMAIN in .env to the server's domain}
+      # Your email (strongly suggested): only Google's proof of it sets the server up. Empty: whoever opens the address
+      # first owns the server (docs/deploy.md, "Claiming your server"). Needs the Google client below.
+      USUAL_MAIL_OWNER_EMAIL: ${USUAL_MAIL_OWNER_EMAIL:-}
       # Your Google client for Gmail (docs/google-setup.md), both or neither; or give it from the Mac app instead.
       USUAL_MAIL_GOOGLE_CLIENT_ID: ${USUAL_MAIL_GOOGLE_CLIENT_ID:-}
       USUAL_MAIL_GOOGLE_CLIENT_SECRET: ${USUAL_MAIL_GOOGLE_CLIENT_SECRET:-}

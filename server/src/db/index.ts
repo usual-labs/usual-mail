@@ -23,6 +23,7 @@ export type RuleRow = typeof schema.rules.$inferSelect;
 export type DraftRow = typeof schema.drafts.$inferSelect;
 export type BriefRow = typeof schema.briefs.$inferSelect;
 export type DeviceRow = typeof schema.devices.$inferSelect;
+export type OwnerRow = typeof schema.owner.$inferSelect;
 export type TeachRow = typeof schema.teachPrompts.$inferSelect;
 export type ServerStateRow = typeof schema.serverState.$inferSelect;
 export type AvatarSiteRow = typeof schema.avatarSites.$inferSelect;

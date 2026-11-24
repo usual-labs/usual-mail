@@ -1,7 +1,17 @@
 // Devices, agents and pairing: the whole sign-in. A person creates a short code; a device trades it for a
 // token, shown once and stored only as a hash.
 
-import { ServiceError, type Caller, type Device, type PairingCode, type PairingCodeInput, type PairInput, type PairResult } from "@usualmail/core";
+import {
+  RECOVERY_CODE_TTL_MS,
+  ServiceError,
+  type Caller,
+  type Device,
+  type PairingCode,
+  type PairingCodeInput,
+  type PairInput,
+  type PairResult,
+  type RecoveryCodeAnswer,
+} from "@usualmail/core";
 import { and, eq, gt, isNull } from "drizzle-orm";
 import { devices, inboxes, pairingCodes, type DeviceRow } from "../db/index.ts";
 import { iso, makePairingCode, makeToken, normalizePairingCode, sha256, TOKEN_PREFIX, unique } from "../util.ts";
@@ -63,17 +73,51 @@ export const PAIRING_LIMIT = 10;
 export const PAIRING_WINDOW_MS = 10 * 60_000;
 
 /**
+ * `rate_limited` while ten wrong pairing codes or owner's passwords (`owner.ts`) were given in the last ten minutes:
+ * they count together, so neither can be guessed.
+ */
+export function checkPairingLimit(ctx: Ctx, what = "pairing codes"): void {
+  const failures = ctx.pairingFailures;
+  while (failures.length > 0 && failures[0]! <= ctx.now() - PAIRING_WINDOW_MS) failures.shift();
+  if (failures.length >= PAIRING_LIMIT) {
+    const retry = Math.max(1, Math.ceil((failures[0]! + PAIRING_WINDOW_MS - ctx.now()) / 1000));
+    throw new ServiceError("rate_limited", `Too many wrong ${what}. Try again in ${retry} seconds.`, { retryAfter: retry });
+  }
+}
+
+/** Counts one wrong pairing code or password. */
+export function countPairingFailure(ctx: Ctx): void {
+  ctx.pairingFailures.push(ctx.now());
+}
+
+/** A new device and its token, shown once; only the token's hash is kept. `extra` is written in the same batch. */
+export async function addDevice(
+  ctx: Ctx,
+  device: { name: string; kind: Device["kind"]; inboxIds: string[] | null },
+  extra: Parameters<Ctx["db"]["batch"]>[0][number][] = [],
+): Promise<PairResult> {
+  const token = makeToken(ctx.host.random);
+  const row: DeviceRow = {
+    id: ctx.id("dev"),
+    name: device.name,
+    kind: device.kind,
+    inboxIds: device.kind === "agent" ? device.inboxIds ?? [] : null,
+    tokenHash: await sha256(token),
+    createdAt: ctx.now(),
+    lastSeenAt: null,
+    revokedAt: null,
+  };
+  await ctx.db.batch([ctx.db.insert(devices).values(row), ...extra]);
+  return { token, device: toDevice(row) };
+}
+
+/**
  * Needs no caller: the code is the credential. Under the lock, so a code can't be used twice. A wrong, used
  * or expired code is `unauthorized`; after too many of those, every try is `rate_limited` for a while, even
  * with a good code, so codes can't be guessed.
  */
 export async function pair(ctx: Ctx, input: PairInput): Promise<PairResult> {
-  const failures = ctx.pairingFailures;
-  while (failures.length > 0 && failures[0]! <= ctx.now() - PAIRING_WINDOW_MS) failures.shift();
-  if (failures.length >= PAIRING_LIMIT) {
-    const retry = Math.max(1, Math.ceil((failures[0]! + PAIRING_WINDOW_MS - ctx.now()) / 1000));
-    throw new ServiceError("rate_limited", `Too many wrong pairing codes. Try again in ${retry} seconds.`, { retryAfter: retry });
-  }
+  checkPairingLimit(ctx);
   const data = check(PairInputSchema, input, "Pairing");
   const codeHash = await sha256(normalizePairingCode(data.code));
   const code = await ctx.db.select().from(pairingCodes).where(and(
@@ -82,27 +126,15 @@ export async function pair(ctx: Ctx, input: PairInput): Promise<PairResult> {
     gt(pairingCodes.expiresAt, ctx.now()),
   )).get();
   if (!code) {
-    failures.push(ctx.now());
+    countPairingFailure(ctx);
     throw new ServiceError("unauthorized", "That pairing code is wrong, used or expired");
   }
-  const token = makeToken(ctx.host.random);
-  const row: DeviceRow = {
-    id: ctx.id("dev"),
-    name: data.name,
-    kind: code.kind,
-    inboxIds: code.kind === "agent" ? code.inboxIds ?? [] : null,
-    tokenHash: await sha256(token),
-    createdAt: ctx.now(),
-    lastSeenAt: null,
-    revokedAt: null,
-  };
-  await ctx.db.batch([
+  const paired = await addDevice(ctx, { name: data.name, kind: code.kind, inboxIds: code.inboxIds }, [
     ctx.db.update(pairingCodes).set({ usedAt: ctx.now() }).where(eq(pairingCodes.codeHash, codeHash)),
-    ctx.db.insert(devices).values(row),
   ]);
-  // A person's device: the owner's code, if one was waiting, is done with.
-  if (code.kind === "person") await keepOwnerCodeCurrent(ctx);
-  return { token, device: toDevice(row) };
+  // A person's device: the owner's code, if one was waiting, is done with, and so is a recovery code if this was it.
+  if (code.kind === "person") await keepOwnerCodeCurrent(ctx, codeHash);
+  return paired;
 }
 
 /**
@@ -132,7 +164,7 @@ export async function authenticate(ctx: Ctx, token: string): Promise<Caller | nu
     : { actor: { kind: "agent", agentId: row.id, name: row.name }, inboxIds: row.inboxIds ?? [] };
 }
 
-async function personPaired(ctx: Ctx): Promise<boolean> {
+export async function personPaired(ctx: Ctx): Promise<boolean> {
   const person = await ctx.db.select({ id: devices.id }).from(devices)
     .where(and(eq(devices.kind, "person"), isNull(devices.revokedAt))).limit(1).get();
   return person !== undefined;
@@ -150,17 +182,26 @@ export async function ownerPairingCode(ctx: Ctx): Promise<PairingCode | null> {
 }
 
 /**
+ * What a waiting code is: the owner's code, made whenever no person's device is paired, or a recovery code, made when
+ * someone asks for one (`requestRecoveryCode`) while one is. The host keeps both in the same place.
+ */
+export type OwnerCodeKind = "owner" | "recovery";
+
+/**
  * Hears the owner's code: each code as it is made (`made` true: the host prints it and writes its file), a code kept
  * from an earlier start (`made` false: the host says one waits, without printing it again), and null once a person's
- * device is paired.
+ * device is paired. A recovery code comes the same way, with `kind` "recovery", and null once it is used or expires.
  */
-export type OwnerCodeListener = (code: PairingCode | null, made: boolean) => void;
+export type OwnerCodeListener = (code: PairingCode | null, made: boolean, kind: OwnerCodeKind) => void;
 
 /** What the host gave `keepOwnerCode`: who hears each new owner's code, and the one waiting now. */
 export interface OwnerCodeKeeper {
   listener: OwnerCodeListener;
   /** The waiting code's hash, or null when none waits. */
   waiting: string | null;
+  /** What the waiting code is, and until when it works. */
+  kind: OwnerCodeKind;
+  expiresAt: string | null;
   cancelExpiry: (() => void) | null;
 }
 
@@ -172,13 +213,13 @@ export interface OwnerCodeKeeper {
  */
 export async function keepOwnerCode(ctx: Ctx, listener: OwnerCodeListener, options: { kept?: string } = {}): Promise<void> {
   ctx.ownerCode?.cancelExpiry?.();
-  ctx.ownerCode = { listener, waiting: null, cancelExpiry: null };
+  ctx.ownerCode = { listener, waiting: null, kind: "owner", expiresAt: null, cancelExpiry: null };
   if (await personPaired(ctx)) {
     tell(ctx, null);
     return;
   }
   const kept = options.kept ? await stillWaiting(ctx, options.kept) : null;
-  if (kept) await watchExpiry(ctx, ctx.ownerCode, kept, false);
+  if (kept) await watchExpiry(ctx, ctx.ownerCode, kept, false, "owner");
   else await keepOwnerCodeCurrent(ctx);
 }
 
@@ -198,42 +239,75 @@ async function stillWaiting(ctx: Ctx, code: string): Promise<PairingCode | null>
 
 /**
  * Whenever no person's device is paired, an owner's code waits: made at once, again when it expires unused, and
- * again after the last person's device is removed. Once a person's device is paired, the waiting code is
- * dropped and the listener hears null. Does nothing until a host calls `keepOwnerCode`. Under the lock.
+ * again after the last person's device is removed. Once a person's device is paired, the waiting owner's code is
+ * dropped and the listener hears null; a waiting recovery code stays until it is the code used (`used`, its hash) or
+ * it expires. Does nothing until a host calls `keepOwnerCode`. Under the lock.
  */
-export async function keepOwnerCodeCurrent(ctx: Ctx): Promise<void> {
+export async function keepOwnerCodeCurrent(ctx: Ctx, used?: string): Promise<void> {
   const keeper = ctx.ownerCode;
   if (!keeper) return;
   if (await personPaired(ctx)) {
     if (keeper.waiting === null) return;
-    keeper.cancelExpiry?.();
-    keeper.cancelExpiry = null;
-    keeper.waiting = null;
-    tell(ctx, null);
+    if (keeper.kind === "recovery" && keeper.waiting !== used) return;
+    drop(ctx, keeper);
     return;
   }
   if (keeper.waiting !== null) return;
-  await watchExpiry(ctx, keeper, (await ownerPairingCode(ctx))!, true);
+  await watchExpiry(ctx, keeper, (await ownerPairingCode(ctx))!, true, "owner");
 }
 
-/** Makes `code` the one waiting, tells the listener, and makes the next one when it expires unused. */
-async function watchExpiry(ctx: Ctx, keeper: OwnerCodeKeeper, code: PairingCode, made: boolean): Promise<void> {
+/**
+ * A recovery code (docs/contract.md, "The owner's password"): made where the host keeps the owner's code, never
+ * answered. While no person's device is paired the owner's code is the way in and no other is made; while a code
+ * already waits, it is the one. Under the lock.
+ */
+export async function requestRecoveryCode(ctx: Ctx): Promise<RecoveryCodeAnswer> {
+  const keeper = ctx.ownerCode;
+  if (!keeper) throw new ServiceError("conflict", "This server keeps no owner's code, so it has nowhere to put a recovery code");
+  if (keeper.waiting === null) {
+    if (await personPaired(ctx)) {
+      await watchExpiry(ctx, keeper, await issueCode(ctx, "person", null, RECOVERY_CODE_TTL_MS), true, "recovery");
+    } else {
+      await keepOwnerCodeCurrent(ctx);
+    }
+  }
+  return { kind: keeper.kind, expiresAt: keeper.expiresAt ?? iso(ctx.now()) };
+}
+
+/** No code waits any more: the listener hears null. */
+function drop(ctx: Ctx, keeper: OwnerCodeKeeper): void {
+  keeper.cancelExpiry?.();
+  keeper.cancelExpiry = null;
+  keeper.waiting = null;
+  keeper.expiresAt = null;
+  tell(ctx, null, false, keeper.kind);
+}
+
+/** Makes `code` the one waiting, tells the listener, and when it expires unused, drops it or makes the next owner's code. */
+async function watchExpiry(ctx: Ctx, keeper: OwnerCodeKeeper, code: PairingCode, made: boolean, kind: OwnerCodeKind): Promise<void> {
   const hash = await sha256(code.code);
   keeper.waiting = hash;
+  keeper.kind = kind;
+  keeper.expiresAt = code.expiresAt;
   keeper.cancelExpiry = ctx.host.scheduler.setTimer(Date.parse(code.expiresAt) - ctx.now(), () => {
     void ctx.lock.run(async () => {
       if (ctx.ownerCode !== keeper || keeper.waiting !== hash) return;
+      // An owner's code is replaced by the next; a recovery code, or an owner's code once a person paired, just goes.
+      if (kind === "recovery" || (await personPaired(ctx))) {
+        drop(ctx, keeper);
+        return;
+      }
       keeper.waiting = null;
       keeper.cancelExpiry = null;
       await keepOwnerCodeCurrent(ctx);
     }).catch((error) => ctx.host.log.error("Couldn't make a new owner's pairing code", error));
   });
-  tell(ctx, code, made);
+  tell(ctx, code, made, kind);
 }
 
-function tell(ctx: Ctx, code: PairingCode | null, made = false): void {
+function tell(ctx: Ctx, code: PairingCode | null, made = false, kind: OwnerCodeKind = "owner"): void {
   try {
-    ctx.ownerCode?.listener(code, made);
+    ctx.ownerCode?.listener(code, made, kind);
   } catch (error) {
     ctx.host.log.error("A listener for the owner's pairing code failed", error);
   }

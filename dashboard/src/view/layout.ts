@@ -20,7 +20,7 @@ export const OWNER_CODE_WHERE = "prints it in its log and writes it to owner-pai
 /** Where this server keeps a waiting owner's code. */
 export const ownerCodeWhere = (view: View) => view.ownerCodeWhere ?? OWNER_CODE_WHERE;
 
-export type Section = "home" | "inboxes" | "handled" | "ai" | "devices";
+export type Section = "home" | "inboxes" | "handled" | "ai" | "devices" | "account";
 
 /** A path inside the dashboard, with the base in front. `path` starts with "/". */
 export const href = (view: View, path: string) => `${view.base}${path}`;
@@ -38,6 +38,7 @@ const SECTIONS: Array<[Section, string, string, string]> = [
   ["handled", "/handled", "Handled", "handled"],
   ["ai", "/ai", "AI", "settings"],
   ["devices", "/devices", "Devices and agents", "agent"],
+  ["account", "/account", "Account", "person"],
 ];
 
 export interface PageOptions {
@@ -140,6 +141,8 @@ export const NOTICES: Record<string, string> = {
   "ai-tested": "Tested: the status below says how it went.",
   "ai-key-removed": "The AI key is removed. Nothing more is sent, for any inbox.",
   "signed-out": "Signed out.",
+  "claimed": "The server is yours. Sign in with this password here and in the apps; connect an inbox to begin.",
+  "password-set": "Saved. Sign in with the new password from now on; devices already signed in stay signed in.",
 };
 
 export function notice(view: View, key: string | undefined): Html | "" {

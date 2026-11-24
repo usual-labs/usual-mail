@@ -53,8 +53,12 @@ import {
   type ServerInfo,
   type TeachPrompt,
   type Thread,
+  type OwnerClaimInput,
+  type OwnerSignInInput,
+  type OwnerPasswordInput,
 } from "@usualmail/core";
 import { AGENT_CODE, AGENT_TOKEN, connectionOf, GOOD_CODE, notUsed, PERSON_DEVICE, PERSON_TOKEN, SAMPLE, type Call } from "./fake-data.ts";
+import { FakeOwner } from "./fake-owner.ts";
 
 export { AGENT_CODE, AGENT_TOKEN, GOOD_CODE, PERSON_DEVICE, PERSON_TOKEN, SAMPLE } from "./fake-data.ts";
 
@@ -415,18 +419,30 @@ export class FakeService implements MailService {
     const made = this.codes.get(input.code);
     if (!made) throw new ServiceError("unauthorized", "Unknown or expired pairing code");
     this.codes.delete(input.code);
-    const device: Device = {
-      id: this.#id("dev"),
-      name: input.name,
-      kind: made.kind,
-      ...(made.kind === "agent" ? { inboxIds: made.inboxIds ?? [] } : {}),
-      createdAt: this.#time(),
-    };
+    return this.#addDevice(input.name, made.kind, made.inboxIds);
+  }
+
+  #addDevice(name: string, kind: Device["kind"], inboxIds?: Id[]): PairResult {
+    const device: Device = { id: this.#id("dev"), name, kind, ...(kind === "agent" ? { inboxIds: inboxIds ?? [] } : {}), createdAt: this.#time() };
     this.devices.push(device);
     const token = `umt_issued_${device.id}_secret`;
     this.tokens.set(token, device.id);
     return { token, device: structuredClone(device) };
   }
+
+  // --- The owner's password (fake-owner.ts) ---------------------------------------------------------------
+  readonly ownerFake = new FakeOwner({
+    call: (method, args) => this.#call(method, args),
+    person: (caller, what) => this.#person(caller, what),
+    addPerson: (name) => this.#addDevice(name, "person"),
+    personPaired: () => this.devices.some((device) => device.kind === "person"),
+  });
+  claimOwner = (input: OwnerClaimInput) => this.ownerFake.claimOwner(input);
+  startOwnerClaim = () => this.ownerFake.startOwnerClaim();
+  signInOwner = (input: OwnerSignInInput) => this.ownerFake.signInOwner(input);
+  owner = (caller: Caller) => this.ownerFake.owner(caller);
+  setOwnerPassword = (caller: Caller, input: OwnerPasswordInput) => this.ownerFake.setOwnerPassword(caller, input);
+  requestRecoveryCode = () => this.ownerFake.requestRecoveryCode();
 
   async revokeDevice(caller: Caller, id: Id): Promise<void> {
     this.#call("revokeDevice", [caller, id]);
@@ -536,7 +552,7 @@ export class FakeService implements MailService {
 
   async info(): Promise<ServerInfo> {
     this.#call("info", []);
-    return { name: "usual-mail", version: "0.0.0", apiVersion: 1, googleSignIn: structuredClone(this.googleInfo) };
+    return { name: "usual-mail", version: "0.0.0", apiVersion: 1, googleSignIn: structuredClone(this.googleInfo), owner: this.ownerFake.info() };
   }
 
   /** As the server does: a person's, only when set up, a reconnect only for a Gmail inbox. */

@@ -74,6 +74,21 @@ app.all("*", (c) => dashboard(c.req.raw));        // last
   "up to ten minutes" when there is none. A `ServiceError` from another copy of core keeps its `retryAfter`.
 - The sign-in page says where a code comes from: the server prints the owner's code and writes it to
   `owner-pairing-code` in its data folder whenever no app or browser is paired.
+- **The owner's password** (2026-11-24, [server-owner.md](server-owner.md); `routes/owner.ts`, `pages/owner.ts`):
+  - `GET /sign-in` reads `info().owner`: an unclaimed server redirects to `/claim`; one with a password shows the
+    password form (`autocomplete="current-password"`, "Forgot your password?", "Sign in with a pairing code" as
+    `?with=code`); one without shows the code form as before, which links back to the password when there is one.
+    `POST /sign-in` takes `password` (`signInOwner`) or `code` (`pair`), with the same form token and refusals ("That
+    password is wrong."; "Too many wrong codes or passwords. Wait …").
+  - `/claim`: an unclaimed server's setup: email (optional), the password twice, the browser's name; with the host's
+    owner email, "Sign in with Google" (`POST /claim/google` answers a "Continue to Google" link, as Gmail's does)
+    and, back with `?proof=`, the password form carrying the proof (`no-store`, `no-referrer`). The claim signs the
+    browser in and goes to `/?done=claimed`; a server claimed meanwhile goes to `/sign-in`.
+  - `/forgot`: what a recovery code is and where it goes (`ownerCodeWhere`), and a button; the answer says which code
+    waits and until when, and links to `/sign-in?with=code&next=/account`. Never the code.
+  - `/account` (signed in; "Account" in the nav): the owner's email and when the password was set, and a form to set
+    one (twice); `?done=password-set`.
+  - Every form before a session uses the sign-in form's double-submit token and `cameFromThisSite`.
 - After signing in it goes to `next`, which `safePath` (`src/http/context.ts`) accepts only as a path on this
   site. A resolved path starting with `//` falls back (fixed 2026-11-17; tests in `test/auth.test.ts`).
 
@@ -87,6 +102,7 @@ app.all("*", (c) => dashboard(c.req.raw));        // last
 | `/inboxes/:id` | One inbox, in its hat's tint: state, Sync now, Pause or Resume, Connection (the stored details, "Sign in with Google again" for a Gmail inbox when the server has it, and a form to give new secrets), and one form each for name and colour, icon and place, trust, agent access and the guide. This path is the contract's (`DASHBOARD_PATHS.inbox`): other interfaces may link to it |
 | `/inboxes/:id/remove` | Says exactly what removing deletes and what it leaves alone, then removes |
 | `/inboxes/:id/rules` | What the inbox learned, in the order the server checks rules: each rule's text, who made it (from `createdBy`: "You made it", "You taught it by correcting", or the agent by name, "Claude Code suggested it"; a rule from an older server that says `system` falls back to its source's words), how often it fired, its conditions and actions ("Put in Receipts, Mark done"), Turn on or off, Delete. Agents' suggestions first, with Accept and Dismiss. A form to add a rule, whose "Put it in" offers the six categories a person can choose (never "not sorted yet") |
+| `/account` | The owner: email, when the password was set, and setting a first or new one (2026-11-24) |
 | `/devices` | Apps and browsers, and agents with the inboxes each may see. Marks this browser. Remove each. A code for a new app, and a code for a new agent with the inboxes it may see |
 | `/handled` | Proposals waiting (all of them, up to 200) with Approve, Reject, and Approve all or Reject all; then history (applied, undone, rejected, failed) of rules, agents and the server's AI, 50 at a time, with Undo where the record is undoable. Filter by inbox with hat chips. `?silent=1` also lists silent records, which include every category the server's AI set ("Usual Mail's AI put it in Invoices, using example/decision-1") |
 | `/ai` | The server's AI: its state and why there are no summaries when it isn't working, the service's own words, the last run, what waits (`pending`) and what it works through (all synced mail; the first sync's days), Test now and Pause or Resume; the connection with a key form (service and key; the key field is never filled); each job's model with the server's default (empty means the default)|

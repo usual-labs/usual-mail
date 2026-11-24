@@ -22,6 +22,9 @@ import {
   type HandledQuery,
   type InboxPatch,
   type ListQuery,
+  type OwnerClaimInput,
+  type OwnerPasswordInput,
+  type OwnerSignInInput,
   type PairingCodeInput,
   type PairInput,
   type RouteName,
@@ -81,6 +84,10 @@ export function createApp(server: MailServer, options: RestOptions): Hono<Env> {
     setGoogleClient: bodyLimit({ maxSize: GOOGLE_CLIENT_FILE_MAX_BYTES, onError: tooLarge(clientWords.tooLarge) }),
     pair: bodyLimit({ maxSize: PAIR_MAX_BYTES, onError: tooLarge("The request body is too large") }),
   };
+  // The owner's routes that need no token read no more than pairing does.
+  for (const name of ["claimOwner", "startOwnerClaim", "signInOwner", "requestRecoveryCode", "setOwnerPassword"] as const) {
+    limits[name] = limits.pair!;
+  }
   const general = bodyLimit({ maxSize: options.maxBodyBytes ?? 2 * 1024 * 1024, onError: tooLarge("The request body is too large") });
   for (const name of Object.keys(ROUTES) as RouteName[]) {
     const route = ROUTES[name];
@@ -106,6 +113,12 @@ function routeHandlers(server: MailServer, options: RestOptions): Record<RouteNa
 
     pair: async ({ c }) => c.json(await server.pair(await body<PairInput>(c))),
     me: async ({ c, caller }) => c.json(await server.me(caller)),
+    claimOwner: async ({ c }) => c.json(await server.claimOwner(await body<OwnerClaimInput>(c))),
+    startOwnerClaim: async ({ c }) => c.json(await server.startOwnerClaim()),
+    signInOwner: async ({ c }) => c.json(await server.signInOwner(await body<OwnerSignInInput>(c))),
+    owner: async ({ c, caller }) => c.json(await server.owner(caller)),
+    setOwnerPassword: async ({ c, caller }) => c.json(await server.setOwnerPassword(caller, await body<OwnerPasswordInput>(c))),
+    requestRecoveryCode: async ({ c }) => c.json(await server.requestRecoveryCode()),
     listDevices: async ({ c, caller }) => c.json(await server.listDevices(caller)),
     createPairingCode: async ({ c, caller }) => c.json(await server.createPairingCode(caller, await body<PairingCodeInput>(c))),
     revokeDevice: async (r) => (await server.revokeDevice(r.caller, r.c.req.param("id")!), noContent(r)),
@@ -119,7 +132,12 @@ function routeHandlers(server: MailServer, options: RestOptions): Record<RouteNa
     startGoogleSignIn: async ({ c, caller }) => c.json(await server.startGoogleSignIn(caller, await body<GoogleSignInInput>(c))),
     googleSignIn: async ({ c, caller }) => c.json(await server.googleSignIn(caller, c.req.param("id")!)),
     // A page for the person's browser, not JSON. The query is read here and never logged.
-    googleCallback: async ({ c }) => signInPage(await server.finishGoogleSignIn(new URL(c.req.url).searchParams)),
+    googleCallback: async ({ c }) => {
+      const page = await server.finishGoogleSignIn(new URL(c.req.url).searchParams);
+      // A sign-in that proved the owner's email goes on to the dashboard's claim page, with its proof.
+      if (page.redirect) return new Response(null, { status: 303, headers: { location: page.redirect, "referrer-policy": "no-referrer", "cache-control": "no-store" } });
+      return signInPage(page);
+    },
     googleSetup: async ({ c, caller }) => c.json(await server.googleSetup(caller)),
     // The body is the client file as Google downloads it, kept as it is: read as text, never logged or answered.
     setGoogleClient: async ({ c, caller }) => c.json(await server.setGoogleClient(caller, { file: await c.req.text(), ...replaceQuery(c) })),

@@ -23,6 +23,30 @@ extension APIClient {
         try await send(request(.post, "/v1/pair", body: input, authorized: false))
     }
 
+    // MARK: The owner's password (docs/contract.md, "The owner's password")
+
+    /// `POST /v1/owner/sign-in`: the owner's password pairs this device. Needs no token. A wrong one is `unauthorized`
+    /// and counts with wrong pairing codes.
+    public func signInOwner(_ input: OwnerSignInInput) async throws -> PairResult {
+        try await send(request(.post, "/v1/owner/sign-in", body: input, authorized: false))
+    }
+
+    /// `POST /v1/owner/claim`: an unclaimed server's first device becomes its owner's. Needs no token. `conflict` once
+    /// it has an owner; `forbidden` when its host named the owner's email (claimed in a browser, through Google).
+    public func claimOwner(_ input: OwnerClaimInput) async throws -> PairResult {
+        try await send(request(.post, "/v1/owner/claim", body: input, authorized: false))
+    }
+
+    /// `GET /v1/owner`: the owner's email and whether a password is set (person only).
+    public func owner() async throws -> Owner {
+        try await send(request(.get, "/v1/owner"))
+    }
+
+    /// `PUT /v1/owner/password`: sets the owner's password, a first one or a new one (person only).
+    public func setOwnerPassword(_ input: OwnerPasswordInput) async throws -> Owner {
+        try await send(request(.put, "/v1/owner/password", body: input))
+    }
+
     /// `GET /v1/me`: the device this token belongs to.
     public func me() async throws -> Device {
         try await send(request(.get, "/v1/me"))

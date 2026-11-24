@@ -1,5 +1,6 @@
 // Settings from flags and environment variables. Flags win.
 
+import { ownerEmailSetting } from "../service/owner.ts";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import type { GoogleClient } from "../google/config.ts";
@@ -35,6 +36,8 @@ export interface Config {
    * nothing reaches Google. Refused like --dev-fake-ai.
    */
   devFakeGoogle: string | null;
+  /** USUAL_MAIL_OWNER_EMAIL: only Google's proof of this address claims an unclaimed server. Null: the first visitor does. */
+  ownerEmail: string | null;
   help: boolean;
 }
 
@@ -58,6 +61,8 @@ Environment only:
   USUAL_MAIL_POLL_SECONDS    How often to check mailboxes that can't push changes (default 60)
   USUAL_MAIL_SYNC_DAYS       How many days of mail a new inbox's first sync takes. Wins over syncDays in
                              <data-dir>/settings.json, which \`usual-mail init\` and \`sync-days\` write (default 30)
+  USUAL_MAIL_OWNER_EMAIL     The owner's email: an unclaimed server is then claimed only by signing in with Google as
+                             that address (needs the Google client below). Without it, the first visitor claims it
   USUAL_MAIL_GOOGLE_CLIENT_ID, USUAL_MAIL_GOOGLE_CLIENT_SECRET
                              The host's Google OAuth client (a web application client), both or neither. Without
                              them the server reads <data-dir>/google-client.json, as Google's console downloads it
@@ -106,8 +111,15 @@ export function readConfig(argv: string[], env: NodeJS.ProcessEnv): Config {
     publicUrl: publicUrl(values["public-url"] ?? env.USUAL_MAIL_PUBLIC_URL),
     googleClient: googleClient(env),
     devFakeGoogle: devFakeGoogle === null ? null : new URL(devFakeGoogle).origin,
+    ownerEmail: ownerEmail(env.USUAL_MAIL_OWNER_EMAIL),
     help: values.help ?? false,
   };
+}
+
+function ownerEmail(text: string | undefined): string | null {
+  const setting = ownerEmailSetting(text);
+  if (setting.invalid) throw new Error("USUAL_MAIL_OWNER_EMAIL is the owner's email address, like you@example.org");
+  return setting.email;
 }
 
 /** An origin only: HTTPS, or HTTP on this machine (Google takes plain HTTP only for loopback addresses). */

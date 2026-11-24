@@ -2,7 +2,8 @@ import SwiftUI
 import UsualMailKit
 
 /// The welcome, laid out like usual.dev: the wordmark stays at the top left (`PairingView`), the manifesto sits at the
-/// bottom left in a few lines of one width, over the wallpaper's hills, with one button.
+/// bottom left in a few lines of one width, over the wallpaper's hills, with one button at the right of that column
+/// (owner's words of 2026-11-24: "move the get started button to right", on the Mac and the iPhone).
 struct WelcomeStep: View {
     let start: () -> Void
 
@@ -20,12 +21,16 @@ struct WelcomeStep: View {
                 .font(Theme.sans(15))
                 .lineSpacing(5)
                 .foregroundStyle(.white.opacity(0.95))
-                // The hills under it are dark green in most windows and lighter in some; a soft shadow keeps it read.
+                // The hills under it are dark green in most windows and lighter in some; a soft shadow keeps it read,
+                // and a tight one close behind the letters a little more (owner's words of 2026-11-24: "a bit of
+                // shadow behind text, just a bit so it would be more readable").
+                .shadow(color: .black.opacity(0.3), radius: 2, y: 1)
                 .shadow(color: .black.opacity(0.35), radius: 8, y: 1)
-                .frame(maxWidth: 440, alignment: .leading)
                 .fixedSize(horizontal: false, vertical: true)
             PrimaryButton(title: "Get started", action: start)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
+        .frame(maxWidth: 440, alignment: .leading)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
         .revealOnAppear(delay: 0.1)
     }

@@ -29,6 +29,7 @@ import { base64url, errorMessage, iso, sha256 } from "../util.ts";
 import { signedInConnection, type SignedInCredentials } from "./credentials.ts";
 import type { CallbackPage, Entry } from "./store.ts";
 import { authorizationUrl, exchangeCode, GoogleExchangeError, grantsGmail, pkce } from "./oauth.ts";
+import { claimPage, finishOwnerClaim } from "./owner-claim.ts";
 import { headings, notAvailable, words } from "./words.ts";
 
 /** How long a person has to come back from Google. */
@@ -143,6 +144,7 @@ async function finish(ctx: Ctx, entry: Entry, query: URLSearchParams): Promise<O
   }
   const code = query.get("code");
   if (!code) return fail("google_error", words.googleError);
+  if (entry.claim) return finishOwnerClaim(ctx, entry, code);
   const device = await ctx.db.select({ id: devices.id }).from(devices)
     .where(and(eq(devices.id, entry.deviceId), isNull(devices.revokedAt))).get();
   if (!device) return fail("cancelled", words.deviceRemoved);
@@ -233,6 +235,7 @@ function view(entry: Entry): GoogleSignIn {
 }
 
 function page(entry: Entry): CallbackPage {
+  if (entry.claim) return claimPage(entry);
   const outcome = entry.outcome!;
   const connected = outcome.state === "connected";
   return {

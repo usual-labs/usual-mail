@@ -450,6 +450,19 @@ export const pairingCodes = sqliteTable("pairing_codes", {
 });
 
 /**
+ * The server's owner (docs/contract.md, "The owner's password"): one row, id 1, once the server is claimed or its
+ * password first set. The password only as its PBKDF2 hash (`service/password.ts`), never itself.
+ */
+export const owner = sqliteTable("owner", {
+  id: integer("id").primaryKey(),
+  /** The owner's email: Google's verified address when the host named one, else what the owner typed, or null. */
+  email: text("email"),
+  passwordHash: text("password_hash"),
+  passwordSetAt: integer("password_set_at"),
+  createdAt: integer("created_at").notNull(),
+});
+
+/**
  * One row (id 1) for what belongs to the whole server: the AI's settings with its sealed key, the AI's status, and
  * the version of the counts.
  */

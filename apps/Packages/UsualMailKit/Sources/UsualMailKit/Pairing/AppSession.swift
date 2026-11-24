@@ -17,16 +17,16 @@ public final class AppSession {
     }
 
     public private(set) var state = State.starting
-    public private(set) var isPairing = false
+    public internal(set) var isPairing = false
     public private(set) var isDisconnecting = false
     /// Why pairing failed, or why the device was signed out, in words a person can act on.
-    public private(set) var pairingProblem: String?
+    public internal(set) var pairingProblem: String?
     public private(set) var credentials: Credentials?
 
     @ObservationIgnored private let credentialStore: any CredentialStore
-    @ObservationIgnored private let transport: any HTTPTransport
+    @ObservationIgnored let transport: any HTTPTransport
     @ObservationIgnored private let databaseDirectory: URL?
-    @ObservationIgnored private let deviceName: String
+    @ObservationIgnored let deviceName: String
     @ObservationIgnored private let clock: @Sendable () -> Date
     @ObservationIgnored private let listens: Bool
 
@@ -72,26 +72,37 @@ public final class AppSession {
     /// Pairs with the server at `address` using a pairing code.
     public func pair(address: String, code: String) async {
         let code = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A good address and no code: said before the server is asked. A bad address is said first.
+        if code.isEmpty, (try? ServerAddress(parsing: address)) != nil {
+            pairingProblem = "Enter the pairing code your server gave you."
+            return
+        }
+        await connect(address: address) { client in
+            try await client.pair(PairInput(code: code, name: self.deviceName))
+        } refused: { error in
+            Self.pairingProblem(error, address: address.trimmingCharacters(in: .whitespaces))
+        }
+    }
+
+    /// A refusal the app itself makes before asking the server, in words.
+    struct Refusal: Error {
+        let words: String
+    }
+
+    /// Checks that `address` is a Usual Mail server this app speaks to, trades something for this device's token with
+    /// `trade` (a pairing code, the owner's password, a claim), keeps the token and opens the server's copy. A refusal
+    /// is put in words by `refused`.
+    func connect(
+        address: String, trade: (APIClient) async throws -> PairResult, refused: (APIError) -> String
+    ) async {
         isPairing = true
         pairingProblem = nil
         defer { isPairing = false }
         do {
             let server = try ServerAddress(parsing: address)
-            guard !code.isEmpty else {
-                pairingProblem = "Enter the pairing code your server gave you."
-                return
-            }
             let client = APIClient(server: server, transport: transport)
-            let info = try await client.info()
-            guard info.name == "usual-mail" else {
-                pairingProblem = "\(server.displayName) answered, but it isn't a Usual Mail server."
-                return
-            }
-            guard info.apiVersion == 1 else {
-                pairingProblem = "\(server.displayName) needs a newer version of this app."
-                return
-            }
-            let result = try await client.pair(PairInput(code: code, name: deviceName))
+            guard try await speaksTo(client, server: server) != nil else { return }
+            let result = try await trade(client)
             let saved = Credentials(
                 server: server, token: result.token, deviceId: result.device.id, deviceName: result.device.name)
             try credentialStore.save(saved)
@@ -101,36 +112,40 @@ public final class AppSession {
             try open(saved)
         } catch let error as ServerAddress.ParseError {
             pairingProblem = error.localizedDescription
+        } catch let refusal as Refusal {
+            pairingProblem = refusal.words
         } catch let error as APIError {
-            pairingProblem = Self.pairingProblem(error, address: address.trimmingCharacters(in: .whitespaces))
+            pairingProblem = refused(error)
         } catch {
             pairingProblem = error.localizedDescription
         }
     }
 
+    /// The server's `GET /v1/info` when it is a Usual Mail server this app speaks to; nil, with the problem in
+    /// `pairingProblem`, when it isn't.
+    func speaksTo(_ client: APIClient, server: ServerAddress) async throws -> ServerInfo? {
+        let info = try await client.info()
+        guard info.name == "usual-mail" else {
+            pairingProblem = "\(server.displayName) answered, but it isn't a Usual Mail server."
+            return nil
+        }
+        guard info.apiVersion == 1 else {
+            pairingProblem = "\(server.displayName) needs a newer version of this app."
+            return nil
+        }
+        return info
+    }
+
     /// What to tell the person when pairing fails (docs/contract.md, "REST", "Sign-in"), in the owner's approved
     /// words of 2026-11-17 (the onboarding session's copy). `address` is what they typed.
     static func pairingProblem(_ error: APIError, address: String) -> String {
-        switch error {
-        case .unreachable(_, let cause?) where offline.contains(cause):
-            return "This Mac is offline, so it couldn't reach \(address). Connect it, then try again."
-        case .unreachable(_, let cause?) where insecure.contains(cause):
-            return """
-                A secure connection to \(address) couldn't be made. Check that the address starts with the right \
-                scheme (https:// for a server elsewhere).
-                """
-        case .unreachable:
-            return """
-                No Usual Mail server answered at \(address). Check the address, and that the server is running \
-                (usual-mail status).
-                """
-        default: break
-        }
+        if let words = reachProblem(error, address: address) { return words }
         switch error.code {
         case .unauthorized:
             return """
                 That code didn't work. It may be mistyped, used already or expired. Your server makes a new one: run \
-                usual-mail pair, or see owner-pairing-code in its data folder.
+                usual-mail pair, or see owner-pairing-code in its data folder. On Cloudflare, open the server's \
+                address and look in Data Studio again, or use the dashboard's Devices and agents page.
                 """
         case .rateLimited:
             // The server says how long in Retry-After; without it, the limit lasts at most ten minutes.
@@ -138,6 +153,25 @@ public final class AppSession {
             return "Too many wrong codes. Wait \(wait), then try again."
         default:
             return error.localizedDescription
+        }
+    }
+
+    /// Why the server at `address` couldn't be reached, when that is the problem.
+    static func reachProblem(_ error: APIError, address: String) -> String? {
+        switch error {
+        case .unreachable(_, let cause?) where offline.contains(cause):
+            "This Mac is offline, so it couldn't reach \(address). Connect it, then try again."
+        case .unreachable(_, let cause?) where insecure.contains(cause):
+            """
+            A secure connection to \(address) couldn't be made. Check that the address starts with the right \
+            scheme (https:// for a server elsewhere).
+            """
+        case .unreachable:
+            """
+            No Usual Mail server answered at \(address). Check the address, and that the server is running \
+            (usual-mail status).
+            """
+        default: nil
         }
     }
 

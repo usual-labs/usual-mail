@@ -61,12 +61,15 @@ and the two header names), `address.ts`, `google.ts`, `pairing.ts`, `settings.ts
   one is waiting. Read it in the Cloudflare dashboard: …", counted by neither count. The dashboard's sign-in page and
   its last-device warning say the code waits in Data Studio (the path as the log gives it), through
   `ownerCodeWhere`; Node's words stay its own.
-- **The per-address count** (`pairing.ts`, `requests.ts`): `POST /v1/pair` (by the path Hono routes, so any
-  percent-encoded spelling of it too) and the dashboard's `POST /sign-in` (by the path as written, as the dashboard
-  routes) are counted under the client address (IPv4 as is, IPv4-mapped IPv6 as IPv4, IPv6 by its /64, none as one key); a 401
+- **The owner's password** (2026-11-24, [server-owner.md](server-owner.md)): `USUAL_MAIL_OWNER_EMAIL` from the
+  Worker's variables or secrets (one that isn't an address is logged and keeps claiming closed); a recovery code goes
+  into `owner_pairing_code` like the owner's code and is never logged (only "A recovery code is waiting, until …").
+- **The per-address count** (`pairing.ts`, `requests.ts`): `POST /v1/pair`, `/v1/owner/sign-in` and
+  `/v1/owner/claim` (by the path Hono routes, so any percent-encoded spelling too) and the dashboard's `POST /sign-in`
+  and `POST /claim` (by the path as written, as the dashboard routes) are counted under the client address (IPv4 as is, IPv4-mapped IPv6 as IPv4, IPv6 by its /64, none as one key); a 401
   answer is a failure; an attempt in flight holds a place, so a burst can't pass the limit; after five in ten minutes
-  the host answers 429 `rate_limited` with `Retry-After` (REST: "Too many wrong pairing codes from this address. Try
-  again in N seconds."; the dashboard: a small page) without passing the request on. At most 10,000 addresses are
+  the host answers 429 `rate_limited` with `Retry-After` (REST: "Too many wrong pairing codes or passwords from this
+  address. Try again in N seconds."; the dashboard: a small page) without passing the request on. At most 10,000 addresses are
   remembered, in memory; an eviction forgets them, as it forgets the service's own count.
 - **Settings** (`settings.ts`): `USUAL_MAIL_SYNC_DAYS` (1 to 36,500) wins; else a person's window kept in KV as
   `usual-mail-sync-days` (`saveSyncWindowDays`); else 30; the start logs which. **The time zone:** `Host.timeZone` is a

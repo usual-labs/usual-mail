@@ -1,3 +1,6 @@
+// A recovery code (docs/contract.md, "The owner's password") goes in the same row, the same way, and is never logged
+// either.
+//
 // The owner's pairing code on Cloudflare, as the owner decided (server-cloudflare.md, "Decided by the owner"): a plain
 // copy in a one-row table this host owns, `owner_pairing_code`, where the owner reads it in the Cloudflare dashboard's
 // Data Studio, as Node writes `<data-dir>/owner-pairing-code`. Written when a code is made, read back at every start
@@ -12,6 +15,7 @@
 
 import type { PairingCode } from "@usualmail/core";
 import type { Log } from "../host.ts";
+import type { OwnerCodeKind } from "../service/devices.ts";
 import type { MailServer } from "../service/server.ts";
 import { normalizePairingCode, sha256 } from "../util.ts";
 
@@ -54,8 +58,12 @@ export const OWNER_CODE_WHERE_DASHBOARD = `keeps it out of its log, in the Cloud
  * What the log says about the owner's code, never the code itself: that one waits, until when, and where to read it.
  * Nothing once a person's device is paired.
  */
-export function ownerCodeLines(code: PairingCode | null, made: boolean): string[] {
+export function ownerCodeLines(code: PairingCode | null, made: boolean, kind: OwnerCodeKind = "owner"): string[] {
   if (!code) return [];
+  if (kind === "recovery") {
+    // Asked for on the dashboard ("Forgot your password?"). Never the code: the log and `wrangler tail` show these lines.
+    return [`A recovery code is waiting, until ${code.expiresAt}; it isn't written to the log. ${OWNER_CODE_WHERE}`];
+  }
   return [
     made
       ? `An owner's pairing code is waiting, until ${code.expiresAt}; it isn't written to the log.`
@@ -103,8 +111,8 @@ export async function keepOwnerCodeInTable(server: MailServer, sql: SqlStorage, 
     kept = null;
     log.info(`The owner's pairing code in ${OWNER_CODE_TABLE} expired at ${row.expiresAt} while the server was stopped; it was removed, and a new one is made.`);
   }
-  await server.keepOwnerCode((code, made) => {
-    for (const line of ownerCodeLines(code, made)) log.info(line);
+  await server.keepOwnerCode((code, made, kind) => {
+    for (const line of ownerCodeLines(code, made, kind)) log.info(line);
     if (!code) {
       removeOwnerCode(sql);
       spent.clear();

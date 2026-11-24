@@ -33,6 +33,11 @@ export interface ServiceOptions {
   /** Reported by `info()`. */
   version?: string;
   /**
+   * The owner's email the host named (`USUAL_MAIL_OWNER_EMAIL`): an unclaimed server is then claimed only by signing in
+   * with Google as that address (docs/contract.md, "The owner's password"). Absent or null: by whoever comes first.
+   */
+  ownerEmail?: string | null;
+  /**
    * Whether the AI processes history in the background. Default true. Demo mode turns it off, so the sample's
    * waiting thread stays as the sample has it; new mail is still processed as it arrives.
    */
@@ -156,6 +161,7 @@ export class Ctx {
       pairingCodeTtlMs: options.pairingCodeTtlMs ?? 15 * 60_000,
       ownerCodeTtlMs: options.ownerCodeTtlMs ?? 24 * 60 * 60_000,
       version: options.version ?? "0.0.0",
+      ownerEmail: options.ownerEmail?.trim().toLowerCase() || null,
       aiHistory: options.aiHistory ?? true,
       syncRounds: options.syncRounds ?? 10_000,
     };

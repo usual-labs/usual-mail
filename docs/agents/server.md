@@ -95,6 +95,9 @@ key means reconnecting every inbox and setting the AI key again. The start line 
 
 ### The owner's code
 
+Since 2026-11-24 the owner has a password too, and the same place holds recovery codes:
+[server-owner.md](server-owner.md).
+
 `MailServer.keepOwnerCode(listener, { kept })` keeps a person pairing code waiting whenever no person's device is
 paired: at start, when the waiting code expires unused (24 hours), and right after the last person's device is
 revoked. The listener hears each code with `made` (true when made just now) and null once a person pairs. The Node

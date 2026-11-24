@@ -134,8 +134,19 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
 - **Pairing's words** (`AppSession.pairingProblem(_:address:)`, the owner's approved copy of 2026-11-17 from the
   onboarding session): nothing answered at the typed address (check it, and `usual-mail status`); no secure
   connection (the scheme); a code that didn't work (mistyped, used or expired; `usual-mail pair` or
-  `owner-pairing-code` in the server's data folder); "Too many wrong codes. Wait …, then try again." This session's own
-  words for the Mac itself being offline.
+  `owner-pairing-code` in the server's data folder; on Cloudflare, the server's address opened again and Data
+  Studio, or the dashboard's Devices and agents page, added 2026-11-24); "Too many wrong codes. Wait …, then try
+  again." This session's own words for the Mac itself being offline.
+- **The owner's password** (2026-11-24, `Pairing/AppSession+Owner.swift`, `Models/Owner.swift`; the contract's
+  "The owner's password"): `ServerInfo.owner` (`OwnerInfo`, nil from an older server, `.none`); `APIClient`'s
+  `signInOwner`, `claimOwner`, `owner`, `setOwnerPassword`. `AppSession.passwordStep(address:)` reads `/v1/info` and
+  answers `.signIn`, `.claim`, `.claimInBrowser` (the host named an owner email: words to set it up in a browser) or
+  `.codeOnly` (no password yet: words to pair with a code, then set one in Settings); `signIn(address:password:)`;
+  `claim(address:email:password:again:)`, which refuses two passwords that differ or one under 12 characters before
+  asking. Pairing, signing in and claiming share `connect(address:trade:refused:)` (the address checked, the server
+  checked with `speaksTo`, the token kept, the copy opened); `pair` still refuses an empty code before asking.
+  Refusals: "That password is wrong. Forgot it? …", "Too many wrong codes or passwords. Wait …", and `conflict` or
+  `forbidden` in words. Tests: `OwnerPasswordTests` (5), the stand-in's `SampleServer+Owner.swift`.
 - **`EventStream`**: reads `GET /v1/events` with its own server-sent events parser, reconnects with backoff (1 s
   doubling to 60 s, honouring `retry:`), and stops on 401. Unchanged since the first round.
 - **`LocalStore`** (SQLite through GRDB): the on-device copy. Schema `v5` adds `category` and `screened` columns,

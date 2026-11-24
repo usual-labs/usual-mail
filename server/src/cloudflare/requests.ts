@@ -2,7 +2,8 @@
 // refused plain http and put its own copies of the client's address and time zone into the headers below, dropping any
 // the client sent, so these can be trusted here.
 // - The server's public address, for this request only (address.ts).
-// - Pairing attempts (`POST /v1/pair`, the dashboard's `POST /sign-in`): the per-address count (pairing.ts), answered
+// - Pairing attempts (`POST /v1/pair`, `/v1/owner/sign-in` and `/v1/owner/claim`, the dashboard's `POST /sign-in`
+//   and `/claim`): the per-address count (pairing.ts), answered
 //   429 without passing the request on; an owner's code that expired while the object was evicted, refused in plain
 //   words before the service counts it as wrong (owner-code.ts); and the time zone of the request that pairs the first
 //   person's device (settings.ts).
@@ -36,11 +37,16 @@ export function routedPath(request: Pick<Request, "url">): string {
   return getPath(request as Request);
 }
 
-/** A pairing attempt's kind, by the path each part routes by: REST's `POST /v1/pair` or the dashboard's sign-in. */
+/** REST's routes that pair a device with a secret: a pairing code, the owner's password, or Google's claim proof. */
+const REST_PAIRING = new Set(["/v1/pair", "/v1/owner/sign-in", "/v1/owner/claim"]);
+/** The dashboard's forms that do the same: signing in (with the password or a code) and claiming. */
+const DASHBOARD_PAIRING = new Set(["/sign-in", "/claim"]);
+
+/** A pairing attempt's kind, by the path each part routes by: one of REST's or one of the dashboard's. */
 export function pairingKind(request: Request): PairingKind | null {
   if (request.method !== "POST") return null;
-  if (routedPath(request) === "/v1/pair") return "rest";
-  return new URL(request.url).pathname === "/sign-in" ? "dashboard" : null;
+  if (REST_PAIRING.has(routedPath(request))) return "rest";
+  return DASHBOARD_PAIRING.has(new URL(request.url).pathname) ? "dashboard" : null;
 }
 
 export interface DoorOptions {
@@ -143,8 +149,8 @@ function minutes(seconds: number): string {
 /** Too many wrong codes from one address: core's error shape for REST, a plain page for the dashboard's form. */
 function tooMany(kind: PairingKind, retryAfter: number): Response {
   const message = kind === "rest"
-    ? `Too many wrong pairing codes from this address. Try again in ${retryAfter} seconds.`
-    : `Too many wrong codes from this address. Wait ${minutes(retryAfter)}, then try again.`;
+    ? `Too many wrong pairing codes or passwords from this address. Try again in ${retryAfter} seconds.`
+    : `Too many wrong codes or passwords from this address. Wait ${minutes(retryAfter)}, then try again.`;
   return refusal(kind, 429, "rate_limited", message, retryAfter);
 }
 

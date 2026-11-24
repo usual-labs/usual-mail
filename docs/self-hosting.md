@@ -143,13 +143,24 @@ other mailbox over IMAP.
 
 ## 5. Pair the Mac app
 
-The app needs the server's address and a pairing code.
+The app needs the server's address and the server's password, or a pairing code.
 
 - **The address:** `http://127.0.0.1:8484` when the app runs on the server's Mac (with another port, that port).
-- **A pairing code:** run `usual-mail pair`. It prints a code that works once, for 15 minutes.
+- **The password:** a new server has none and no owner. Whoever sets its password first owns it: open the address
+  in a browser and set it, or set it from the app (below). On a server others can reach, do it at once, or set
+  `USUAL_MAIL_OWNER_EMAIL` to your email before it first starts: then only signing in with Google as that address
+  sets it up ([deploy.md](deploy.md#claiming-your-server)).
+- **Or a pairing code:** run `usual-mail pair`. It prints a code that works once, for 15 minutes.
 
 In the Mac app, press **Get started**, choose **Your own server** and press **Continue**. Under **Connect to your
-server**, enter the address as **Server address** and the code as **Pairing code**, and press **Connect**.
+server**, enter the address as **Server address** and the password as **Password**, and press **Connect**. A server
+nobody owns yet offers **Set up your server**: type a new password twice (and an email, if you like) and press **Set
+up**. **Use a pairing code instead** takes a code.
+
+**Forgot the password?** On a device that is still signed in, set a new one: the dashboard's **Account** page, or
+Settings, Accounts, in the app. With none at hand, open the address in a browser and choose **Forgot your
+password?**: the server writes a recovery code where it writes the owner's code (below), never on the page. Sign in
+with it, then set a new password.
 
 **The owner's code.** Whenever no app or browser is paired, the server makes an owner's pairing code and writes it to
 `owner-pairing-code` in its data directory, readable only by you. A new one is made when it expires unused (after 24
@@ -289,6 +300,7 @@ says why.
 | `USUAL_MAIL_TIME_ZONE` | variable | The server's time zone, a name like `Europe/Berlin`, instead of the one it takes when you pair (below) |
 | `USUAL_MAIL_SYNC_DAYS` | variable | How many days of mail a new inbox's first sync takes, 1 to 36,500. It wins over the number chosen in the app; with neither, 30 |
 | `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET` | secrets | Your Google client, both or neither, instead of giving it from the app. While they're set, no app can give another |
+| `USUAL_MAIL_OWNER_EMAIL` | variable or secret | Your email: the server is then set up only by signing in with Google as this address (it needs the Google client). Strongly suggested; set it before you first open the address. One that isn't an email address keeps the server from being set up at all (the owner's code still pairs) |
 
 **The secret key.** Without `USUAL_MAIL_SECRET_KEY`, the server makes a key when it first starts and keeps it in its
 own storage, beside what it seals. **Set the secret before you first open the server's address** (that first request
@@ -312,6 +324,15 @@ over HTTPS; the Worker's version and preview addresses are off.
 keeps working.
 
 ### The first pairing code
+
+**The easier way:** set `USUAL_MAIL_OWNER_EMAIL` (below) to your email in the Worker's settings first, then open the
+server's address and set its password, and sign in to the apps with it. Without that variable, whoever opens the
+address first and sets a password owns the server, and new addresses are found within minutes
+([deploy.md](deploy.md#claiming-your-server)). The Deploy form can't ask for it: Cloudflare makes every value it asks
+for required. A recovery code ("Forgot your password?") waits in the same table as the owner's code, and is never
+written to the log.
+
+The owner's code still works:
 
 1. Open the server's address in a browser. The first request starts the server, which makes an owner's pairing
    code. The page, the dashboard's sign-in, says where the code waits; the code is never written to the log.

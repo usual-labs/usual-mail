@@ -9,7 +9,7 @@ const time = v.pipe(v.string(), v.minLength(1), v.maxLength(40));
 /** A category someone can decide: any but `unknown`, which nobody chooses. */
 const decidedCategory = v.picklist(CATEGORIES.filter((category) => category !== "unknown"), "A category is conversation, newsletter, invoice, receipt, notification or otp; nobody chooses unknown");
 const stack = v.picklist(STACKS);
-const line = (max: number) => v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(max));
+export const line = (max: number) => v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(max));
 
 const address = v.strictObject({
   name: v.optional(v.pipe(v.string(), v.maxLength(300))),

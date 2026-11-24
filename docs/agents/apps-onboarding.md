@@ -33,11 +33,19 @@ This part's files (the rest of `apps/` is the Mac app's, in [apps.md](apps.md)):
 Before pairing, `RootView` shows `PairingView(session:)` over the wallpaper, with "Usual Mail" in Prociono at the top
 left ("Mail" lighter, as usual.dev writes "Usual" and "dev"); margins as usual.dev's, 6% of the width between 24 and
 80 points, at least 52 from the top.
-1. **Welcome:** the manifesto at the bottom left, white with a soft shadow over the hills, 15 points, at most 440 wide,
-   and "Get started". Left-aligned: SwiftUI's `Text` can't justify, so the lines are even by width only.
+1. **Welcome:** the manifesto at the bottom left, white over the hills with a soft shadow and, since 2026-11-24 (the
+   owner's "a bit of shadow behind text"), a tight one close behind the letters, 15 points, at most 440 wide,
+   and "Get started" under it at that column's right (owner's words of 2026-11-24, on the Mac and the iPhone; it was
+   at the left). Left-aligned: SwiftUI's `Text` can't justify, so the lines are even by width only.
 2. **Where should Usual Mail run?** "Your own server" (chosen) and "Usual hosted · Coming soon" (faded, can't be
    chosen); Back, Continue. Choosing their own server is remembered, so pairing again starts at step 3.
-3. **Connect to your server:** server address, pairing code, the help line, Back, "Connect" (`AppSession.pair`).
+3. **Connect to your server:** server address, then the server's password by default (2026-11-24, the owner's
+   password: `AppSession+Owner.swift` in the Kit), the help line, "Use a pairing code instead", Back, "Connect". Before
+   signing in, the app asks the server what it needs (`passwordStep`): with a password it signs in; a server nobody
+   owns turns the card into **Set up your server** (email optional, the new password twice, "Set up": `claim`); one
+   whose host named the owner's email says to set it up in a browser; one without a password switches to the code
+   with words saying so. The code mode is as before (`AppSession.pair`), its help unchanged; it links back to the
+   password. On the iPhone the card sits at the screen's foot and rises above the keyboard (apps-phone.md).
    `session.pairingProblem` shows in red, in the approved words, which `AppSession` owns. "Don't have a server yet?
    Set one up" is hidden until the guides have a public address (below). A Mac signed out with a reason starts here.
 
@@ -232,7 +240,10 @@ longer a `DisclosureGroup`) takes `rowHover()`. Link-style buttons (`QuietButton
   server's and the command's default port, and `docs/self-hosting.md`, say 8484.
 - The pairing help (the coordinator's words, 2026-11-17): "Get a code with usual-mail pair on your server, or from the
   file owner-pairing-code in its data folder. A code works once." The approved "Your server prints a pairing code when
-  it starts" stopped being true: the fixed server prints a code only when it makes one.
+  it starts" stopped being true: the fixed server prints a code only when it makes one. Since 2026-11-24 (the
+  coordinator's suggestion, the owner's yes) it goes on: "On Cloudflare, the first code is in the Worker's Data
+  Studio, table owner_pairing_code; later ones come from the dashboard's Devices and agents page.", since the
+  Cloudflare server has neither the command nor the file ([self-hosting.md](../self-hosting.md), "On Cloudflare").
 - The progress line: the server gives only `pending`, no total, and counts 0 until a first sync has listed mail. So:
   "Sorting your mail · {pending} left"; "Fetching your mail" while an inbox is fetching (`connecting`, or a first sync
   still running) and nothing is pending, with core's count once a fetching inbox has one ("Fetching your mail · 120
