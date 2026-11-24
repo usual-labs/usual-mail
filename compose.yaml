@@ -53,6 +53,9 @@ services:
     #   # Google sends people back to. Register it at Google followed by /v1/google/callback. The Google client goes
     #   # into the volume as /data/google-client.json, readable only by the server's user.
     #   USUAL_MAIL_PUBLIC_URL: "http://127.0.0.1:8484"
+    #   # Only signing in with Google as this address sets the server up (docs/deploy.md, "Claiming your server").
+    #   # Without it, whoever first opens the address and sets a password owns the server.
+    #   USUAL_MAIL_OWNER_EMAIL: "you@example.org"
 
 volumes:
   # Everything the server keeps: the database, with mailbox passwords and the AI key stored sealed, and the key that

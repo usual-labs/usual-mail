@@ -143,19 +143,23 @@ other mailbox over IMAP.
 
 ## 5. Pair the Mac app
 
-The app needs the server's address and the server's password, or a pairing code.
+The app needs the server's address and a pairing code, or the server's password once it has one.
 
 - **The address:** `http://127.0.0.1:8484` when the app runs on the server's Mac (with another port, that port).
-- **The password:** a new server has none and no owner. Whoever sets its password first owns it: open the address
-  in a browser and set it, or set it from the app (below). On a server others can reach, do it at once, or set
-  `USUAL_MAIL_OWNER_EMAIL` to your email before it first starts: then only signing in with Google as that address
-  sets it up ([deploy.md](deploy.md#claiming-your-server)).
-- **Or a pairing code:** run `usual-mail pair`. It prints a code that works once, for 15 minutes.
+- **A pairing code:** run `usual-mail pair`. It prints a code that works once, for 15 minutes.
+- **The password:** `usual-mail init` paired the command with the server, so the server has an owner but no password
+  yet. Once the app is paired, set one in the app's **Settings**, **Accounts** (or on the dashboard's **Account**
+  page): from then on the app on another Mac, the iPhone app and the dashboard sign in with the address and it.
 
 In the Mac app, press **Get started**, choose **Your own server** and press **Continue**. Under **Connect to your
-server**, enter the address as **Server address** and the password as **Password**, and press **Connect**. A server
-nobody owns yet offers **Set up your server**: type a new password twice (and an email, if you like) and press **Set
-up**. **Use a pairing code instead** takes a code.
+server**, enter the address as **Server address**, press **Use a pairing code instead**, enter the code as **Pairing
+code**, and press **Connect**. With a password set, enter it as **Password** instead.
+
+**A server set up without `init`** (with Compose, or on a host in [deploy.md](deploy.md)) has no owner at first:
+whoever opens its address and sets its password first owns it, in a browser or in the app (**Connect** with a new
+password offers **Set up your server**: type it twice, and an email if you like). On a server others can reach, do
+it at once, or set `USUAL_MAIL_OWNER_EMAIL` to your email before it first starts: then only signing in with Google
+as that address sets it up ([deploy.md](deploy.md#claiming-your-server)).
 
 **Forgot the password?** On a device that is still signed in, set a new one: the dashboard's **Account** page, or
 Settings, Accounts, in the app. With none at hand, open the address in a browser and choose **Forgot your
@@ -168,10 +172,10 @@ hours) and whenever the last app or browser is removed, so you are never locked 
 log once, when it makes it; when it starts again while the code still waits, its log only says so and where the file
 is. So read the code from the file, not from `usual-mail logs`. `usual-mail init` pairs the command with it, which is
 why the app then needs a code from `usual-mail pair`. If you set the server up without `init` (with Compose, say),
-pair the app with the owner's code from the file (`compose.yaml` says how to read it).
+set its password as above, or pair the app with the owner's code from the file (`compose.yaml` says how to read it).
 
-You can also open the server's address in a browser on the same computer for its dashboard, and sign in there with a
-pairing code.
+You can also open the server's address in a browser on the same computer for its dashboard, and sign in there with the
+password or a pairing code.
 
 ## 6. Connect Gmail
 

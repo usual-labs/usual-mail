@@ -26,19 +26,19 @@ themselves, and publishing the image.
   starting the new one (as Render and Railway do for a service with a disk) are right for it.
 - **A folder that persists, at `/data`.** It holds the database (`usual-mail.db` with its `-wal` and `-shm` files),
   `secret.key` (the key that seals mailbox passwords and the AI key, unless `USUAL_MAIL_SECRET_KEY` gives it),
-  `google-client.json`, `settings.json`, `owner-pairing-code` while an owner's or recovery code waits, and `pictures/`. The server makes the
-  folder `0700` and its files `0600`, owned by the image's `node` user (uid 1000); files copied in keep the modes
-  they came with. The image starts as root only long enough to give `node` a folder that belongs to root (as some
-  hosts mount it) and anything in `node`'s folder that isn't `node`'s yet, then runs the server as `node`. It takes a
-  folder of root's only when it is new (empty, or holding only `lost+found`) or already holds the server's data
-  (`usual-mail.db` or `secret.key`); a folder of root's with other files in it (`-v /srv:/data` by mistake) is left
-  as it is, and the container stops with a line saying so. A folder that belongs to another user (a folder of yours
-  mounted from the host) is left as it is: run the container as its owner with `--user`. A folder mounted read-only
-  (`:ro`) stops it too: the server must write there. **A hardened container** without the capabilities to change
-  owners and users (`--cap-drop ALL`) can't do that step and stops with a line saying so; run it as `node` from the
-  start: `--cap-drop ALL --user 1000:1000` (in Compose, `cap_drop: [ALL]` and `user: "1000:1000"`), on a folder that
-  is already uid 1000's. A named volume is, from its first start; a folder of root's isn't: start the container once
-  without `--cap-drop`, or run `chown -R 1000:1000` on the folder on the host, first.
+  `google-client.json`, `settings.json`, `owner-pairing-code` while an owner's or recovery code waits, and `pictures/`.
+  The server makes the folder `0700` and its files `0600`, owned by the image's `node` user (uid 1000); files copied in
+  keep the modes they came with. The image starts as root only long enough to give `node` a folder that belongs to root
+  (as some hosts mount it) and anything in `node`'s folder that isn't `node`'s yet, then runs the server as `node`. It
+  takes a folder of root's only when it is new (empty, or holding only `lost+found`) or already holds the server's data
+  (`usual-mail.db` or `secret.key`); a folder of root's with other files in it (`-v /srv:/data` by mistake) is left as
+  it is, and the container stops with a line saying so. A folder that belongs to another user (a folder of yours mounted
+  from the host) is left as it is: run the container as its owner with `--user`. A folder mounted read-only (`:ro`)
+  stops it too: the server must write there. **A hardened container** without the capabilities to change owners and
+  users (`--cap-drop ALL`) can't do that step and stops with a line saying so; run it as `node` from the start:
+  `--cap-drop ALL --user 1000:1000` (in Compose, `cap_drop: [ALL]` and `user: "1000:1000"`), on a folder that is already
+  uid 1000's. A named volume is, from its first start; a folder of root's isn't: start the container once without
+  `--cap-drop`, or run `chown -R 1000:1000` on the folder on the host, first.
 - **Outbound HTTPS, IMAP and SMTP.** HTTPS for Gmail, Google sign-in, the AI service and pictures in mail; IMAP (993
   or 143) and SMTP (465 or 587) for mailboxes connected over IMAP. Some hosts block SMTP (below); Gmail doesn't need
   it.
@@ -112,6 +112,9 @@ in place of `docker compose` below, with `.env` in the clone's folder.
 
    ```
    USUAL_MAIL_DOMAIN=mail.example.org
+   # Strongly suggested: only signing in with Google as this address sets the server up (it needs the client below).
+   # Leave it out to set the password at once instead (Claiming your server, above).
+   USUAL_MAIL_OWNER_EMAIL=you@example.org
    # Optional, for Gmail by signing in with Google (docs/google-setup.md); or give the client from the Mac app.
    # USUAL_MAIL_GOOGLE_CLIENT_ID=…
    # USUAL_MAIL_GOOGLE_CLIENT_SECRET=…
@@ -119,15 +122,17 @@ in place of `docker compose` below, with `.env` in the clone's folder.
 
 3. **Start it:** `docker compose up -d`. `docker compose logs caddy` shows the certificate being issued;
    `curl https://mail.example.org/healthz` answers `{"ok":true}`.
-4. **Pair** the `usual-mail` command on your own computer with the owner's code:
+4. **Claim it:** open `https://mail.example.org` and set the server's password (after signing in with Google as the
+   owner email, when `.env` names one). Sign in to the dashboard and the apps with it
+   ([self-hosting.md](self-hosting.md#5-pair-the-mac-app)). To pair the `usual-mail` command on your own computer, or
+   to get in with the owner's code instead:
 
    ```
    docker compose exec usual-mail cat /data/owner-pairing-code
    usual-mail init --server https://mail.example.org --code <that code>
    ```
 
-   The code is in the log too, once, when the server makes it. Then pair the Mac app as
-   [self-hosting.md](self-hosting.md#5-pair-the-mac-app) says.
+   The code is in the log too, once, when the server makes it.
 5. **Google:** register `https://mail.example.org/v1/google/callback` as the client's redirect address at Google.
    `usual-mail google` says whether the server has its client and which address it expects.
 
@@ -201,9 +206,11 @@ hasn't run on Coolify itself yet. It pulls the published image, so it works from
    server's port: `https://mail.example.org:8484` (the port tells Coolify where to send requests; the address people
    use stays `https://mail.example.org`). **Don't keep the address Coolify makes up** (an `sslip.io` name): it is plain
    HTTP, which the server refuses, so the container would stop at every start.
-4. Optionally fill `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET` under Environment Variables.
-5. **Deploy.** Read the owner's code in the service's log, or in its terminal with `cat /data/owner-pairing-code`,
-   and pair: `usual-mail init --server https://mail.example.org --code <that code>`.
+4. Under Environment Variables, set `USUAL_MAIL_OWNER_EMAIL` to your email (strongly suggested: [Claiming your
+   server](#claiming-your-server)), and optionally `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET`.
+5. **Deploy,** then open `https://mail.example.org` and set the server's password. The owner's code also works: in the
+   service's log, or in its terminal with `cat /data/owner-pairing-code`, for
+   `usual-mail init --server https://mail.example.org --code <that code>`.
 
 Coolify fills `USUAL_MAIL_PUBLIC_URL` from the domain without the port (`SERVICE_URL_USUALMAIL`). The file also
 names `SERVICE_URL_USUALMAIL_8484`, which tells Coolify's proxy the port, but that variable's value keeps the port
@@ -237,8 +244,9 @@ then **Blueprint**, and choose it.
    Google variables are optional.
 2. Render makes `USUAL_MAIL_SECRET_KEY` once (256 random bits in base64). **Copy it somewhere safe** and never
    change it: the disk's snapshots don't hold it.
-3. Once it is live, read the owner's code in the log, or in the service's **Shell** with
-   `cat /data/owner-pairing-code`, and pair:
+3. Once it is live, open `https://<your service>.onrender.com` and set the server's password (after signing in
+   with Google, when you gave `USUAL_MAIL_OWNER_EMAIL`: Render asks for it, strongly suggested). The owner's code
+   also works: in the log, or in the service's **Shell** with `cat /data/owner-pairing-code`, for
    `usual-mail init --server https://<your service>.onrender.com --code <that code>`.
 4. For a domain of your own, add it under **Custom Domains**, then set `USUAL_MAIL_PUBLIC_URL` to it and register
    the new redirect address at Google.
@@ -262,11 +270,13 @@ make the template, set up one service:
    Tested with a volume owned by root; not on Railway.)
 3. **Networking:** generate a domain for the service with target port **8484**, or add your own.
 4. **Variables:** `USUAL_MAIL_PUBLIC_URL` = `https://${{RAILWAY_PUBLIC_DOMAIN}}` (or your domain with `https://`);
+   `USUAL_MAIL_OWNER_EMAIL`, your email (strongly suggested: [Claiming your server](#claiming-your-server));
    optionally the two Google variables. The secret key stays in the volume (`/data/secret.key`); to keep it apart
    from the data instead, set `USUAL_MAIL_SECRET_KEY` to 32 random bytes in base64 (`openssl rand -base64 32`) before
    the first start, and never change it.
 5. **Settings:** health check path `/healthz`; one replica (Railway allows no more with a volume).
-6. Deploy, read the owner's code in the deploy log (or `railway ssh`, then `cat /data/owner-pairing-code`), and pair.
+6. Deploy, then open the address and set the server's password. The owner's code also works: in the deploy log, or
+   `railway ssh`, then `cat /data/owner-pairing-code`.
 
 It needs the Hobby plan or above: the free plan sleeps. **Railway allows SMTP only on Pro and above**, so on Hobby
 inboxes connected over IMAP can't send; Gmail can. A service with a volume is down for a moment at each redeploy.

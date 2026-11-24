@@ -8,8 +8,14 @@ One app for all your inboxes, each sorted the way that inbox needs, on a server 
 
 Your Usual Mail server runs in your own account or on your own machine, and the apps pair with it. Wherever it runs,
 connecting Gmail needs a Google client of your own ([docs/google-setup.md](docs/google-setup.md)), and sorting and
-summaries need your own AI key. Then pair the Mac app ([docs/self-hosting.md](docs/self-hosting.md#5-pair-the-mac-app)),
-which you build from this repository for now.
+summaries need your own AI key.
+
+**Then claim it.** A new server has no owner: open its address in a browser and set its password, and you own it.
+Whoever does that first owns it, and scanners find new addresses within minutes, so either claim it at once or set
+`USUAL_MAIL_OWNER_EMAIL` to your email before it first starts: then only signing in with Google as that address sets
+it up ([docs/deploy.md, Claiming your server](docs/deploy.md#claiming-your-server)). Sign in to the dashboard and the
+Mac app with the address and that password ([docs/self-hosting.md](docs/self-hosting.md#5-pair-the-mac-app)); the Mac
+app you build from this repository for now.
 
 ### Cloudflare (Gmail only)
 
@@ -18,8 +24,9 @@ which you build from this repository for now.
 The server runs in your own Cloudflare account, as one Worker and one Durable Object, and needs **Workers Paid** ($5
 a month at least). The maintainer has deployed it to a real account with `npx wrangler deploy` (2026-11-23), where it
 answered over HTTPS. **The button itself hasn't been tried yet**, and neither Google sign-in nor a sync has run on Cloudflare.
-Recommended: set the secret `USUAL_MAIL_SECRET_KEY` in the Worker's settings before you first open its address. The
-steps, the settings and the `wrangler` way: [docs/self-hosting.md, On Cloudflare](docs/self-hosting.md#on-cloudflare).
+Recommended: set the secret `USUAL_MAIL_SECRET_KEY` and the variable `USUAL_MAIL_OWNER_EMAIL` in the Worker's
+settings before you first open its address (the Deploy form can't ask for an optional value). The steps, the settings
+and the `wrangler` way: [docs/self-hosting.md, On Cloudflare](docs/self-hosting.md#on-cloudflare).
 
 ### Render
 
@@ -27,9 +34,9 @@ steps, the settings and the `wrangler` way: [docs/self-hosting.md, On Cloudflare
 
 The button reads [`render.yaml`](render.yaml): one service built from this repository's Dockerfile, on a paid
 instance with a 5 GB disk at `/data` (Render's free instances sleep and have no disk). Render asks for the server's
-address (`https://<your service>.onrender.com`) and, optionally, your Google client, and makes the secret key itself:
-keep a copy of it. Render's checker accepts the file; it hasn't been deployed on Render yet. Steps:
-[docs/deploy.md, Render](docs/deploy.md#render).
+address (`https://<your service>.onrender.com`), your email as the owner's (`USUAL_MAIL_OWNER_EMAIL`, strongly
+suggested) and, optionally, your Google client, and makes the secret key itself: keep a copy of it. Render's
+checker accepts the file; it hasn't been deployed on Render yet. Steps: [docs/deploy.md, Render](docs/deploy.md#render).
 
 ### Railway
 
@@ -45,10 +52,14 @@ behind Caddy, which gets the HTTPS certificate:
 ```
 git clone https://github.com/usual-labs/usual-mail.git && cd usual-mail
 docker build -t ghcr.io/usual-labs/usual-mail:latest .   # until the first release publishes the image
-echo 'USUAL_MAIL_DOMAIN=mail.example.org' > .env && chmod 600 .env
+printf 'USUAL_MAIL_DOMAIN=mail.example.org\nUSUAL_MAIL_OWNER_EMAIL=you@example.org\n' > .env && chmod 600 .env
 docker compose -f compose.caddy.yaml up -d
-docker compose -f compose.caddy.yaml exec usual-mail cat /data/owner-pairing-code
 ```
+
+Then open `https://mail.example.org` and set the server's password (with `USUAL_MAIL_OWNER_EMAIL`, after signing in
+with Google as that address, which needs your Google client in `.env` too; leave the line out to claim it with a
+password alone, at once). The owner's code still works: `docker compose -f compose.caddy.yaml exec usual-mail cat
+/data/owner-pairing-code`.
 
 **The image isn't published yet.** `ghcr.io/usual-labs/usual-mail` comes with the first release; until then, build it
 on the machine that runs it, as above. Once it is published, the file alone is enough, without a copy of the
@@ -57,14 +68,16 @@ repository. DNS, the firewall, pairing, backups and updates:
 
 ### Coolify
 
-Paste [`compose.coolify.yaml`](compose.coolify.yaml) into a new Docker Compose resource, and set an HTTPS domain
-before the first deploy. The file pulls the published image, so it works from the first release on:
+Paste [`compose.coolify.yaml`](compose.coolify.yaml) into a new Docker Compose resource, set an HTTPS domain and,
+strongly suggested, `USUAL_MAIL_OWNER_EMAIL` before the first deploy, then open the domain and set the password.
+The file pulls the published image, so it works from the first release on:
 [docs/deploy.md, Coolify](docs/deploy.md#coolify).
 
 ### On your own computer
 
-`usual-mail init` sets the server up with Node or Docker and pairs the command with it:
-[docs/self-hosting.md](docs/self-hosting.md).
+`usual-mail init` sets the server up with Node or Docker and pairs the command with it. Pair the Mac app with a code
+from `usual-mail pair`, then set a password in its Settings (or on the dashboard's Account page) to sign in with it
+elsewhere: [docs/self-hosting.md](docs/self-hosting.md).
 
 ## What it is
 

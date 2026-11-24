@@ -23,6 +23,11 @@ Coolify, then Render and Railway buttons; home servers later): an entry point th
 root, `compose.caddy.yaml`, `compose.coolify.yaml`, `render.yaml`, a workflow that publishes the image to GHCR, and
 [docs/deploy.md](../deploy.md); tried in Docker Desktop on this Mac only, nothing published or deployed
 ([decisions-deploy.md](decisions-deploy.md)).
+**On 2026-11-24 the owner got a password** (the owner's decisions that day): the first visitor to an unclaimed server
+sets it and owns the server, unless the host names `USUAL_MAIL_OWNER_EMAIL`, which Google must prove; the dashboard
+and the Mac and iPhone apps sign in with it; a recovery code goes where the owner's code goes. Built in core, the
+contract, the server (both hosts), the dashboard and the apps ([server-owner.md](server-owner.md)); tested, not yet
+reviewed for security, never run against a real Google account or deploy.
 
 **Later on 2026-11-17, more changes in every part, the Mac app's in its own session (done by 2026-11-18, but for
 the guided Google set-up of 2026-11-21):**
@@ -379,7 +384,9 @@ categorize and summarize (extracting fields, drafting replies), an iPad layout.
 Published on 2026-11-24 at `github.com/usual-labs/usual-mail`, branch `main`, as one fresh commit of the tree under
 the maintainer's GitHub noreply address (the owner's decision); the notes were trimmed of details from the owner's own
 mailbox and machine just before it. The local history before it (seven commits, 2026-11-21 to 2026-11-24) stays in
-the maintainer's own checkout and is never pushed. Each commit is made at the maintainer's request.
+the maintainer's own checkout and is never pushed. Each commit is made at the maintainer's request. Later commits go
+onto `main` by rebase, never a merge (`main` shares no history with the local one): the iPhone tweaks and the owner's
+password (2026-11-24) were rebased onto `main` and pushed there at the owner's request.
 
 ## Layout
 
