@@ -27,6 +27,12 @@ extension AppSession {
         let typed = address.trimmingCharacters(in: .whitespaces)
         do {
             let server = try ServerAddress(parsing: address)
+            // A password only over https, to this machine or over Tailscale: elsewhere a code, asked before anything is
+            // sent (`ServerAddress.carriesPasswords`).
+            guard server.carriesPasswords else {
+                pairingProblem = Self.ownerWords.plainHTTP(server.displayName)
+                return .codeOnly
+            }
             guard let info = try await speaksTo(APIClient(server: server, transport: transport), server: server) else {
                 return nil
             }
@@ -61,7 +67,8 @@ extension AppSession {
             return
         }
         await connect(address: address) { client in
-            try await client.signInOwner(OwnerSignInInput(password: password, name: self.deviceName))
+            try Self.refusePlainHTTP(client.server)
+            return try await client.signInOwner(OwnerSignInInput(password: password, name: self.deviceName))
         } refused: { error in
             Self.ownerProblem(error, address: address.trimmingCharacters(in: .whitespaces))
         }
@@ -79,11 +86,17 @@ extension AppSession {
         }
         let email = email.trimmingCharacters(in: .whitespacesAndNewlines)
         await connect(address: address) { client in
-            try await client.claimOwner(
+            try Self.refusePlainHTTP(client.server)
+            return try await client.claimOwner(
                 OwnerClaimInput(password: password, name: self.deviceName, email: email.isEmpty ? nil : email))
         } refused: { error in
             Self.ownerProblem(error, address: address.trimmingCharacters(in: .whitespaces))
         }
+    }
+
+    /// Refuses to send a password where `ServerAddress.carriesPasswords` says it would travel readable.
+    static func refusePlainHTTP(_ server: ServerAddress) throws {
+        guard server.carriesPasswords else { throw Refusal(words: ownerWords.plainHTTP(server.displayName)) }
     }
 
     /// What to tell the person when the password or a claim is refused. `address` is what they typed.
@@ -115,6 +128,13 @@ extension AppSession {
             "This server already has an owner, or has no password yet. Connect with a pairing code instead."
         static let codeOnly =
             "This server has no password yet. Connect with a pairing code, then set a password in Settings."
+        static func plainHTTP(_ address: String) -> String {
+            """
+            \(address) is reached over plain http, so anyone on that network could read a password sent to it. Connect \
+            with a pairing code instead: it works once. Your password works over https, on the server's own machine \
+            or over Tailscale.
+            """
+        }
         static func claimInBrowser(_ address: String) -> String {
             """
             This server's host named its owner's email. Open \(address) in a browser, sign in with Google there and \

@@ -6,6 +6,7 @@ import UsualMailKit
 /// setting a first or a new one from this paired device, which already has the owner's access, so the old one isn't
 /// asked for. It is how a forgotten password is replaced while any device is signed in, and how a server paired before
 /// passwords existed gets one. Read from the server when the tab shows (`GET /v1/owner`); nothing shows if it can't be.
+/// Not over plain http to a local network (`ServerAddress.carriesPasswords`): there it says why instead.
 struct ServerPassword: View {
     @Environment(MailStore.self) private var store
     @State private var owner: Owner?
@@ -21,7 +22,10 @@ struct ServerPassword: View {
             if let owner {
                 VStack(alignment: .leading, spacing: 8) {
                     SettingsView.words(ServerPasswordWords.state(owner))
-                    if editing {
+                    if !store.apiClient.server.carriesPasswords {
+                        // Plain http on a local network: a password sent from here would travel readable.
+                        SettingsView.note(ServerPasswordWords.plainHTTP)
+                    } else if editing {
                         StepField(label: "New password", text: $password, secure: true)
                         StepField(label: "New password again", text: $again, secure: true)
                             .onSubmit(save)
@@ -93,6 +97,11 @@ enum ServerPasswordWords {
         "At least \(ownerPasswordMinimum) characters. You'll sign in with it in the apps and on the server's dashboard; "
         + "devices already signed in stay signed in."
     static let saved = "Saved. Sign in with the new password from now on."
+    /// Why a password isn't set from a device that reaches the server over plain http on a local network.
+    static let plainHTTP =
+        "This device reaches the server over plain http, so anyone on that network could read a password sent from "
+        + "here. Set it from a device that reaches the server over https, on the server's own machine or over "
+        + "Tailscale."
 
     /// "Password set 24 Nov 2026", "Password set", or "No password yet: …".
     static func state(_ owner: Owner) -> String {

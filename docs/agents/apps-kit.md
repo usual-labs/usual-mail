@@ -146,7 +146,13 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
   asking. Pairing, signing in and claiming share `connect(address:trade:refused:)` (the address checked, the server
   checked with `speaksTo`, the token kept, the copy opened); `pair` still refuses an empty code before asking.
   Refusals: "That password is wrong. Forgot it? …", "Too many wrong codes or passwords. Wait …", and `conflict` or
-  `forbidden` in words. Tests: `OwnerPasswordTests` (5), the stand-in's `SampleServer+Owner.swift`.
+  `forbidden` in words. **A password travels only where `ServerAddress.carriesPasswords` allows** (the security
+  review of 2026-11-24, finding 9): https, or plain http to this machine (`localhost`, 127.0.0.0/8, `::1`) or over
+  Tailscale (100.64.0.0/10, `*.ts.net`, fd7a:115c:a1e0::/48). Plain http to another private address (a LAN's
+  192.168…, `.local`, a single-label name), which `ServerAddress` still accepts for pairing codes, makes
+  `passwordStep` answer `.codeOnly` before anything is sent, with words saying why; `signIn` and `claim` refuse it too
+  before sending, and Settings' password row says why instead of offering the fields. Tests: `OwnerPasswordTests` (7),
+  the stand-in's `SampleServer+Owner.swift`.
 - **`EventStream`**: reads `GET /v1/events` with its own server-sent events parser, reconnects with backoff (1 s
   doubling to 60 s, honouring `retry:`), and stops on 401. Unchanged since the first round.
 - **`LocalStore`** (SQLite through GRDB): the on-device copy. Schema `v5` adds `category` and `screened` columns,

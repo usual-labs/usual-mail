@@ -30,12 +30,12 @@ struct OwnerPasswordTests {
         let credentials = MemoryCredentialStore()
         let session = session(server, credentials: credentials)
 
-        #expect(await session.passwordStep(address: "mail.local:8787") == .signIn)
-        await session.signIn(address: "mail.local:8787", password: "not the password")
+        #expect(await session.passwordStep(address: "127.0.0.1:8787") == .signIn)
+        await session.signIn(address: "127.0.0.1:8787", password: "not the password")
         #expect(session.pairingProblem?.hasPrefix("That password is wrong.") == true)
         #expect(session.store == nil)
 
-        await session.signIn(address: "mail.local:8787", password: "correct horse battery")
+        await session.signIn(address: "127.0.0.1:8787", password: "correct horse battery")
         #expect(session.pairingProblem == nil)
         #expect(try credentials.load()?.token == "tok_secret")
         #expect(session.store != nil)
@@ -47,16 +47,16 @@ struct OwnerPasswordTests {
         server.owner(password: nil, info: OwnerInfo(password: false, claimable: true, claim: .password))
         let session = session(server)
 
-        #expect(await session.passwordStep(address: "mail.local:8787") == .claim)
+        #expect(await session.passwordStep(address: "127.0.0.1:8787") == .claim)
         await session.claim(
-            address: "mail.local:8787", email: "", password: "correct horse battery", again: "correct horse")
+            address: "127.0.0.1:8787", email: "", password: "correct horse battery", again: "correct horse")
         #expect(session.pairingProblem == "The two passwords aren't the same. Type them again.")
-        await session.claim(address: "mail.local:8787", email: "", password: "short", again: "short")
+        await session.claim(address: "127.0.0.1:8787", email: "", password: "short", again: "short")
         #expect(session.pairingProblem == "The password needs at least 12 characters.")
         #expect(!server.requests.contains { $0.url?.path == "/v1/owner/claim" }, "neither was sent")
 
         await session.claim(
-            address: "mail.local:8787", email: " me@example.org ", password: "correct horse battery",
+            address: "127.0.0.1:8787", email: " me@example.org ", password: "correct horse battery",
             again: "correct horse battery")
         #expect(session.pairingProblem == nil)
         #expect(session.store != nil)
@@ -69,11 +69,11 @@ struct OwnerPasswordTests {
         let server = SampleServer()
         server.owner(password: nil, info: OwnerInfo(password: false, claimable: true, claim: .google))
         let session = session(server)
-        #expect(await session.passwordStep(address: "mail.local:8787") == .claimInBrowser)
-        #expect(session.pairingProblem?.contains("Open mail.local:8787 in a browser, sign in with Google") == true)
+        #expect(await session.passwordStep(address: "127.0.0.1:8787") == .claimInBrowser)
+        #expect(session.pairingProblem?.contains("Open 127.0.0.1:8787 in a browser, sign in with Google") == true)
 
         server.owner(password: nil, info: OwnerInfo(password: false, claimable: false))
-        #expect(await session.passwordStep(address: "mail.local:8787") == .codeOnly)
+        #expect(await session.passwordStep(address: "127.0.0.1:8787") == .codeOnly)
         #expect(
             session.pairingProblem
                 == "This server has no password yet. Connect with a pairing code, then set a password in Settings.")
@@ -89,5 +89,35 @@ struct OwnerPasswordTests {
         let google = AppSession.ownerProblem(
             .server(code: .forbidden, message: "x", status: 403, retryAfter: nil), address: "mail.example")
         #expect(google.contains("Open mail.example in a browser"))
+    }
+
+    @Test func aPasswordTravelsOnlyOverHTTPSToThisMachineOrOverTailscale() throws {
+        for address in [
+            "https://mail.example.org", "https://192.168.1.20", "http://127.0.0.1:8484", "localhost:8484",
+            "http://[::1]:8484", "http://100.101.102.103:8484", "http://box.tailnet-abc.ts.net",
+            "http://[fd7a:115c:a1e0::1]:8484",
+        ] {
+            #expect(try ServerAddress(parsing: address).carriesPasswords, "\(address)")
+        }
+        for address in ["192.168.1.20:8484", "http://10.0.0.5", "mail.local", "nas:8484", "http://[fe80::1]:8484"] {
+            #expect(try !ServerAddress(parsing: address).carriesPasswords, "\(address)")
+        }
+    }
+
+    @Test func overPlainHTTPOnALocalNetworkNoPasswordIsSentAndACodeIsOffered() async {
+        let server = SampleServer()
+        server.owner(password: "correct horse battery", info: OwnerInfo(password: true, claimable: false))
+        let session = session(server)
+
+        #expect(await session.passwordStep(address: "192.168.1.20:8484") == .codeOnly)
+        #expect(session.pairingProblem?.hasPrefix("192.168.1.20:8484 is reached over plain http") == true)
+        #expect(server.requests.isEmpty, "asked before anything is sent")
+
+        await session.signIn(address: "192.168.1.20:8484", password: "correct horse battery")
+        await session.claim(
+            address: "192.168.1.20:8484", email: "", password: "correct horse battery", again: "correct horse battery")
+        #expect(session.store == nil)
+        #expect(session.pairingProblem?.contains("Connect with a pairing code instead") == true)
+        #expect(!server.requests.contains { $0.url?.path.hasPrefix("/v1/owner") == true }, "no password was sent")
     }
 }

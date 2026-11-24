@@ -311,8 +311,10 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
     Gmail, "Sign in with Google again…"; "Add a Gmail account…" (the shared sheet,
     `Shell/AddGmail.swift`); the paired server, its password (`ServerPassword.swift`, 2026-11-24: "Password set …" or
     "No password yet", and "Set a password…"/"Change the password…" opening two secure fields inline, saved with
-    `PUT /v1/owner/password`, hidden when `GET /v1/owner` can't be read) and "Disconnect from this server…" at the
-    foot. It doesn't set the AI key; if it ever does, it must first show the server's disclosure, as onboarding does.
+    `PUT /v1/owner/password`, hidden when `GET /v1/owner` can't be read; over plain http to a local network it says to
+    set the password from a device on https, the server's machine or Tailscale) and "Disconnect from this server…"
+    at the foot. It doesn't set the AI key; if it ever does, it must first show the server's disclosure, as
+    onboarding does.
   - **AI** (`AITab.swift`, `AIUsageSection.swift`, `UsageTable.swift`): Service (each job's model), State with how
     many wait, and Usage: "Today · 7 days · 30 days", one table of requests, tokens and cost per job ("not reported",
     "at least …"), asked of the server while Settings is open, at most every 5 seconds, hidden until it answers.

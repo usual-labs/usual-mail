@@ -21,6 +21,11 @@ struct ServerPasswordTests {
         #expect(ServerPasswordWords.refusal(password: "correct horse battery", again: "correct horse battery") == nil)
     }
 
+    @Test func overPlainHTTPSettingsSaysWhyNoPasswordIsSetHere() {
+        #expect(ServerPasswordWords.plainHTTP.hasPrefix("This device reaches the server over plain http"))
+        #expect(ServerPasswordWords.plainHTTP.contains("over Tailscale"))
+    }
+
     @Test func thePairingCardSaysWhereEachSecretComesFrom() {
         #expect(ServerStep.passwordHelp.contains("Forgot your password?"))
         #expect(ServerStep.claimHelp.hasPrefix("Nobody owns this server yet."))

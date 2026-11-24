@@ -49,6 +49,27 @@ public struct ServerAddress: Hashable, Sendable, Codable {
         return baseURL.port.map { "\(host):\($0)" } ?? host
     }
 
+    /// Whether the owner's password may be sent here (docs/contract.md, "The owner's password"; the security review of
+    /// 2026-11-24, finding 9): over https, or plain http only to this machine or over Tailscale, which encrypts on its
+    /// own. Plain http to any other private address would carry a reusable password readable to everyone on that
+    /// network, so the app pairs there with a code, which works once, instead.
+    public var carriesPasswords: Bool {
+        if baseURL.scheme?.lowercased() == "https" { return true }
+        guard let host = baseURL.host(percentEncoded: false) else { return false }
+        return Self.isLoopbackOrTailscale(host: host.trimmingCharacters(in: CharacterSet(charactersIn: "[]")))
+    }
+
+    /// This machine (`localhost`, 127.0.0.0/8, `::1`), or Tailscale: 100.64.0.0/10, `*.ts.net` and its IPv6 range,
+    /// fd7a:115c:a1e0::/48.
+    static func isLoopbackOrTailscale(host: String) -> Bool {
+        let host = host.lowercased()
+        if host == "localhost" || host.hasSuffix(".localhost") || host.hasSuffix(".ts.net") { return true }
+        if let octets = ipv4Octets(host) {
+            return octets[0] == 127 || (octets[0] == 100 && (64...127).contains(octets[1]))
+        }
+        return host == "::1" || host == "0:0:0:0:0:0:0:1" || host.hasPrefix("fd7a:115c:a1e0:")
+    }
+
     /// Loopback, private-network, link-local and Tailscale addresses, plus `.local` and single-label names.
     /// Traffic to these doesn't cross the open internet, so plain `http` is allowed.
     static func isPrivate(host: String) -> Bool {
