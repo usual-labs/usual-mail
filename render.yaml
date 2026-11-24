@@ -15,6 +15,9 @@ services:
     healthCheckPath: /healthz
     # New versions are deployed when you choose (Manual Deploy), not at every change to the repository.
     autoDeployTrigger: "off"
+    # No maxShutdownDelaySeconds: Render doesn't let a service with a disk wait longer than its 30 seconds after
+    # SIGTERM (render.com/docs/deploys), so a deploy during a first sync may cut off the batch being fetched, which is
+    # fetched again at the next start (docs/deploy.md).
     disk:
       name: usual-mail-data
       mountPath: /data

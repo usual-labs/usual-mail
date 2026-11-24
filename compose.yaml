@@ -13,7 +13,8 @@
 #
 # Pair the usual-mail command with it. Whenever no person's device is paired, the server writes the owner's pairing
 # code to the volume, and a new one when the old one expires; it removes the file once the code is used. Read the
-# code from the file, not the log: a restart keeps a waiting code without printing it again.
+# code from the file, not the log: a restart keeps a waiting code without printing it again. The file appears a few
+# seconds after the server starts; straight after `up -d`, wait a moment if `cat` finds no such file.
 #   docker compose exec usual-mail cat /data/owner-pairing-code
 #   usual-mail init --server http://127.0.0.1:8484 --code <that code>
 #
@@ -35,6 +36,9 @@ services:
     image: ghcr.io/usual-labs/usual-mail:latest
     build: .
     restart: unless-stopped
+    # Stopping waits for the mail in hand to be stored: a moment usually, up to about two and a half minutes during a
+    # Gmail inbox's first sync. Docker's default of 10 seconds would kill it before then (docs/deploy.md).
+    stop_grace_period: 3m
     ports:
       - "127.0.0.1:8484:8484"
     volumes:

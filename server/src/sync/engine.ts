@@ -79,20 +79,30 @@ export class SyncEngine {
 
   /**
    * Starts watching or polling every inbox that isn't paused, and the come-back timer. Come-back times that
-   * passed while the server was stopped are announced at once.
+   * passed while the server was stopped are announced at once. Nothing starts if `signal` was aborted while the inboxes
+   * were read (the Node host asked to stop during its start-up).
    */
-  async start(): Promise<void> {
+  async start(signal?: AbortSignal): Promise<void> {
     this.#started = true;
     const rows = await this.#ctx.db.select({ id: inboxes.id, paused: inboxes.paused }).from(inboxes);
+    if (signal?.aborted) {
+      this.#started = false;
+      return;
+    }
     for (const row of rows) if (!row.paused) this.#open(row.id);
     this.#queues.track(this.#fireTimer());
   }
 
+  /**
+   * Closes every inbox together: each is marked closing before any close waits, so none starts another batch while
+   * another's batch in hand is stored, and the stop waits for the longest batch in hand, not one after another.
+   */
   async stop(): Promise<void> {
     this.#started = false;
     this.#comeBackCancel?.();
     this.#comeBackCancel = null;
-    for (const id of [...this.#loops.keys()]) await this.#close(id);
+    // `#close` marks its inbox closing before its first wait, so mapping marks them all at once.
+    await Promise.all([...this.#loops.keys()].map((id) => this.#close(id)));
     await this.#queues.idle();
     for (const [id, provider] of this.#providers) {
       this.#providers.delete(id);
@@ -146,6 +156,9 @@ export class SyncEngine {
   }
 
   async #sync(inboxId: string): Promise<void> {
+    // Not started, or stopping: a sync asked for once its inbox's close is done ("sync now", a watch, a sent draft)
+    // would open the provider again while the stop waits for another inbox's batch in hand.
+    if (!this.#started) return;
     const ctx = this.#ctx;
     const inbox = await getInbox(ctx, inboxId);
     if (!inbox || inbox.paused || this.#closing.has(inboxId)) return;
@@ -163,6 +176,8 @@ export class SyncEngine {
       const onProgress = history ? (progress: SyncProgress) => firstSync.heard(inboxId, progress) : undefined;
       // At most `syncRounds` batches (10,000 unless set), so one inbox's long first sync lets the other work in.
       for (let round = 0; round < ctx.options.syncRounds; round++) {
+        // Being closed since the sync began (while its provider opened, say), or the engine stopping: no batch starts.
+        if (!this.#started || this.#closing.has(inboxId)) return;
         // The host bounds the batch (`HostLimits.syncBatch`): it is held converted until stored.
         const batch = await provider.sync(cursor, { limit: ctx.limits.syncBatch, ...(onProgress && { onProgress }) });
         const result = await ctx.lock.run(async () => {
@@ -203,6 +218,13 @@ export class SyncEngine {
     } catch (error) {
       // Removed meanwhile: the batch in hand may fail (a Google sign-in is revoked at once), and nothing is left to tell.
       if (!await getInbox(ctx, inboxId)) return;
+      // Being closed (paused, given new credentials, the server stopping): the batch in hand may fail with the old
+      // provider. The status stays as the change left it ("connecting" for new credentials), and the next sync once
+      // the inbox is opened again says how it goes.
+      if (this.#closing.has(inboxId)) {
+        ctx.host.log.info(`Syncing ${inboxId} stopped as it was closed: ${errorMessage(error)}`);
+        return;
+      }
       ctx.host.log.error(`Syncing ${inboxId} failed: ${errorMessage(error)}`);
       this.#repairDue.add(inboxId);
       await this.#setStatus(inboxId, "needs_attention", attentionWords(inbox, error));
@@ -332,6 +354,7 @@ export class SyncEngine {
     else this.#closing.delete(inboxId);
   }
 
+  /** Marks the inbox closing before its first wait (`stop` relies on it), then waits for its batch in hand. */
   async #close(inboxId: string): Promise<void> {
     this.#markClosing(inboxId, 1);
     const loop = this.#loops.get(inboxId);
@@ -389,6 +412,8 @@ export class SyncEngine {
       if (refusal) break;
     }
     if (!refusal) return;
+    // Removed meanwhile: its records went with it, and a refusal (a Google sign-in is revoked at once) is nothing to tell.
+    if (!await getInbox(ctx, task.inboxId)) return;
     if (!task.undo && task.recordIds.length === 0) {
       ctx.host.log.error(`Couldn't update ${task.inboxId} at the provider: ${refusal}`);
       return;

@@ -3,6 +3,71 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **0.1.1 merged onto the owner's password (2026-11-24):** the stop fixes rebased by hand onto `main` after the
+  owner's password (`09675db`) and the guides' claiming (`3fcda2e`); `main.ts` keeps both the owner email's wiring and
+  the stop during start-up. Both type checks clean; `npm test` 1,035 tests (1,029 pass, 6 skipped, 0 fail).
+  `npm run check:cloudflare`: 84 tests pass. `node scripts/build.mjs <scratch folder>` twice (in `server/`):
+  `server.mjs` (7,973,470 bytes), `runtime.package.json` (`libsql` 0.5.29 alone) and `THIRD_PARTY_LICENSES.txt`
+  byte-identical; `USUAL_MAIL_BUNDLE=… node scripts/smoke-bundle.mjs` passed on one. In Docker (29.9.3), the image
+  built from the merged tree on a scratch volume and port: `/v1/info` said 0.1.1 and claimable by password; a claim
+  with a password answered 200 and removed the owner's code file, a second claim 409, a sign-in with the password 200
+  (also after a restart) and with a wrong one 401; the server ran as uid 1000; `docker stop` 0.13 s, exit 0,
+  `StopTimeout` 180. With `USUAL_MAIL_OWNER_EMAIL` set: claimable by Google, a password claim 403, the owner's code
+  file written. Containers, volumes and the image removed afterwards. `dist/` untouched (its hash checked).
+- **SIGTERM during start-up, and 0.1.1 (2026-11-24, the final review's last findings):** both type checks clean;
+  `npm test` 1,022 tests (1,016 pass, 6 skipped, 0 fail). New, `stop-at-start.test.ts` (2), both seen failing on the
+  code before the fix: `main.ts` run from source with a preload that sends the process SIGTERM as soon as anything
+  listens for it exits 0 without listening (before: it listened, printing the owner's code, then stopped); a
+  `MailServer.start({ signal })` aborted during the start starts no sync and a start without one syncs (before: 2
+  syncs). `npm run check:cloudflare`: both type checks clean, 82 tests pass. `node scripts/build.mjs <scratch folder>`
+  twice (in `server/`): `server.mjs` (7,939,909 bytes), `runtime.package.json` and `THIRD_PARTY_LICENSES.txt`
+  byte-identical; `USUAL_MAIL_BUNDLE=… node scripts/smoke-bundle.mjs` passed on one. The scratch bundle with the
+  same preload: its handler in place 103 ms after the process began, exit 0, never listened. In Docker (29.9.3), the
+  image built from the working tree, `--cpus 0.1` (start-up 8 s instead of 0.27 s), `--stop-timeout 10`, a fresh
+  volume, `docker stop` 4 or 6 s after `docker run`: with a bundle built from the code before the fix mounted over
+  `dist/server.mjs`, 10.1 s each time, exit 137, after listening; with the fix, 4.4 and 2.4 s (the start-up step in
+  hand finishing at a tenth of a CPU), exit 0, never listened. Sent 2 s after `docker run`, before Node had parsed the
+  bundle, the fixed image too ignored it (10.2 s, 137): the gap left open (known-issues.md). Every test container,
+  volume and the image were removed afterwards. `dist/` untouched (its hash checked).
+
+- **The re-review's engine guard (2026-11-24, for 0.1.1):** both type checks clean; `npm test` 1,020 tests (1,014
+  pass, 6 skipped, 0 fail). New: `first-sync-stop.test.ts`'s second test (as the first, then "sync now" for the fast
+  inbox once its close is done, while the stop waits for the slow one's batch): on the engine before the guard the
+  fast inbox started 17 batches during the stop, which took 3.5 s. With the guard, `provider-inbox.test.ts` (a
+  come-back after a stop) and `sync-provider.test.ts` (repair after a restart) failed until their "first process"
+  was started, as a process is. `npm run check:cloudflare`: both type checks clean, 82 tests pass (they sync: first
+  syncs, two inboxes at once, the alarm's restart, Gmail). `node scripts/build.mjs <scratch folder>` twice: the three
+  files byte-identical, `server.mjs` 7,938,533 bytes. The smoke test wasn't run on it. `dist/` not rebuilt (its hash
+  checked unchanged).
+
+- **The stop closes every inbox together; the stop in the image (2026-11-24, after 0.1.0):** type checks clean;
+  `npm test` 1,019 tests (1,013 pass, 6 skipped, 0 fail). New: `first-sync-stop.test.ts` (two inboxes whose batches
+  take 400 and 150 ms of real time, the stop beginning as the slow one's second batch starts): no batch starts once
+  the stop begins, the stop takes about the slow batch in hand, and every batch that started is stored; on the old
+  `stop()` the fast inbox started three more batches. `npm run check:cloudflare`: both type checks clean, 82 tests
+  pass. `node scripts/build.mjs <scratch folder>` twice: the three files byte-identical; `server.mjs` 7,938,483 bytes
+  (esbuild: 7.6 MB). The image built from the working tree (arm64, 387 MB) holds that same `server.mjs` (sha256
+  equal). In it, two IMAP inboxes (test IMAP servers on the host behind bandwidth-limited proxies, 1,000 and 2,000
+  messages, batches of 200 taking about 7.5 and 4 s, reached through a relay in the container's network: see
+  known-issues.md, "Hosting platforms") were stopped with `docker stop` (`StopTimeout` 180) during their first syncs:
+  6.6 s, each inbox stored its batch in hand (+200), and nothing more was fetched. An image with only the old
+  `stop()` took 7.7 s, and the second inbox fetched a whole extra batch four seconds into the stop. The bundle run by
+  Node on this machine gave the same (SIGTERM: 5.7 s, +200 each), and pausing both through the API stored each batch
+  in hand within 6 s. `dist/` untouched (its hash checked).
+
+- **The final review's fixes and libSQL's local client (2026-11-24):** type checks clean; `npm test` 1,018 tests
+  (1,012 pass, 6 skipped, 0 fail), before and after the libSQL change. New: `first-sync-reconnect`'s third test
+  (`needs_attention` after new credentials), `first-sync-pause`'s fifth (a pause while the provider opens fetched a
+  batch) and `sync.test.ts`'s second "inbox lifecycle" test (a removed inbox's refused write-back logged an error),
+  each seen failing on the code before. `npm run check:cloudflare` (after the root's `npm ci`, which this checkout
+  lacked): both type checks clean, 82 tests pass. `node scripts/build.mjs <scratch folder>` twice, before and after
+  each change: `THIRD_PARTY_LICENSES.txt`, `server.mjs` and `runtime.package.json` byte-identical between the two
+  builds; the own-code fix changed only the two "(in this repository)" headings; with libSQL's local client the
+  bundle takes in 58 packages (`@libsql/client`, `@libsql/core`, `js-base64` added; esbuild's metafile shows no
+  `promise-limit`, `ws` or hrana client) and leaves only `libsql` outside, which `runtime.package.json` names at
+  0.5.29. A scratch bundle built inside `server/` passed `USUAL_MAIL_BUNDLE=… node scripts/smoke-bundle.mjs` and went
+  to the Trash. `dist/` not rebuilt (the owner's running server uses it; its hash checked unchanged).
+
 - **The re-review's fixes: closing in the background (2026-11-23, evening):** type checks clean; `npm test` 1,015 tests
   (1,009 pass, 6 skipped, 0 fail). New or rewritten: `first-sync-pause` 4 and `first-sync-reconnect` 2 (the pause,
   removal and credentials tests failed first: each answered only after the batch in hand; then, in scratch copies of

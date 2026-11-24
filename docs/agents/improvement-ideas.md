@@ -38,12 +38,11 @@ and the notes:
   links. Setting it true (one line) shows all three; check the docs path matches the published layout.
 - Keep `THIRD_PARTY_NOTICES.md` current: anything taken from elsewhere, and the npm table when a part's production
   packages change (it was written from the lockfiles of 2026-11-23).
-- **The first release** (the owner's decision): it runs `.github/workflows/image.yml`, which publishes
-  `ghcr.io/usual-labs/usual-mail`; then make the package public and check it is linked to the repository. Until then
-  the Compose files build the image from a checkout, and `compose.caddy.yaml` and `compose.coolify.yaml` (which only
-  pull) can't start (README, docs/deploy.md).
-- After the first release: make the Railway template and put its address in the README's button, and try a real
-  VPS, Coolify, Render and Railway ([decisions-deploy.md](decisions-deploy.md)).
+- **Make the package public** (the owner's decision): 0.1.0 published `ghcr.io/usual-labs/usual-mail` on
+  2026-11-24, but the package is private, so `compose.caddy.yaml` and `compose.coolify.yaml` (which only pull) can't
+  start for anyone else yet; then check it is linked to the repository and pulls without signing in.
+- Now that 0.1.0 is out: make the Railway template and put its address in the README's button, and try a real VPS,
+  Coolify, Render and Railway ([decisions-deploy.md](decisions-deploy.md)).
 - Have the guides' wording checked against the Mac app once more when its onboarding is wired in (the self-hosting
   guide follows `apps-onboarding.md` as of 2026-11-17).
 
@@ -62,6 +61,20 @@ and the notes:
   in CI on pull requests as well as on releases; re-running the Docker-backed mail tests now that Docker answers;
   refusing to start when `USUAL_MAIL_SECRET_KEY` and `/data/secret.key` both exist and differ (a restore on a host
   that sets the variable now silently uses the wrong key; the guide warns instead, review of 2026-11-23).
+- **Stopping, on hosts** (2026-11-24, with the Compose files' `stop_grace_period: 3m`): a log line when the server is
+  signalled ("stopping: storing the mail in hand"), since it logs nothing and `docker compose down` may now wait
+  minutes in a first sync. Render gives a service with a disk 30 seconds after SIGTERM and no way to raise it
+  ([decisions-deploy.md](decisions-deploy.md), checked 2026-11-24), so only a stop that aborts the batch in hand
+  (above) would keep a deploy there from wasting a first sync's batch.
+  An init process as PID 1 (Compose's `init: true` in the three Compose files, `--init` in the command's `docker run`,
+  or tini in the image) would close the moment before Node's own SIGTERM handler exists, in which a `docker stop` is
+  still ignored, and the entry point's shell before it (known-issues.md, Open); it changes every host's file and the
+  Docker mode's settings hash. A second Ctrl-C during the Node server's start-up could end it at once, since nothing
+  is in hand then (today it waits for the step in hand).
+- **Node mode's pid file** (the `usual-mail` command, final check of 2026-11-24; known-issues.md, Open): a lock file
+  opened with `O_EXCL` around each change would close the windows between reading and renaming; matching the server's
+  arguments exactly, not a text in its command line; saying the port is the server's own when a record marked
+  `stopping` names a server that still listens.
 
 - **Tell the apps which providers a server has** (2026-11-21, from the Cloudflare design,
   [server-cloudflare.md](server-cloudflare.md)): the planned Cloudflare server has Gmail only, but the apps would still

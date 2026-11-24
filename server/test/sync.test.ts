@@ -317,4 +317,37 @@ describe("inbox lifecycle", () => {
     await assert.rejects(t.server.thread(t.person, thread.id), /No such thread/);
     assert.deepEqual((await t.server.search(t.person, { q: "pause" })).items, []);
   });
+
+  test("a write-back refused because its inbox was removed meanwhile isn't logged as an error", async () => {
+    // The inbox is removed while a write-back's changes are at the provider, which then refuses them, as Gmail does
+    // once a removed inbox's sign-in is revoked.
+    let removeNow = false;
+    let removed = false;
+    for (const kind of ["imap", "gmail"] as const) {
+      const factory = t.providers.get(kind)!;
+      t.providers.register(kind, (credentials, options) => {
+        const provider = factory(credentials, options);
+        const apply = provider.apply.bind(provider);
+        provider.apply = async (ops) => {
+          if (!removeNow) return apply(ops);
+          removeNow = false;
+          await t.server.removeInbox(t.person, (await t.server.listInboxes(t.person))[0]!.id);
+          removed = true;
+          return ops.map(() => ({ ok: false, error: "Token has been expired or revoked." }));
+        };
+        return provider;
+      });
+    }
+    const { inbox } = await t.connect({ address: "me@acme.example", history: [historyFromKnown] });
+    const thread = await t.receive(inbox, { from: KNOWN, subject: "Later", date: at(-HOUR) });
+    await t.server.act(t.person, { threadIds: [thread.id], action: { kind: "come_back", at: at(DAY) } });
+    await t.server.whenIdle();
+    // Its come-back puts it back in the provider's inbox, a write-back no record caused.
+    removeNow = true;
+    t.clock.advance(DAY);
+    await t.server.whenIdle();
+    assert.equal(removed, true, "the inbox was removed during the come-back's write-back");
+    assert.deepEqual(await t.server.listInboxes(t.person), []);
+    assert.deepEqual(t.errors, []);
+  });
 });

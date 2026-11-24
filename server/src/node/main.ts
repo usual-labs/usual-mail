@@ -2,6 +2,8 @@
 // A SQLite file and a key file in the data directory; live updates and timers from this process; providers
 // and interfaces from `parts.ts`.
 
+// First, so a stop asked for at any point of start-up is heard (stop-signal.ts).
+import { onStop, stopAsked } from "./stop-signal.ts";
 import { serve } from "@hono/node-server";
 import sample from "@usualmail/core/fixtures/sample.json" with { type: "json" };
 import type { SampleData } from "@usualmail/core";
@@ -44,6 +46,16 @@ if (config.help) {
   process.exit(0);
 }
 
+/**
+ * During start-up a stop asked for is acted on between steps, never inside one (the key being written, the store being
+ * upgraded). Until syncing starts nothing is in hand, so the process just ends.
+ */
+function quitIfAsked(close?: () => void): void {
+  if (!stopAsked.aborted) return;
+  close?.();
+  process.exit(0);
+}
+
 const random = webRandom;
 let url = ":memory:";
 let key = random.bytes(32);
@@ -57,6 +69,7 @@ if (!config.demo) {
   url = `file:${file}`;
   key = await loadSecretKey(config.dataDir, config.secretKey, random);
 }
+quitIfAsked();
 // How many days of mail a new inbox's first sync takes: USUAL_MAIL_SYNC_DAYS, else the data directory's settings.json.
 let firstSync;
 try {
@@ -66,6 +79,7 @@ try {
   process.exit(2);
 }
 const store = await openDatabase(url);
+quitIfAsked(() => store.close());
 const host: Host = {
   db: store.db,
   clock: systemClock,
@@ -135,6 +149,7 @@ const server = await MailServer.create(host, {
   // Demo mode's made-up mail is all at .example domains: its own list, so its sample pictures show.
   ...(config.demo && { avatars: { suffixes: DEMO_SUFFIXES } }),
 });
+quitIfAsked(() => store.close());
 if (demo) {
   const data = sample as SampleData;
   // Whole seconds, so the shifted times look like the sample's.
@@ -142,8 +157,15 @@ if (demo) {
   await seedSample(host, demo, data, shift);
   await seedSamplePictures(host, data);
   await server.reload();
+  quitIfAsked(() => store.close());
 }
-await server.start();
+// Asked to stop during the start, the server starts no sync, so the stop straight after it has nothing in hand.
+await server.start({ signal: stopAsked });
+if (stopAsked.aborted) {
+  await server.stop();
+  store.close();
+  process.exit(0);
+}
 
 const app = createApp(server, { scheduler: nodeScheduler, log: consoleLog, interfaces: parts.interfaces });
 const listening = Promise.withResolvers<void>();
@@ -183,15 +205,12 @@ await server.keepOwnerCode((code, made, kind) => {
 }, kept ? { kept } : {});
 await files;
 
-let stopping = false;
-for (const signal of ["SIGINT", "SIGTERM"] as const) {
-  process.on(signal, () => {
-    if (stopping) return;
-    stopping = true;
-    http.close();
-    void server.stop().finally(() => {
-      store.close();
-      process.exit(0);
-    });
+// Started: a stop closes the port and stores each inbox's batch in hand. One asked for during the last steps of
+// start-up (listening, the owner's code) runs now.
+onStop(() => {
+  http.close();
+  void server.stop().finally(() => {
+    store.close();
+    process.exit(0);
   });
-}
+});

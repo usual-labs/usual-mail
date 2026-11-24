@@ -6,8 +6,11 @@
 #    Coolify server, followed by the server's port:  https://mail.example.org:8484
 #    The address Coolify makes up otherwise is plain HTTP (sslip.io): the server refuses a plain HTTP address that
 #    isn't this machine, and doesn't start.
-# 3. Deploy. Read the owner's code in the usualmail container's terminal (cat /data/owner-pairing-code), then pair
-#    the usual-mail command on your own computer:
+# 3. Strongly suggested: set USUAL_MAIL_OWNER_EMAIL to your email under Environment Variables, so that only signing in
+#    with Google as it sets the server up (docs/deploy.md, "Claiming your server").
+# 4. Deploy, then open https://mail.example.org and set the server's password. Or get in with the owner's code
+#    instead, until the server is claimed: in the usualmail container's terminal (cat /data/owner-pairing-code; it
+#    appears a few seconds after the server starts), then on your own computer:
 #      usual-mail init --server https://mail.example.org --code <that code>
 #
 # Coolify fills the SERVICE_ variables. SERVICE_URL_USUALMAIL_8484 tells Coolify's proxy to send the domain to port
@@ -22,6 +25,12 @@ services:
   usualmail:
     image: ghcr.io/usual-labs/usual-mail:latest
     restart: unless-stopped
+    # Stopping waits for the mail in hand to be stored: a moment usually, up to about two and a half minutes during a
+    # Gmail inbox's first sync. Docker's default of 10 seconds would kill it before then (docs/deploy.md). A deploy
+    # goes through Docker Compose and waits this long, but Coolify's Stop and Restart don't: they give the server 30
+    # seconds, then remove the container (Coolify v4.7.6). Pressed during a first sync, they can cut off the batch in
+    # hand; nothing stored is lost, but that batch is fetched again. To restart then, redeploy.
+    stop_grace_period: 3m
     environment:
       - SERVICE_URL_USUALMAIL_8484
       - USUAL_MAIL_PUBLIC_URL=${SERVICE_URL_USUALMAIL}

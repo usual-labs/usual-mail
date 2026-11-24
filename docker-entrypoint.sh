@@ -12,7 +12,8 @@
 #   opened as root;
 # - anyone else (a person's own folder mounted from the host): nothing is changed, and a line says to start the
 #   container as that owner with --user.
-# A read-only folder (a `:ro` mount) stops it with a line saying so. An ordinary start changes nothing. Started as
+# A folder on a read-only mount (`:ro`, the folder's own or one above it, or the container's own read-only filesystem
+# with the folder on it) stops it with a line saying so. An ordinary start changes nothing. Started as
 # another user (`docker run --user`, as `usual-mail init --mode docker` does), it changes nothing and runs the
 # command as that user. Containers without the capabilities to change owners and users (`--cap-drop ALL`) must be
 # started that way, `--user 1000:1000`, on a folder that is already uid 1000's.
@@ -23,23 +24,23 @@ hardened() {
   say "$1; if the container runs without the capabilities to change owners and users (--cap-drop ALL), start it as the data folder's owner instead: --user 1000:1000 (user: \"1000:1000\" in Compose)"
   exit 1
 }
-# Whether the folder is mounted read-only: its own line in /proc/mounts (the last one, if mounted over) says `ro`.
+# Whether the folder is on a read-only mount: the one holding it, or the nearest folder above it that exists, as
+# findmnt finds it (its own mount or one above it; findmnt reads /proc/mounts' escapes, so a path with spaces works).
 read_only() {
-  ro=1
-  while read -r _ dir _ options _; do
-    if [ "$dir" = "$1" ]; then case ",$options," in *,ro,*) ro=0 ;; *) ro=1 ;; esac; fi
-  done </proc/mounts
-  return "$ro"
+  dir="$1"
+  while [ ! -e "$dir" ]; do dir="$(dirname -- "$dir")"; done
+  case ",$(findmnt -n -o OPTIONS -T "$dir")," in *,ro,*) return 0 ;; esac
+  return 1
 }
 
 if [ "$(id -u)" = 0 ]; then
   data="${USUAL_MAIL_DATA_DIR:-/data}"
   node_uid="$(id -u node)"
-  mkdir -p "$data" || hardened "couldn't make $data"
   if read_only "$data"; then
-    say "$data is mounted read-only, and the server must write there; mount it read-write (without :ro)"
+    say "$data is on a read-only mount, and the server must write there; mount a folder or volume there read-write (without :ro)"
     exit 1
   fi
+  mkdir -p "$data" || hardened "couldn't make $data"
   owner="$(stat -c %u "$data")"
   if [ "$owner" = 0 ]; then
     if [ ! -e "$data/usual-mail.db" ] && [ ! -e "$data/secret.key" ]; then

@@ -21,20 +21,22 @@ wallpaper's photo page was added on 2026-11-24.
 
 npm fetches these when a part is installed; none of them is in this repository. The server's bundle
 (`dist/server.mjs`) and the Cloudflare Worker include the server's packages, which take in `mail/`, `dashboard/`,
-`mcp/` and `core/` (the Node bundle loads libSQL from `node_modules` instead of including it); the `usual-mail`
-command bundles its own. The list holds every production package in the parts' lockfiles on 2026-11-23,
-with the licence each lockfile records. Development-only packages (TypeScript, Wrangler, Miniflare, test servers)
-aren't distributed and aren't listed.
+`mcp/` and `core/` (the Node bundle includes libSQL's local client and loads its native part, `libsql`, from
+`node_modules`); the `usual-mail` command bundles its own. The list holds every production package in the parts'
+lockfiles on 2026-11-23, with the licence each lockfile records, except the packages of libSQL's clients for remote
+databases (`@libsql/hrana-client`, `@libsql/isomorphic-ws`, `ws`, `@types/ws` and `promise-limit`) and the type
+declarations `@types/ws` brings with it (`@types/node` and `undici-types`, which hold no code that runs): npm installs
+them with `@libsql/client`, but since 2026-11-24 no part includes them. Development-only packages (TypeScript,
+Wrangler, Miniflare, test servers) aren't distributed and aren't listed.
 
 **Their licence texts.** Installed with npm, most packages keep theirs in their folder under `node_modules/`. The
 Docker image has them all in `/app/THIRD_PARTY_LICENSES.txt`: the server's build writes the texts of everything its
 bundle holds (`server/scripts/licenses.mjs`, from esbuild's list of the bundle's inputs, as
-`dist/THIRD_PARTY_LICENSES.txt`), and the image adds those of the packages in its `node_modules` (libSQL's). The
-build fails when a package has no licence text. A few packages ship no licence file: `@ai-sdk/provider-utils` and
-`drizzle-orm` (Apache-2.0; the file gives the standard text), `@libsql/client`, `@libsql/core`,
-`@libsql/isomorphic-ws` and libSQL's per-platform packages (MIT; the file gives their repositories' licences), and
-`promise-limit` (ISC; neither the package nor its repository has a licence file or a copyright line, so the file
-gives the standard ISC text). None of the Apache-2.0 packages has a NOTICE file. The Cloudflare Worker has no such
+`dist/THIRD_PARTY_LICENSES.txt`), and the image adds those of the packages in its `node_modules` (`libsql` and its
+own). The build fails when a package has no licence text. A few packages ship no licence file:
+`@ai-sdk/provider-utils` and `drizzle-orm` (Apache-2.0; the file gives the standard text), and `@libsql/client`,
+`@libsql/core` and libSQL's per-platform packages (MIT; the file gives their repositories' licences). None of the
+Apache-2.0 packages has a NOTICE file. The Cloudflare Worker has no such
 file: Cloudflare builds it in the deployer's own account from their copy of this repository, so this project passes
 on no copy of it.
 
@@ -80,8 +82,6 @@ on no copy of it.
 | `@libsql/core` | 0.18.0 | MIT | `server/` |
 | `@libsql/darwin-arm64` | 0.5.29 | MIT | `server/` |
 | `@libsql/darwin-x64` | 0.5.29 | MIT | `server/` |
-| `@libsql/hrana-client` | 0.10.0 | MIT | `server/` |
-| `@libsql/isomorphic-ws` | 0.1.5 | MIT | `server/` |
 | `@libsql/linux-arm-gnueabihf` | 0.5.29 | MIT | `server/` |
 | `@libsql/linux-arm-musleabihf` | 0.5.29 | MIT | `server/` |
 | `@libsql/linux-arm64-gnu` | 0.5.29 | MIT | `server/` |
@@ -108,7 +108,6 @@ on no copy of it.
 | `postal-mime` | 4.2.1 | MIT-0 | `mail/` |
 | `postcss` | 8.5.33 | MIT | `mail/` |
 | `process-warning` | 5.1.1 | MIT | `mail/` |
-| `promise-limit` | 2.7.0 | ISC | `server/` |
 | `quick-format-unescaped` | 4.0.4 | MIT | `mail/` |
 | `real-require` | 0.2.0 | MIT | `mail/` |
 | `real-require` | 1.0.0 | MIT | `mail/` |
@@ -124,14 +123,10 @@ on no copy of it.
 | `split2` | 4.2.0 | ISC | `mail/` |
 | `@standard-schema/spec` | 1.1.0 | MIT | `mcp/`, `server/` |
 | `thread-stream` | 4.2.1 | MIT | `mail/` |
-| `@types/node` | 22.20.5 | MIT | `server/` |
-| `@types/ws` | 8.18.2 | MIT | `server/` |
-| `undici-types` | 6.21.0 | MIT | `server/` |
 | `valibot` | 1.5.0 | MIT | `server/` |
 | `@vercel/oidc` | 3.2.0 | Apache-2.0 | `server/` |
 | `which` | 2.0.2 | ISC | `mcp/` |
 | `@workflow/serde` | 4.1.0 | Apache-2.0 | `server/` |
-| `ws` | 8.23.0 | MIT | `server/` |
 | `zod` | 4.6.7 | MIT | `mcp/`, `server/` |
 | `@zone-eu/mailsplit` | 5.4.31 | MIT OR EUPL-1.1+ (used under MIT) | `mail/` |
 

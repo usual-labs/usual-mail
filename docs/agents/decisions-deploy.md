@@ -1,6 +1,6 @@
 # Deploying beyond Cloudflare: decisions
 
-State on 2026-11-23. The public guide is [docs/deploy.md](../deploy.md); the checks run are in [cli.md](cli.md)
+State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the checks run are in [cli.md](cli.md)
 (Checks); the hosts' traps are in [known-issues.md](known-issues.md) ("Hosting platforms").
 
 ## The owner's decision (2026-11-23)
@@ -28,8 +28,11 @@ State on 2026-11-23. The public guide is [docs/deploy.md](../deploy.md); the che
   of uid or gid 0, but `docker cp` into a container keeps the files' own uid and group (Engine 29.9.3: a backup made
   on a Mac, 501:0 there, arrived as 501:0; Docker's docs say root), so a restore made by anyone but root or uid 1000
   would have left the database unreadable.
-- **Its lines when it can't** (all exit 1): a folder mounted read-only (`:ro`, read from `/proc/mounts` before
-  anything else) gets its own line. Without the capabilities to change owners and users (`--cap-drop ALL`): on a
+- **Its lines when it can't** (all exit 1): a folder on a read-only mount gets its own line, checked before anything
+  else with `findmnt -T` on the folder or the nearest folder above it that exists, so the folder's own `:ro`, a
+  read-only mount above it, a `--read-only` container with the folder on it, and a path with spaces are all caught
+  (final review, 2026-11-24: reading `/proc/mounts` for the folder's own line missed all but the first, since that
+  file escapes a space as `\040`, and those cases got the capabilities line). Without the capabilities to change owners and users (`--cap-drop ALL`): on a
   folder of `node`'s, `find` can't read it and the line points to `--user 1000:1000`, with which the image works
   with no capabilities; on a folder of root's, `chown` fails and the line says to give the folder to 1000:1000
   first (one start without `--cap-drop`, or `chown -R 1000:1000` on the host), since `--user 1000:1000` alone hits
@@ -38,14 +41,17 @@ State on 2026-11-23. The public guide is [docs/deploy.md](../deploy.md); the che
   (`.dockerignore` lets them in after its `**/*.md` rule), and so is `THIRD_PARTY_LICENSES.txt` (review of 2026-11-23:
   MIT, ISC and BSD need their notices in copies, Apache-2.0 §4(a) the licence itself, and nothing in the image held
   them). The server's build writes it beside the bundle from esbuild's metafile (`server/scripts/licenses.mjs`): every
-  package the bundle takes code from (55 on 2026-11-23) with each LICENSE, LICENCE, COPYING and NOTICE file in its
-  folder, the repository's own `<name>.LICENSE` files beside bundled data (the suffix and tracker lists), and the
-  dashboard's embedded font and icon licences. The Dockerfile adds the image's own `node_modules` (libSQL's 15
-  packages on arm64) with the same script's command-line form. A package with no licence text fails the build; those
-  that ship none (eight in the arm64 image) are named in the script with what stands in (the standard Apache-2.0 text,
-  their repositories' MIT LICENSE at a pinned commit, or the standard ISC text for `promise-limit`, which has no
-  licence file or copyright line anywhere), in `server/scripts/licences/`. Sorted and with LF endings, so two builds
-  give the same file. `node scripts/build.mjs <folder>` builds elsewhere, so it can be tried without touching `dist/`,
+  package the bundle takes code from (58 since 2026-11-24, with libSQL's local client) with each LICENSE, LICENCE,
+  COPYING and NOTICE file in its folder, the repository's own `<name>.LICENSE` files beside bundled data (the suffix
+  and tracker lists, named by their data files only: the code beside them, `suffixes.ts` and `trackers.ts`, is the
+  project's own and was listed too until the final review of 2026-11-24), and the dashboard's embedded font and icon
+  licences. The Dockerfile adds the image's own `node_modules` (`libsql` and its own dependencies, 5 packages on
+  arm64; 15 before 2026-11-24, when `@libsql/client` was installed with its remote clients' packages) with the same
+  script's command-line form. A package with no licence text fails the build; those that ship none (six in the arm64
+  image) are named in the script with what stands in (the standard Apache-2.0 text, or their repositories' MIT
+  LICENSE at a pinned commit), in `server/scripts/licences/`. `promise-limit`, which has no licence file or copyright
+  line anywhere and had only the standard ISC text, is no longer in the image. Sorted and with LF endings, so two
+  builds give the same file. `node scripts/build.mjs <folder>` builds elsewhere, so it can be tried without touching `dist/`,
   which a running server may use. `.gitattributes` keeps `*.sh` at LF, since a CRLF entry point from a Windows
   checkout would break the image.
 - **No licence file for the Cloudflare Worker:** feasible (wrangler can print its own metafile with
@@ -55,8 +61,38 @@ State on 2026-11-23. The public guide is [docs/deploy.md](../deploy.md); the che
   running again, plus a route or module in the Worker to serve it. And nobody passes a Worker bundle on: Cloudflare
   builds it in the deployer's own account from their copy of the repository and npm, and it serves browsers no npm
   code (the views' script is hand-written; the font and icon licences are already served at `/assets/licences/`).
+- **The Compose files give the server three minutes to stop** (`stop_grace_period: 3m`, final review of 2026-11-24).
+  The server's stop (SIGTERM) waits for each inbox's batch in hand and the AI's thread in hand: 0.10 to 0.19 s at
+  rest (`docker stop` and `docker compose stop`, measured), but up to about two and a half minutes during a Gmail
+  first sync on Node (200 messages at about 1.3 a second). Docker's default of ten seconds would kill such a stop:
+  nothing stored is lost (`ingest` writes the cursor last, so the batch is fetched again), but the fetching is wasted,
+  and so is an AI answer in hand, which is paid. Three minutes covers that batch; it is a ceiling, so a stop at rest
+  is as quick as before, and a stop that hangs is still killed. Compose writes it to the container's `StopTimeout`
+  (180, seen), so a plain `docker stop` waits as long; the guide gives `docker run --stop-timeout 180`, and the
+  `usual-mail` command gives the same 180 seconds in both modes ([cli.md](cli.md)). The other hosts (docs read
+  2026-11-24): **Render** sends SIGTERM and kills 30 seconds later, and `maxShutdownDelaySeconds` (a Blueprint or API
+  field, 1 to 300) "can't" be customised for a service with a persistent disk (render.com/docs/deploys and
+  render.com/docs/disks; the Blueprint reference gives the range), so `render.yaml`, whose service has a disk, doesn't
+  set it, and the guide says to deploy when no first sync runs. **Railway**'s `RAILWAY_DEPLOYMENT_DRAINING_SECONDS`,
+  "the SIGTERM to SIGKILL buffer time", defaults to 0 (docs.railway.com/reference/variables; also a Settings field
+  and `drainingSeconds` in its config file, docs.railway.com/guides/deployment-teardown), and its pages give no
+  maximum: the guide's step 4 sets it to 180. Neither tried on the host itself.
+- **The stop closes every inbox together** (`SyncEngine.stop`, 2026-11-24, after the final review): each inbox is
+  marked closing before any close waits, so the stop waits for the longest batch in hand, not one after another.
+  Before, inboxes closed in turn, and one whose close hadn't begun went on starting batches (a unit test saw a second
+  inbox start four more; in the image, a second IMAP inbox fetched another whole batch four seconds into the stop and
+  the stop took 7.7 s against 6.6 s now). So "about two and a half minutes" holds for any number of inboxes.
+- **Coolify's own Stop and Restart don't use `stop_grace_period`** (read in Coolify's source on 2026-11-24, the
+  v4.7.6 tag and `main`): `app/Actions/Service/StopService.php` runs `docker stop --time=30` (10 for more than five
+  containers), then `docker rm -f`; `RestartService.php` runs `StartService` with `stopBeforeStart`, which runs those
+  commands first unless it pulls the latest images. A deploy runs `docker compose up -d --force-recreate`, which stops
+  the old container with the file's value. Issue #5620 asked for the grace period; PR #9746, in v4.1.0, made it a
+  setting for Applications only, and a Compose resource is a Service. So Stop or Restart during a first sync can cut
+  off the batch in hand (nothing stored is lost; it is fetched again), and the file and the guide say to redeploy
+  instead.
 - **`compose.yaml` names the published image and keeps `build: .`:** Compose pulls, and builds from the checkout
-  when the pull fails (seen with Compose v5.7.1, nothing published), so one file serves a checkout and a copy.
+  when the pull fails (seen with Compose v5.7.1, before the first release), so one file serves a checkout and a
+  copy.
 
 ## Each host's file
 
@@ -76,8 +112,8 @@ State on 2026-11-23. The public guide is [docs/deploy.md](../deploy.md); the che
   `SERVICE_REALBASE64_32_SECRETKEY` (real base64 of 32 random bytes; `SERVICE_BASE64_32_*` isn't base64). The key
   lives apart from the volume because Coolify's volume backups can go to S3. The guide makes the person set an
   HTTPS domain before the first deploy, since the server exits on Coolify's plain-HTTP `sslip.io` address.
-- **`render.yaml`, Render:** `runtime: docker` builds from the repository (the button needs the repository anyway,
-  and it works before an image is published); `plan: starter` (0.5 CPU, 512 MB; Render's docs say legacy plan names
+- **`render.yaml`, Render:** `runtime: docker` builds from the repository (the button needs the repository anyway);
+  `plan: starter` (0.5 CPU, 512 MB; Render's docs say legacy plan names
   stay valid, new ID `0.5c-512mb`); a 5 GB disk at `/data` (it can grow, never shrink); `PORT=8484` so Render routes
   to it; `USUAL_MAIL_PUBLIC_URL` with `sync: false` (the `onrender.com` address isn't known before creation);
   `USUAL_MAIL_SECRET_KEY` with `generateValue` (256 random bits in base64, which the server takes);
@@ -121,14 +157,21 @@ State on 2026-11-23. The public guide is [docs/deploy.md](../deploy.md); the che
   provenance and an SBOM. Earlier (before the review's changes): push-by-digest and `imagetools create` rehearsed
   against a local `registry:3`, the index pulled and run.
 
+## The first release (2026-11-24)
+
+- **0.1.0, released by the owner:** the repository went public, `1881044` set the version, and the release `v0.1.0`
+  published `ghcr.io/usual-labs/usual-mail` as `0.1.0`, `0.1` and `latest`, for amd64 and arm64. On GitHub, the
+  workflow's manual run (the `check` job, which publishes nothing) and the release's run both succeeded; the
+  release's second event (`published`) was skipped, as the `tags` job's `if` means. The GHCR package is private
+  until the owner makes it public.
+- **The version is written by hand in many places:** each `package.json` and lockfile, and four source files
+  (`server/src/version.ts`, `cli/src/version.ts`, `mcp/src/server.ts` and `mcp/src/ui/view-script.ts`). Only the
+  CLI's version is tested against its `package.json`. A release bumps them all first, in a commit of its own, and the
+  tag goes on that commit.
+
 ## What waits for the owner
 
-- The repository public and a first release published; then check the GHCR package is public (and allowed by the
-  organisation's package settings) and linked to the repository.
-- The repository's Actions policy for `image.yml`'s actions (as for the other repositories). A manual run of the
-  workflow first (the `check` job) would show on GitHub what was only checked locally: the anchors, the arm64 runner
-  and the pinned builder.
+- Making the GHCR package public (and allowed by the organisation's package settings), then checking it is linked to
+  the repository and pulls without signing in.
 - A Railway template made in Railway's dashboard, and its address in the README's button.
-- Whether the standard ISC text is enough for `promise-limit` (under `@libsql/client`; no licence file or copyright
-  line in the package or its repository), or to ask its maintainers for a licence file.
-- Trying a real VPS, Coolify, Render and Railway once the image is published.
+- Trying a real VPS, Coolify, Render and Railway now that the image is published.

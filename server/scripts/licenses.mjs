@@ -3,9 +3,10 @@
 // - `node scripts/licenses.mjs <node_modules folder>`: every package installed in that folder, printed (the
 //   Dockerfile adds the image's own node_modules, libSQL's packages, to the bundle's file).
 // Each npm package is named with its version and licence, followed by every LICENSE, LICENCE, COPYING and NOTICE
-// file in its folder. A file of this repository with a licence of its own keeps it beside it as `<name>.LICENSE`
-// (src/avatars/suffixes.LICENSE), which is included the same way. Sorted and with LF line endings, so the same
-// inputs give the same text. Throws, naming them, when a package has no licence file: the image can't be passed on
+// file in its folder. A data file of this repository with a licence of its own keeps it beside it as `<name>.LICENSE`
+// (src/avatars/suffixes.LICENSE for suffixes.json), which is included the same way; the repository's own code (.ts,
+// .js, .mjs and the like) is Usual Mail's and never listed, even beside such a file. Sorted and with LF line endings,
+// so the same inputs give the same text. Throws, naming them, when a package has no licence file: the image can't be passed on
 // without its text. The only exceptions are the packages in STAND_INS, checked by hand.
 import { existsSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, extname, join, relative } from "node:path";
@@ -13,11 +14,15 @@ import { fileURLToPath } from "node:url";
 
 const LICENCE_FILE = /^(licen[cs]e|copying|notice)([.-].*)?$/i;
 const RULE = "=".repeat(78);
+/** This repository's own code, which is Usual Mail's: only its data files can carry another licence. */
+const OWN_CODE = /\.[cm]?[jt]sx?$/;
 const TEXTS = fileURLToPath(new URL("licences/", import.meta.url));
 
 /**
  * Packages that ship no licence file, checked 2026-11-23, and the text that stands in for it (in licences/), as long
  * as the package still states that licence. A package missing from here, or stating another licence, still fails.
+ * (Since 2026-11-24 the server takes only libSQL's local client, so the remote clients' packages, `promise-limit` and
+ * `@libsql/isomorphic-ws` among them, are neither bundled nor installed in the image, and need none.)
  */
 const STAND_INS = [
   {
@@ -29,16 +34,8 @@ const STAND_INS = [
     source: "the LICENSE of the package's repository, github.com/tursodatabase/libsql-client-ts at 9496c782af41",
   },
   {
-    match: /^@libsql\/isomorphic-ws$/, licence: "MIT", file: "libsql-isomorphic-ts.txt",
-    source: "the LICENSE of the package's repository, github.com/libsql/isomorphic-ts at ab3b09a269a7",
-  },
-  {
     match: /^@libsql\/(linux|darwin|win32)-[a-z0-9-]+$/, licence: "MIT", file: "libsql-js.txt",
     source: "the LICENSE of the package's repository, github.com/tursodatabase/libsql-js at 58861e8706af (the same as the libsql package's)",
-  },
-  {
-    match: /^promise-limit$/, licence: "ISC", file: "ISC.txt",
-    source: "the standard ISC text, from spdx.org: the package states ISC, but neither it nor its repository (github.com/featurist/promise-limit) has a licence file or a copyright line",
   },
 ];
 
@@ -57,6 +54,7 @@ export function thirdPartyLicences(metafile, workingDir, { title, embedded = [] 
     const path = join(workingDir, input.replace(/^[a-z-]+:/, ""));
     const at = path.lastIndexOf("/node_modules/");
     if (at === -1) {
+      if (OWN_CODE.test(path)) continue;
       const licence = join(dirname(path), `${basename(path, extname(path))}.LICENSE`);
       if (existsSync(licence)) ownFiles.set(licence, [...(ownFiles.get(licence) ?? []), relative(workingDir, path)]);
       continue;

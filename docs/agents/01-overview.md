@@ -21,7 +21,8 @@ account on 2026-11-23 (below, "Implemented today").
 **On 2026-11-23 it gained files for other hosts** (the owner's decision that day: Docker with a guide for any VPS,
 Coolify, then Render and Railway buttons; home servers later): an entry point that runs the image on volumes owned by
 root, `compose.caddy.yaml`, `compose.coolify.yaml`, `render.yaml`, a workflow that publishes the image to GHCR, and
-[docs/deploy.md](../deploy.md); tried in Docker Desktop on this Mac only, nothing published or deployed
+[docs/deploy.md](../deploy.md); tried in Docker Desktop on this Mac only. The image is published to GHCR from 0.1.0
+(2026-11-24), still private there until the owner makes the package public; no host has run it yet
 ([decisions-deploy.md](decisions-deploy.md)).
 **On 2026-11-24 the owner got a password** (the owner's decisions that day): the first visitor to an unclaimed server
 sets it and owns the server, unless the host names `USUAL_MAIL_OWNER_EMAIL`, which Google must prove; the dashboard
@@ -162,8 +163,9 @@ the guided Google set-up of 2026-11-21):**
   given by a paired device, a per-address pairing count, the time zone from the first pairing
   ([server-cloudflare-access.md](server-cloudflare-access.md)); every statement within 100 parameters on both hosts.
   Two independent reviews' findings fixed. The docs are `docs/self-hosting.md`'s "On Cloudflare" and the README's
-  Deploy button, which can't work until the repository is public. **Tested only in local workerd and
-  Miniflare; nothing has run on Cloudflare itself** (its "Checks still open").
+  Deploy button, not tried yet (the repository is public since 2026-11-24). **Tested in local workerd and Miniflare,
+  and deployed once to a real account on 2026-11-23 with `npx wrangler deploy`, where it answered over HTTPS; no Google
+  sign-in, sync or AI has run there** (its "Checks still open" and "Seen on the first deploy").
 - **`site/`** (see [site.md](site.md), 2026-11-19): the static website for `mail.usual.dev` that Google's console
   needs before the OAuth client leaves Testing: a landing page in the Mac app's look (the wallpaper, glass, the app
   drawn in HTML with made-up mail), a privacy policy and terms, served by the Cloudflare Worker `usual-mail-site` with
@@ -365,9 +367,9 @@ write-backs, the owner's code and the pairing limit all passed; its findings wer
 3. **The server on Cloudflare with mail** (the owner's): first deployed on 2026-11-23 with `npx wrangler deploy`;
    Google sign-in, a sync, the AI and the Deploy button are still to try there, to settle what local workerd can't
    ([server-cloudflare.md](server-cloudflare.md), "Checks still open").
-4. **Public since 2026-11-24** (`usual-labs/usual-mail`, "History" below); next, the owner's: the first release, which
-   publishes the image ([decisions-deploy.md](decisions-deploy.md)), and what improvement-ideas.md lists under "Since
-   the repository was published".
+4. **Public since 2026-11-24** (`usual-labs/usual-mail`, "History" below), and 0.1.0 released the same day, which
+   published the image. Next, the owner's: making the GHCR package public ([decisions-deploy.md](decisions-deploy.md),
+   "What waits for the owner"), and what improvement-ideas.md lists under "Since the repository was published".
 5. Still open: [contract questions](contract-questions.md) 1, 2, 20 to 22, 30 to 38, 40, 44, 45, 63 to 69, 71 and
    74 to 77.
 
@@ -385,8 +387,12 @@ Published on 2026-11-24 at `github.com/usual-labs/usual-mail`, branch `main`, as
 the maintainer's GitHub noreply address (the owner's decision); the notes were trimmed of details from the owner's own
 mailbox and machine just before it. The local history before it (seven commits, 2026-11-21 to 2026-11-24) stays in
 the maintainer's own checkout and is never pushed. Each commit is made at the maintainer's request. Later commits go
-onto `main` by rebase, never a merge (`main` shares no history with the local one): the iPhone tweaks and the owner's
-password (2026-11-24) were rebased onto `main` and pushed there at the owner's request.
+onto `main` by rebase or fast-forward, never a merge (`main` shares no history with the local one). `1881044` sets the
+version to 0.1.0 everywhere it is written, and the release `v0.1.0` (that commit, 2026-11-24) published the image.
+The iPhone tweaks and the owner's password (2026-11-24) were rebased onto `main` after it and pushed there at the
+owner's request. The stop fixes after them (2026-11-24) say 0.1.1 wherever `1881044` wrote the version (every
+`package.json` and lockfile, `server/src/version.ts`, `cli/src/version.ts`, `mcp/src/server.ts`,
+`mcp/src/ui/view-script.ts`, and the deploy guide's tag example); notes about the first release still say 0.1.0.
 
 ## Layout
 
@@ -423,8 +429,8 @@ licence field in its `package.json` and lockfile; its `npm run check` was re-run
 | Part | Command | Last result |
 |---|---|---|
 | `core/` | `npm install && npm run check` | 2026-11-23 (the review's fixes): type check clean; sample.json consistent (3 inboxes, 28 threads, 37 messages, 2 drafts, 21 actions, 4 rules; AI working, 4 pending; Home 5), Personal now with a first sync's count (1,840 of 2,600), so the sample check's `firstSync` branch runs; the agent prompt matches its doc |
-| root (Cloudflare) | `npm install && npm run check:cloudflare` (each part's own `npm install` first for development); `npx wrangler deploy --dry-run` builds without deploying | 2026-11-23 (the review's fixes): both Cloudflare type checks clean; 82 workerd tests pass (the 81 of first-sync progress and a first sync paused and resumed, which failed before the fix); `wrangler deploy --dry-run` 5,460.25 KiB (1,243.46 KiB gzipped) ([server-checks.md](server-checks.md)) |
-| `server/` | `npm install && npm run check` (`npm install` in `mail/` first) | 2026-11-23 (the review's fixes): both type checks clean; `npm test` 1,011 tests (1,005 pass, 6 skipped), the 7 new ones seen failing first or with their guarded line removed; a scratch bundle outside `dist/` smoke-tested and moved to the Trash (`dist/` not rebuilt; known-issues.md, the `npm run check` entry) ([server-checks.md](server-checks.md)) |
+| root (Cloudflare) | `npm install && npm run check:cloudflare` (each part's own `npm install` first for development); `npx wrangler deploy --dry-run` builds without deploying | 2026-11-24 (the final review's fixes): both Cloudflare type checks clean; 82 workerd tests pass (`wrangler deploy --dry-run` not run) |
+| `server/` | `npm install && npm run check` (`npm install` in `mail/` first) | 2026-11-24 (the final review's fixes and libSQL's local client): both type checks clean; `npm test` 1,018 tests (1,012 pass, 6 skipped), the 3 new ones seen failing first; two scratch builds byte-identical; a scratch bundle inside `server/` smoke-tested and moved to the Trash (`dist/` not rebuilt) ([server-checks.md](server-checks.md)) |
 | `mail/` | `npm install && npm run check` (`USUAL_MAIL_SKIP_DOCKER=1` skips the Docker probe) | 2026-11-23 (the review's fixes, nothing in `mail/` changed): type check clean; 552 tests in 73 suites: 537 pass, 15 skipped (Docker skipped) ([mail-checks.md](mail-checks.md)) |
 | `cli/` | `npm install && npm run check`; `npm run build` writes `dist/usual-mail.mjs` | 2026-11-23 (the review's fixes): type check clean; 169 tests in 19 suites pass (the bundle not rebuilt) |
 | `mcp/` | `npm install && npm run check` | 2026-11-23 (the review's fixes): design file current; both type checks clean; 134 tests in 32 suites pass |
@@ -434,4 +440,4 @@ licence field in its `package.json` and lockfile; its `npm run check` was re-run
 
 Docker didn't answer from 2026-11-16 until Docker Desktop was updated on 2026-11-23. That day the image, `compose.yaml`,
 `init --mode docker`, `compose.caddy.yaml` and `compose.coolify.yaml` ran in Docker Desktop, and `image.yml`'s steps
-against a local registry ([cli.md](cli.md) Checks); the Docker-backed mail tests weren't re-run.
+against a local registry ([cli-checks.md](cli-checks.md)); the Docker-backed mail tests weren't re-run.

@@ -3,7 +3,8 @@
 // stored (a removed inbox's is dropped), in the background, which waiting for the server's work waits for. The count
 // stays where it was shown and no other is sent while it is paused; the first sync isn't done, so resuming goes on from
 // the stored cursor, never from 0, its first count again after two seconds, and its mail is still history. A removed
-// inbox is gone from lists and events at once, and its address can be added again before its close is done.
+// inbox is gone from lists and events at once, and its address can be added again before its close is done. A pause
+// while the sync is still opening its provider starts no batch.
 
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
@@ -214,5 +215,38 @@ test("removing an inbox during its first sync answers at once: gone from lists a
   assert.equal(await messageCount(s), 20);
   const rows = await s.host.db.all<{ id: string; done: number }>(sql`SELECT id, history_done AS done FROM inboxes`);
   assert.deepEqual(rows, [{ id: readded.id, done: 1 }]);
+  assert.deepEqual(s.errors, []);
+});
+
+test("a pause while the sync opens its provider starts no batch", async () => {
+  t = await makeServer({ limits: { syncBatch: 2 } });
+  const s = t;
+  let calls = 0;
+  slow(s, () => {
+    calls++;
+  });
+  // The provider's credentials are opened slowly, and the person pauses the inbox meanwhile: the sync has already
+  // checked the inbox and is waiting for its provider.
+  const secrets = s.host.secrets;
+  const open = secrets.open.bind(secrets);
+  let paused = false;
+  secrets.open = async (sealed, context) => {
+    if (!paused) {
+      paused = true;
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      await s.server.updateInbox(s.person, context, { paused: true });
+    }
+    return open(sealed, context);
+  };
+  const inbox = await connectNow(s, ADDRESS, 20);
+  await s.server.whenIdle();
+  assert.equal(paused, true);
+  assert.equal(calls, 0, "nothing was fetched for the paused inbox");
+  assert.equal(await messageCount(s), 0);
+  // Resumed: the first sync starts from the beginning.
+  await s.server.updateInbox(s.person, inbox.id, { paused: false });
+  await s.server.whenIdle();
+  assert.equal(calls, 10);
+  assert.equal((await onlyInbox(s))!.done, 1);
   assert.deepEqual(s.errors, []);
 });

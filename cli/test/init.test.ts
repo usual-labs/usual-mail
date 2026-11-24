@@ -62,6 +62,8 @@ describe("init with Docker", () => {
     const [, ...runArgs] = docker.calls.find((call) => call[1] === "run")!;
     assert.deepEqual(runArgs, [
       "run", "--detach", "--name", "usual-mail", "--restart", "unless-stopped",
+      // As long to stop as the Compose files give the server.
+      "--stop-timeout", "180",
       "--publish", `127.0.0.1:${port}:8484`, "--volume", `${dataDir}:/data`,
       // The address the browser reaches it at, for Google sign-in's redirect: the container can't know it.
       "--env", `USUAL_MAIL_PUBLIC_URL=http://127.0.0.1:${port}`,
@@ -162,7 +164,7 @@ describe("init with Docker", () => {
   test("won't take over a container it didn't make", async () => {
     const docker = new FakeDocker();
     docker.images.add("usual-mail");
-    docker.containers.set("usual-mail", { state: "exited", label: "", port, dataDir, args: [] });
+    docker.containers.set("usual-mail", { state: "exited", exitCode: 0, oomKilled: false, label: "", port, dataDir, args: [] });
     const ran = await run(dockerFlags(), { home: home.dir, runner: docker });
     assert.equal(ran.code, 1);
     assert.match(ran.stderr, /A container named "usual-mail" exists that usual-mail didn't make/);
@@ -178,6 +180,7 @@ describe("init with Docker", () => {
     const stopped = await run(["stop"], opts);
     assert.equal(stopped.stdout, "Stopped.\n");
     assert.equal(docker.containers.get("usual-mail")!.state, "exited");
+    assert.deepEqual(docker.calls.find((call) => call[1] === "stop"), ["docker", "stop", "-t", "180", "usual-mail"]);
     const down = await run(["status", "--json"], opts);
     assert.equal(down.code, 1);
     assert.deepEqual(

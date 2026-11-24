@@ -173,17 +173,23 @@ export class MailServer implements MailService {
 
   /**
    * Starts syncing every inbox that isn't paused, and the come-back timer. First, a draft still `sending` was cut off
-   * by a stop: it fails, saying it may have gone out.
+   * by a stop: it fails, saying it may have gone out. Once `signal` is aborted (the Node host asked to stop during its
+   * start-up), the steps left are skipped: no sync, AI or sender-picture work starts, so the `stop()` after it has
+   * nothing in hand.
    */
-  async start(): Promise<void> {
+  async start(options: { signal?: AbortSignal } = {}): Promise<void> {
+    const { signal } = options;
     await this.#ctx.lock.run(() => drafts.failStoppedSends(this.#ctx));
     await this.#ctx.lock.run(() => drafts.pruneSentIds(this.#ctx));
     // Since when the AI's usage is kept (the first start with it), and hours older than 90 days dropped.
     await this.#ctx.lock.run(() => startUsage(this.#ctx));
     await this.#changes.start();
+    if (signal?.aborted) return;
     // Search's index follows what is stored before syncing starts: at a first start it is built here.
     await this.#search.start();
-    await this.#engine.start();
+    if (signal?.aborted) return;
+    await this.#engine.start(signal);
+    if (signal?.aborted) return;
     this.#runner.start();
     this.#costs.start();
     this.#avatars.start();

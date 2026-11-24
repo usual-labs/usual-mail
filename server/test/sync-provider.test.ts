@@ -415,6 +415,8 @@ describe("repair", () => {
       return provider;
     });
     const first = await MailServer.create(await host(), { providers: stalling, models: new FakeModels() });
+    // Started as a process is: a server that isn't started syncs nothing.
+    await first.start();
     const person = (await first.authenticate((await first.pair({ code: (await first.ownerPairingCode())!.code, name: "Mac" })).token))!;
     const inbox = await first.connectInbox(person, { name: "Acme", color: "#000000", provider: "imap", credentials: { mailbox: mailbox.address } });
     await first.syncInbox(person, inbox.id);

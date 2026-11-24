@@ -6,18 +6,19 @@ folder for it. This page covers four ways to run it on a machine that is always 
 read [Running your own Usual Mail server](self-hosting.md); its sections on the Google client, pairing the Mac app,
 Gmail and the AI key apply wherever the server runs.
 
-**Early and not released.** The image isn't published yet: it will be `ghcr.io/usual-labs/usual-mail` (amd64 and
-arm64) from the repository's first release. Until then, build it from a copy of this repository
-(`git clone https://github.com/usual-labs/usual-mail.git`) with `docker build -t ghcr.io/usual-labs/usual-mail:latest .`
-on the machine that runs it: only Docker Compose on that same machine finds an image built there. Coolify pulls the
-image, so it waits for the release. (Render builds from the repository itself, and Railway can.) What has been
-tried (2026-11-23, Docker Desktop on a Mac): building the image for arm64 and amd64, running it with `compose.yaml`,
-with `compose.caddy.yaml` (Caddy's own local certificate rather than Let's Encrypt) and with `compose.coolify.yaml`
-(plain Compose, given the values Coolify would give it), pairing over HTTPS, data surviving a restart and a new
-container, a backup and its restore, a volume owned by root (empty, with `lost+found`, a restore, and one holding
-other files, which it leaves alone), a read-only mount, and a container without capabilities
-(`--cap-drop ALL --user 1000:1000`). Not tried yet: a real VPS, Let's Encrypt, Coolify, Render and Railway
-themselves, and publishing the image.
+**Early.** The image is `ghcr.io/usual-labs/usual-mail` (amd64 and arm64), published from each release as its
+version (`0.1.1`), its minor line (`0.1`) and `latest`. To run code that isn't released yet, build the image from a
+copy of this repository (`git clone https://github.com/usual-labs/usual-mail.git`) with
+`docker build -t ghcr.io/usual-labs/usual-mail:latest .` on the machine that runs it: only Docker Compose on that same
+machine finds an image built there. (Render builds from the repository itself, and Railway can.) What has been tried
+(2026-11-23 and 2026-11-24, Docker Desktop on a Mac): building the image for arm64 and amd64, running it with
+`compose.yaml`, with `compose.caddy.yaml` (Caddy's own local certificate rather than Let's Encrypt) and with
+`compose.coolify.yaml` (plain Compose, given the values Coolify would give it), pairing over HTTPS, data surviving a
+restart and a new container, a backup and its restore, a volume owned by root (empty, with `lost+found`, a restore,
+and one holding other files, which it leaves alone), a read-only mount (the folder's own `:ro`, also at a path with
+a space, a read-only mount above it, and a container started with `--read-only`), a container without capabilities
+(`--cap-drop ALL --user 1000:1000`), and stopping it while two IMAP inboxes' first syncs ran. Not tried
+yet: a real VPS, Let's Encrypt, Coolify, Render and Railway themselves.
 
 ## What any host must give it
 
@@ -33,12 +34,13 @@ themselves, and publishing the image.
   takes a folder of root's only when it is new (empty, or holding only `lost+found`) or already holds the server's data
   (`usual-mail.db` or `secret.key`); a folder of root's with other files in it (`-v /srv:/data` by mistake) is left as
   it is, and the container stops with a line saying so. A folder that belongs to another user (a folder of yours mounted
-  from the host) is left as it is: run the container as its owner with `--user`. A folder mounted read-only (`:ro`)
-  stops it too: the server must write there. **A hardened container** without the capabilities to change owners and
-  users (`--cap-drop ALL`) can't do that step and stops with a line saying so; run it as `node` from the start:
-  `--cap-drop ALL --user 1000:1000` (in Compose, `cap_drop: [ALL]` and `user: "1000:1000"`), on a folder that is already
-  uid 1000's. A named volume is, from its first start; a folder of root's isn't: start the container once without
-  `--cap-drop`, or run `chown -R 1000:1000` on the folder on the host, first.
+  from the host) is left as it is: run the container as its owner with `--user`. A folder on a read-only mount (its own
+  `:ro`, one above it, or a container started with `--read-only` and the folder not a volume) stops it too: the server
+  must write there. **A hardened container** without the capabilities to change owners and users (`--cap-drop ALL`)
+  can't do that step and stops with a line saying so; run it as `node` from the start: `--cap-drop ALL --user
+  1000:1000` (in Compose, `cap_drop: [ALL]` and `user: "1000:1000"`), on a folder that is already uid 1000's. A named
+  volume is, from its first start; a folder of root's isn't: start the container once without `--cap-drop`, or run
+  `chown -R 1000:1000` on the folder on the host, first.
 - **Outbound HTTPS, IMAP and SMTP.** HTTPS for Gmail, Google sign-in, the AI service and pictures in mail; IMAP (993
   or 143) and SMTP (465 or 587) for mailboxes connected over IMAP. Some hosts block SMTP (below); Gmail doesn't need
   it.
@@ -51,6 +53,14 @@ themselves, and publishing the image.
 - **Backups** by the host's snapshots, or by stopping the server and copying `/data` (below).
 - **Updates go forward only.** The server updates its database to the version's form at every start, and an older
   version may not read it afterwards. Take a backup before updating; to go back, restore it.
+- **Time to stop.** Stopping waits for the mail in hand to be stored: usually a moment, but up to about two and a half
+  minutes during a Gmail inbox's first sync. Docker kills a container ten seconds after asking it to stop, so the
+  Compose files here give it three minutes (`stop_grace_period: 3m`); with `docker run`, add `--stop-timeout 180`.
+  Stopped sooner, it loses nothing it stored: its next start fetches that mail again. Asked to stop while it is still
+  starting, it ends once the start-up step in hand is done, before it fetches any mail. Not every host waits that long:
+  **Coolify's Stop and Restart** give it 30 seconds ([Coolify](#coolify)); **Render** gives 30 seconds, and a
+  service with a disk can't be given more ([Render](#render)); **Railway** kills it at once unless told to wait
+  ([Railway](#railway)).
 
 The Google client can come from `/data/google-client.json` (given from the Mac app) or from the variables
 `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET`, both or neither. While they are set, no app can
@@ -91,6 +101,7 @@ nothing of yours was there to see.
 | Secret key | `/data/secret.key` | a Coolify variable | a Render variable | `/data/secret.key` |
 | SMTP for IMAP inboxes | Hetzner Cloud blocks 25 and 465; DigitalOcean blocks 25, 465 and 587 | your server's provider decides | not checked | Pro plan and above only |
 | Backups | stop, copy the volume, start | Coolify's volume backup, stopping containers | Render's daily disk snapshots, kept 7 days | not checked |
+| Time to stop | 3 minutes (the file's) | 3 minutes for a deploy; 30 seconds for Stop and Restart | 30 seconds, not changeable with a disk | none unless `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` is set (step 4) |
 | Cost (2026-11) | the server: DigitalOcean from $4 a month (512 MB), Hetzner Cloud from €5.49 | Coolify is free on your own server; Coolify Cloud from $5 a month, plus the server | the smallest paid instance (`starter`) and the disk, [render.com/pricing](https://render.com/pricing) | Hobby $5 a month including $5 of use; a volume $0.15 per GB a month |
 
 Free plans don't fit: Render's free instances sleep and have no disk, and Railway's free plan sleeps.
@@ -99,16 +110,15 @@ Free plans don't fit: Render's free instances sleep and have no disk, and Railwa
 
 A VPS (or any Linux machine that is always on) with Docker Engine and Docker Compose 2.23.1 or newer, 1 GB of memory,
 and a domain whose DNS you control. [`compose.caddy.yaml`](../compose.caddy.yaml) runs the server behind
-[Caddy](https://caddyserver.com), which gets a certificate from Let's Encrypt and renews it. Once the image is
-published it stands alone: you don't need a copy of the repository on the server. Until then, clone the repository
-on the server, build the image there (above) and use the file from the clone: `docker compose -f compose.caddy.yaml`
-in place of `docker compose` below, with `.env` in the clone's folder.
+[Caddy](https://caddyserver.com), which gets a certificate from Let's Encrypt and renews it. It pulls the published
+image and stands alone: you don't need a copy of the repository on the server.
 
 1. **DNS:** an A record for the name you choose (say `mail.example.org`) to the server's IPv4 address, and an AAAA
    record if it has IPv6. **Firewall:** let in ports 80 and 443 (TCP, and UDP 443 for HTTP/3). Caddy needs port 80
    to get the certificate. Nothing else needs to be open; the server's own port stays inside Docker.
-2. **Files:** in a folder of its own on the server, save `compose.caddy.yaml` as `compose.yaml`, and beside it a
-   file `.env` (readable only by you: `chmod 600 .env`):
+2. **Files:** in a folder of its own on the server, save `compose.caddy.yaml` as `compose.yaml`
+   (`curl -fsSLo compose.yaml https://raw.githubusercontent.com/usual-labs/usual-mail/main/compose.caddy.yaml`), and
+   beside it a file `.env` (readable only by you: `chmod 600 .env`):
 
    ```
    USUAL_MAIL_DOMAIN=mail.example.org
@@ -132,7 +142,8 @@ in place of `docker compose` below, with `.env` in the clone's folder.
    usual-mail init --server https://mail.example.org --code <that code>
    ```
 
-   The code is in the log too, once, when the server makes it.
+   The server writes the file a few seconds after it starts; if `cat` finds no such file yet, wait a moment and run
+   it again. The code is in `docker compose logs usual-mail` too, once, when the server makes it.
 5. **Google:** register `https://mail.example.org/v1/google/callback` as the client's redirect address at Google.
    `usual-mail google` says whether the server has its client and which address it expects.
 
@@ -198,7 +209,7 @@ every 25 seconds; keep the proxy's read timeout above that). Caddy does all thre
 
 [Coolify](https://coolify.io) runs containers on your own server and gives each one a domain and HTTPS.
 [`compose.coolify.yaml`](../compose.coolify.yaml) is written for Coolify v4 and checked with plain Docker Compose; it
-hasn't run on Coolify itself yet. It pulls the published image, so it works from the repository's first release on.
+hasn't run on Coolify itself yet. It pulls the published image.
 
 1. Point a domain's DNS at the Coolify server, as for a VPS.
 2. In Coolify: **New Resource**, then **Docker Compose Empty**, and paste the file.
@@ -225,6 +236,14 @@ health check tells Coolify when it is up.
 archive**, so the database isn't copied half-written (Coolify's documentation describes this for volume mounts; not
 tried here with a Compose resource). Or stop the service and copy the volume by hand. **Updates:** take a backup,
 then redeploy so Coolify pulls the image again, or pin a version in the image's tag and change it.
+
+**Stop and Restart cut a first sync short.** A deploy goes through Docker Compose and gives the server the file's
+three minutes to stop, but Coolify's own **Stop** and **Restart** don't use it: they give it 30 seconds (10 for a
+resource of more than five containers), then remove the container (Coolify v4.7.6, its latest v4 release when this
+was checked: `app/Actions/Service/StopService.php`, which `RestartService.php` reaches through `StartService.php`'s
+stop before starting; a restart that pulls the latest images skips that stop and goes through Docker Compose, as a
+deploy does). Pressed while an inbox's first sync runs, they can cut off the batch of mail being fetched. Nothing
+stored is lost, but that batch is fetched again at the next start. To restart then, redeploy instead.
 
 ## Render
 
@@ -255,6 +274,13 @@ A service with a disk runs as one instance and is down for a moment at each depl
 snapshots the disk every day and keeps each snapshot for seven days; restore one from the disk's page. **Updates:**
 take a backup, then **Manual Deploy** with the latest commit; Render builds the image from the repository.
 
+**A deploy or restart during a first sync can cut it short.** Render sends the server SIGTERM and kills it 30
+seconds later, and a service with a disk can't be given longer: Render's `maxShutdownDelaySeconds` (up to 300
+seconds) doesn't apply to one ([Render: deploys](https://render.com/docs/deploys),
+[Render: disks](https://render.com/docs/disks), [Blueprint reference](https://render.com/docs/blueprint-spec)), so
+`render.yaml` doesn't set it. Nothing stored is lost, but the batch of mail being fetched is fetched again at the
+next start. To be safe, deploy when no inbox's first sync runs (`usual-mail inbox list` shows one in progress).
+
 ## Railway
 
 Railway's templates are made in its dashboard, not from a file in the repository. **There is no Usual Mail template
@@ -271,9 +297,14 @@ make the template, set up one service:
 3. **Networking:** generate a domain for the service with target port **8484**, or add your own.
 4. **Variables:** `USUAL_MAIL_PUBLIC_URL` = `https://${{RAILWAY_PUBLIC_DOMAIN}}` (or your domain with `https://`);
    `USUAL_MAIL_OWNER_EMAIL`, your email (strongly suggested: [Claiming your server](#claiming-your-server));
-   optionally the two Google variables. The secret key stays in the volume (`/data/secret.key`); to keep it apart
-   from the data instead, set `USUAL_MAIL_SECRET_KEY` to 32 random bytes in base64 (`openssl rand -base64 32`) before
-   the first start, and never change it.
+   `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` = `180`, the time to stop; optionally the two Google variables. Railway's
+   default for the time between SIGTERM and SIGKILL is 0 seconds
+   ([Railway: variables](https://docs.railway.com/reference/variables),
+   [Railway: deployment teardown](https://docs.railway.com/guides/deployment-teardown), which says it can also be
+   set in the service's Settings), so without it a redeploy during a first sync cuts off the batch being fetched
+   (fetched again at the next start). Railway's pages give no maximum. The secret key stays in the volume
+   (`/data/secret.key`); to keep it apart from the data instead, set `USUAL_MAIL_SECRET_KEY` to 32 random bytes in
+   base64 (`openssl rand -base64 32`) before the first start, and never change it.
 5. **Settings:** health check path `/healthz`; one replica (Railway allows no more with a volume).
 6. Deploy, then open the address and set the server's password. The owner's code also works: in the deploy log, or
    `railway ssh`, then `cat /data/owner-pairing-code`.
@@ -281,6 +312,6 @@ make the template, set up one service:
 It needs the Hobby plan or above: the free plan sleeps. **Railway allows SMTP only on Pro and above**, so on Hobby
 inboxes connected over IMAP can't send; Gmail can. A service with a volume is down for a moment at each redeploy.
 
-**Making the template** (the maintainer, once the image is published): set up the service as above with
+**Making the template** (the maintainer): set up the service as above with
 `USUAL_MAIL_PUBLIC_URL` referring to `RAILWAY_PUBLIC_DOMAIN`, publish it as a template, and put its address in the
 README's Railway button.

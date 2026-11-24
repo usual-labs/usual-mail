@@ -54,6 +54,8 @@ describe("the provider's inbox follows Home", () => {
       secrets: await aesGcmSecrets(new Uint8Array(32).fill(7), webRandom), log: { info: () => {}, error: () => {} },
     });
     const first = await MailServer.create(await host(), { providers, models: new FakeModels() });
+    // Started as a process is: a server that isn't started syncs nothing.
+    await first.start();
     const person = (await first.authenticate((await first.pair({ code: (await first.ownerPairingCode())!.code, name: "Mac" })).token))!;
     const inbox = await first.connectInbox(person, { name: "Acme", color: "#000000", provider: "imap", credentials: { mailbox: mailbox.address } });
     await first.syncInbox(person, inbox.id);

@@ -5,11 +5,11 @@ choose, runs AI on them with your own AI key. This page takes you from nothing t
 server and your Gmail connected: on a computer of your own (sections 1 to 8), or in your own Cloudflare account
 ([On Cloudflare](#on-cloudflare), below). On a VPS with Docker, Coolify, Render or Railway: [deploy.md](deploy.md).
 
-**Usual Mail is early and not released.** Everything below is built, but much of it hasn't been proven outside this
-project's own tests: the Docker image has run only on a Mac, the Cloudflare version has been deployed once and has
-not yet connected a mailbox there, signing in with Google has worked once (the maintainer's own Gmail, 2026-11-17),
-and real AI models have run only on the maintainer's own server, through Vercel's AI Gateway (never with an OpenAI or
-Anthropic key of their own). Expect rough edges, and keep your mailbox's own app at hand.
+**Usual Mail is early: 0.1.0 is its first release.** Everything below is built, but much of it hasn't been proven
+outside this project's own tests: the Docker image has run only on a Mac, the Cloudflare version has been deployed
+once and has not yet connected a mailbox there, signing in with Google has worked once (the maintainer's own Gmail,
+2026-11-17), and real AI models have run only on the maintainer's own server, through Vercel's AI Gateway (never with
+an OpenAI or Anthropic key of their own). Expect rough edges, and keep your mailbox's own app at hand.
 
 ## 1. What you need first
 

@@ -4,12 +4,14 @@
 # Build from the repository root:
 #   docker build -t usual-mail .
 # Run it with compose.yaml, with `usual-mail init --mode docker`, or by hand:
-#   docker run -d --name usual-mail -p 127.0.0.1:8484:8484 -v usual-mail-data:/data usual-mail
+#   docker run -d --name usual-mail --stop-timeout 180 -p 127.0.0.1:8484:8484 -v usual-mail-data:/data usual-mail
+# (--stop-timeout 180: stopping waits for the mail in hand to be stored, longer than Docker's default 10 seconds.)
 #
 # The server's bundle, dist/server.mjs, holds its sibling packages: core, the mail providers (mail/), the dashboard
-# and the connector (mcp/). Only libSQL, which has a native part, stays in node_modules, installed on its own so
-# the image carries no build tools. .dockerignore lets in exactly those five folders (without tests, docs or local
-# data), the entry point, LICENSE and THIRD_PARTY_NOTICES.md. The base image is pinned by version and digest.
+# and the connector (mcp/), and libSQL's local client. Only `libsql`, libSQL's native part, stays in node_modules,
+# installed on its own so the image carries no build tools, nor the packages of libSQL's clients for remote
+# databases. .dockerignore lets in exactly those five folders (without tests, docs or local data), the entry point,
+# LICENSE and THIRD_PARTY_NOTICES.md. The base image is pinned by version and digest.
 #
 # /app/THIRD_PARTY_LICENSES.txt holds the licence texts of everything from others besides Node and Debian: what the
 # bundle holds (written by the server's build) and the packages in /app/node_modules (added below), both by
@@ -31,7 +33,7 @@ RUN set -eu; \
     cd server; \
     npm ci --no-audit --no-fund; \
     npm run build
-# What the running server needs and nothing else: the bundle's run-time dependencies (libSQL), which the build
+# What the running server needs and nothing else: the bundle's run-time dependencies (`libsql`), which the build
 # wrote to dist/runtime.package.json, installed on their own at the versions the server's lockfile holds. Pruning
 # the build's node_modules instead left build tools in it (esbuild, TypeScript, drizzle-kit's helpers), because
 # npm keeps what the linked sibling packages pull in.

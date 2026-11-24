@@ -1,7 +1,7 @@
 // Other programs: Docker, and the server itself in Node mode. Tests replace this with fakes.
 
 import { spawn } from "node:child_process";
-import { closeSync, openSync } from "node:fs";
+import { closeSync, openSync, readFileSync } from "node:fs";
 
 export interface RunResult {
   /** The exit code; -1 when the program couldn't start or was stopped for taking too long. */
@@ -24,8 +24,17 @@ export interface Runner {
   pass(command: string, args: string[], options?: { progress?: boolean }): Promise<number>;
   /** Starts a program that keeps running after this command ends, its output appended to `logFile`. */
   startDetached(command: string, args: string[], options: { cwd: string; logFile: string }): Promise<number>;
+  /**
+   * True when the process exists and this user may signal it. Another user's process (EPERM) is never one this
+   * command started, so it counts as not running.
+   */
   isAlive(pid: number): boolean;
   signal(pid: number, signal: NodeJS.Signals): void;
+  /**
+   * The command line a process runs, its arguments joined by spaces, or null when it can't be read (the process is
+   * gone, or there is no way to read it here). On Linux from /proc, elsewhere (macOS) from `ps`.
+   */
+  commandLine(pid: number): Promise<string | null>;
 }
 
 export const systemRunner: Runner = {
@@ -79,9 +88,23 @@ export const systemRunner: Runner = {
     try {
       process.kill(pid, 0);
       return true;
-    } catch (error) {
-      return (error as NodeJS.ErrnoException).code === "EPERM";
+    } catch {
+      return false;
     }
+  },
+
+  async commandLine(pid) {
+    if (process.platform === "linux") {
+      try {
+        const args = readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0");
+        if (args.at(-1) === "") args.pop();
+        return args.length ? args.join(" ") : null;
+      } catch {
+        return null;
+      }
+    }
+    const result = await systemRunner.run("ps", ["-ww", "-o", "command=", "-p", String(pid)], { timeoutMs: 10_000 });
+    return (result.code === 0 && result.stdout.trim()) || null;
   },
 
   signal(pid, signal) {

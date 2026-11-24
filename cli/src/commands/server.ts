@@ -8,7 +8,7 @@ import { readConfig, serverUrl, shown, type Config, type RunSettings } from "../
 import { printJson, say, type Context } from "../context.ts";
 import { Failure, UsageError } from "../errors.ts";
 import { launcherFor } from "../launch/index.ts";
-import { portIsFree } from "../launch/launcher.ts";
+import { portIsFree, STOPPING } from "../launch/launcher.ts";
 import { waitUntilAnswering } from "../launch/wait.ts";
 import { savedSyncDays } from "../server-settings.ts";
 import { serverSyncDays } from "./sync-days.ts";
@@ -47,7 +47,9 @@ In Node mode it starts the server in the background, with its output in ~/.local
     const launcher = launcherFor(ctx, run);
     const client = new Client(serverUrl(run.port), undefined, ctx.fetch);
     await launcher.prepare({ build: false });
-    if ((await launcher.state()).state === "running") {
+    const now = await launcher.state();
+    // A server still stopping counts as running, but isn't left to run: the launcher lets it finish, then starts it.
+    if (now.state === "running" && now.detail !== STOPPING) {
       return say(ctx, `It runs already, at ${client.server}.`);
     }
     if (!(await portIsFree(run.port))) {

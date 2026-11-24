@@ -25,8 +25,51 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   while the code itself stays valid in the store until its 30 minutes end. Ask for another.
 - **The claim proof travels in the address once** (`/claim?proof=`, 2026-11-24): it can sit in the browser's history.
   It works once, for ten minutes, only while the server is unclaimed, and the redirect and the page send no referrer.
-- **`server/src/service/server.ts` is at 609 lines** (2026-11-24, six thin owner methods added to the 574 the entry
-  below counted) and `dashboard/test/fake-service.ts` at 593 (the owner's fake is its own file, `fake-owner.ts`).
+- **`server/src/service/server.ts` is at 615 lines** (2026-11-24: from 574, six thin owner methods and `start`'s
+  checks of a stop asked for during start-up) and `dashboard/test/fake-service.ts` at 593 (the owner's fake is its own
+  file, `fake-owner.ts`). Split both by responsibility when they are next changed.
+- **A stop in the first moment of a container's life is still lost** (server image, found 2026-11-24 while checking the
+  fix for SIGTERM during start-up; open). Node is PID 1 and ignores SIGTERM until `stop-signal.ts` runs, which is after
+  the entry point's shell (also PID 1, no trap) has `exec`ed Node and Node has parsed the 7.6 MB bundle: about 0.1 s
+  of a 0.27 s start-up at full speed (measured outside Docker), and about 2 s at a tenth of a CPU in Docker, where a
+  `docker stop` sent then was ignored and the server killed at the deadline. Rare (only a stop within that moment),
+  and nothing is in hand then. The entry point's shell (`docker-entrypoint.sh`, PID 1 until it `exec`s Node) has no
+  handler either. Not done: an init process as PID 1 (Compose's `init: true`, `docker run --init`, or tini in the
+  image) would let the default action end Node at once before the handler exists, and cover the shell
+  ([improvement-ideas.md](improvement-ideas.md)).
+- **Ctrl-C during the Node server's start-up waits for the step in hand** (server, final check of 2026-11-24; open).
+  A signal during start-up is acted on between steps (`quitIfAsked` in `src/node/main.ts`), so it waits for the key
+  file, the store's upgrade or `MailServer.create` to finish; an upgrade of a large store can take a while. A second
+  Ctrl-C is ignored, like every second signal (`stop-signal.ts`). Nothing is in hand before syncing starts, so a
+  second one during start-up could end the process at once.
+- **Node mode's pid file and `stop` leave small gaps** (`usual-mail` command, final check of 2026-11-24; open unless
+  marked fixed). Each needs two commands at once, a command killed at the wrong moment or an unusual set-up
+  ([cli.md](cli.md), "Node mode"):
+  - The mark (`replaceRecord` in `cli/src/launch/pid-file.ts`) reads the file, then renames its own version into
+    place: a record another command writes between the two is overwritten. A lock file beside it, opened with
+    `O_EXCL` around each change, would close this window and the next two.
+  - Without hard links (FAT, some network shares), `removeRecord`'s `linkSync` failed when it put back another
+    command's newer record, and its `finally` then deleted the record it had set aside: the next server ran
+    unrecorded. Fixed 2026-11-24: it renames the record back once no file is there (`pid-file.test.ts`, which fails
+    without it); a record written between that check and the rename is replaced.
+  - A command killed between writing and renaming leaves `server.pid.<pid>.tmp` beside the file; one killed after
+    taking the record aside and before deciding leaves `server.pid.<pid>.taken` and no record, so the server runs
+    unrecorded (`status` says stopped, `start` finds the port in use). Nothing removes the leftovers.
+  - Which process is the server is a text match: the command line must hold ` --data-dir <dataDir> ` somewhere.
+    This command's own process never counts (fixed 2026-11-24, `pid-file.test.ts`: its id may be one a server had,
+    and `usual-mail … --data-dir <dataDir>` holds the same words); another program given those words would still
+    match. Matching the arguments exactly would close it.
+  - `Runner.isAlive` counts EPERM as not running, so a server running as another user (started with `sudo`) is
+    "stopped": `stop` removes its record without stopping it, and `start` finds the port in use.
+  - After SIGKILL the record is removed even if the process is still there five seconds later (stuck in the
+    kernel), so the next `start` finds the port in use.
+  - Words: the launcher's `start` (`cli/src/launch/node.ts`) says "another `usual-mail` command is stopping it" when
+    the stopping command's id now belongs to another process, and after finishing a stop it says "Started." for a
+    server another command started meanwhile. `stop` says "Stopped." when another command finished the stop first
+    and the next server runs.
+  - A command that dies between marking the stop and sending SIGTERM leaves the server marked `stopping`, still
+    listening: `start` skips its "runs already" answer for a stopping server, then fails with "Port … is in use by
+    another program", which is the server itself. `usual-mail stop` finishes the stop.
 
 - **A server an agent started dies when the agent's session ends, even detached** (operations, found 2026-11-22;
   open, in this project's T3 Code/Claude environment). Node mode's `usual-mail start` spawns the server with
@@ -393,7 +436,7 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
 - **A paused inbox's sync still fetches the batch in hand** (server, by design, 2026-11-23). The PATCH that pauses an
   inbox (or gives it new credentials) and the removal answer at once; the sync engine closes the inbox in the
   background (`SyncEngine.#closeInBackground`, Fixed below), and a running sync stops once its batch in hand is
-  stored (dropped for a removed inbox). That batch isn't cut short: on Node up to 200 messages, which a Gmail first
+  stored (dropped for a removed inbox); one still opening its provider starts no batch. That batch isn't cut short: on Node up to 200 messages, which a Gmail first
   sync takes about two and a half minutes to fetch (about 1.3 a second); on Cloudflare 25, about 20 seconds.
   Meanwhile the old provider stays open, its fetches go on, and `whenIdle`/`stop` wait for it. Cutting it short would
   need a way to abort a provider's `sync` (a contract change; improvement-ideas.md). Open, accepted.
@@ -523,6 +566,32 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
   differences instead, but a refusal then is only logged instead of failing the records.
 
 ## Fixed
+
+- **Closing an inbox left three gaps** (server, found by the final review of 2026-11-24, fixed the same day, each with
+  a test that failed on the code before). (1) New credentials store `connecting`, but the old provider's batch in hand
+  could then fail (the old credentials being why new ones came) and `#sync`'s catch stored `needs_attention` with the
+  old row's words, shown until the new provider's whole sync ended, hours for a large first sync. A sync that fails
+  while its inbox is being closed (paused, new credentials, the server stopping) now stores no status and logs one
+  info line; the next sync once the inbox is open again says how it goes (`first-sync-reconnect.test.ts`, third
+  test). (2) A write-back refused because its inbox was removed meanwhile (Gmail's sign-in is revoked at once) was
+  logged as an error; a removed inbox's refusal is now nothing to tell (`sync.test.ts`, "inbox lifecycle"). (3) A
+  close that began while a sync was still opening its provider didn't stop it: the first batch was fetched for a
+  paused inbox. `#closing` is now checked at the top of each round (`first-sync-pause.test.ts`, fifth test).
+- **The image shipped libSQL's clients for remote databases** (found by the coordinator on 2026-11-24, fixed the same
+  day). `@libsql/client` was external, so the image installed it with every dependency it declares, whichever entry
+  the code imports: `@libsql/hrana-client`, `@libsql/isomorphic-ws`, `ws`, `@types/ws`, `@types/node`,
+  `undici-types`, `js-base64` and `promise-limit` (ISC, no licence file anywhere), beside `libsql`; and the server
+  loaded the main entry (through `drizzle-orm/libsql` too), which loads the HTTP and WebSocket clients. The server only
+  opens `file:` and `:memory:`: `src/node/db.ts` now imports `@libsql/client/sqlite3` and `drizzle-orm/libsql/sqlite3`
+  (the same `expandConfig` and local client the main entry uses for those), the bundle takes in `@libsql/client`,
+  `@libsql/core` and `js-base64` (esbuild's metafile, 58 packages), and only `libsql` stays outside. The arm64 image's
+  `node_modules` went from 15 packages to 5 (`libsql`, its two platform packages, `detect-libc`, `@neon-rs/load`), and
+  its licence file needs 6 stand-ins, not 8. The tests still import the main entry (development only).
+- **`THIRD_PARTY_LICENSES.txt` named two of the project's own source files** (found by the final review of 2026-11-24,
+  fixed the same day). `server/scripts/licenses.mjs` matched every bundled file of the repository to a `<name>.LICENSE`
+  beside it, so `suffixes.ts` and `trackers.ts`, Usual Mail's own code, were listed with `suffixes.json` under MPL-2.0
+  and with `trackers.json` under BSD-3-Clause. The repository's own code (`.ts`, `.js`, `.mjs` and the like) is now
+  skipped; only the two data files are listed. Two builds into scratch folders gave byte-identical files.
 
 - **Clients gave up while a pause waited for the batch in hand** (server, found by the re-review of 2026-11-23, fixed
   the same day). After the fix below, `updateInbox` and `removeInbox` still awaited the sync engine's close, which
@@ -985,7 +1054,8 @@ Earlier:
 - **The Docker image carried build tools** (fixed 2026-11-17, fourth revision). `npm prune --omit=dev` in the
   build stage left esbuild's binary, TypeScript and drizzle-kit's helpers in `node_modules` (36 MB), because npm
   keeps what the linked sibling packages pull in. The image now installs only `dist/runtime.package.json` (libSQL,
-  written by the server's build) with the server's lockfile: 12 MB. Replayed outside Docker; the server's smoke
+  written by the server's build) with the server's lockfile: 12 MB then; since 2026-11-24 only `libsql`, the native
+  part, and its own dependencies (17 MB on arm64, two platform packages). Replayed outside Docker; the server's smoke
   test checks the runtime file.
 - **"What needs you" missed older notes** (dashboard, fixed 2026-11-17, fourth revision). Home looked for notes in
   the newest 50 applied records only. It now asks `handled` with `attentionOnly`.
@@ -1060,7 +1130,7 @@ and Snoozed; caught before any build was kept. Test the condition before the `sw
   every Droplet. Only IMAP inboxes' sending is affected; Gmail sends through Google's API.
 - **YAML 1.1 reads a bare `off` as false:** `render.yaml` quotes `autoDeployTrigger: "off"`.
 - **Compose with both `image:` and `build:`** tries the pull first and builds when it fails; it prints "error from
-  registry: denied" for an unpublished GHCR image and carries on.
+  registry: denied" for an unpublished or private GHCR image and carries on.
 - **Coolify's `SERVICE_URL_<NAME>_<PORT>` keeps the port in its value** (fixed in `compose.coolify.yaml`, review of
   2026-11-23). Taking the public address from it gave `https://…:8484`, so Google would get
   `…:8484/v1/google/callback` (`redirect_uri_mismatch`). `SERVICE_URL_<NAME>` is the same address without the port;
@@ -1077,11 +1147,89 @@ and Snoozed; caught before any build was kept. Test the condition before the `sw
   runs. On a folder of root's it used to say the same, which then failed (`EACCES` on `/data/usual-mail.db`); it now
   says to give the folder to 1000:1000 first (one start without `--cap-drop`, or `chown -R` on the host) (fixed
   2026-11-23, re-review). A `:ro` mount used to get the capabilities line too (`chmod` fails on a read-only
-  filesystem); it now gets its own, from `/proc/mounts`.
+  filesystem); it now gets its own, from `findmnt -T` on the folder or the nearest folder above it that exists. The
+  first fix read `/proc/mounts` for a mount at the folder itself and compared its escaped path (`\040` for a space),
+  so a read-only mount above the folder, a `--read-only` container with the folder on it and a `:ro` mount at a path
+  with a space still got the capabilities line, or for a missing folder `mkdir`'s (fixed 2026-11-24, final review;
+  each tried in Docker Desktop with the old and the new entry point).
 - **The entry point took any folder of root's whole** (fixed 2026-11-23, re-review): a mistaken `-v /srv:/data`
   would have re-owned another service's files to uid 1000. It now takes one only when it is empty but for
   `lost+found` or already holds `usual-mail.db` or `secret.key`, and otherwise stops with a line saying so (tried:
   an empty volume, one with `lost+found`, a restore, and one holding other files, left as root's).
+- **Docker kills a container ten seconds after `docker stop`** (its default), while the server's stop waits for each
+  inbox's batch in hand: a moment at rest (0.12 s for `docker stop`, 0.19 s for `docker compose stop`, 2026-11-24),
+  up to about two and a half minutes in a Gmail first sync on Node. The three Compose files set
+  `stop_grace_period: 3m` (final review, 2026-11-24), which Compose gives the container as its `StopTimeout` (180,
+  seen), so a plain `docker stop` waits as long; `docker run` needs `--stop-timeout 180`. Killed sooner, nothing
+  stored is lost: `ingest` writes the cursor last, so the next start fetches that batch again. Render gives 30 s and
+  can't give a service with a disk more; Railway gives 0 s unless `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` is set (from
+  their docs, 2026-11-24; [decisions-deploy.md](decisions-deploy.md)).
+- **Coolify's Stop and Restart ignore `stop_grace_period`** (Coolify v4.7.6 and `main`, read 2026-11-24): a Service's
+  stop is `docker stop --time=30` (10 with more than five containers), then `docker rm -f`
+  (`app/Actions/Service/StopService.php`); Restart runs the same first (`RestartService.php` → `StartService.php`,
+  unless it pulls the latest images). Only a deploy goes through `docker compose up`, which honours the file. Issue
+  #5620; PR #9746 (v4.1.0) added a stop grace setting for Applications only. Pressed during a first sync, Stop or
+  Restart can cut off the batch in hand, which is fetched again; `compose.coolify.yaml` and the guide say to redeploy
+  instead. Not tried on Coolify itself.
+- **The server's stop closed its inboxes one after another** (fixed 2026-11-24): an inbox whose close hadn't begun
+  went on starting batches while another's batch in hand was stored, so a stop took the sum of the batches and more
+  (in a unit test, the second inbox started four more batches; in the image, a second IMAP inbox fetched a whole
+  extra batch). `SyncEngine.stop` now marks every inbox closing at once and waits for the longest batch.
+- **The `usual-mail` command gave the server ten seconds to stop** (fixed 2026-11-24): Docker mode ran the container
+  without `--stop-timeout` and stopped it with a plain `docker stop`; Node mode sent SIGTERM, waited 10 s, then
+  SIGKILL; and remaking a running container with other settings ran `docker rm --force` on it. Now 180 s in both
+  modes, the container stopped before it is removed, and a line after two seconds says what it waits for.
+- **A Node-mode stop interrupted with Ctrl-C let a second server start on the same data folder** (found by the
+  re-review, fixed 2026-11-24): `stop` removed the pid file before SIGTERM and the wait, and the server closes its
+  port at SIGTERM, so after Ctrl-C `start` (or `init`) saw nothing running and a free port, and started another
+  server beside the one still storing its batch (reproduced with the real launcher and a stand-in server). The pid
+  file now stays, marked `stopping <pid of the stopping command>`, until the process has exited or been killed; such a
+  process counts as running, and starting finishes the stop first ([cli.md](cli.md), "Node mode";
+  `cli/test/node-stop.test.ts`).
+- **`docker stop --time` is deprecated** (Docker 29.9.3 prints "Flag --time has been deprecated, use --timeout
+  instead", seen 2026-11-24); `--timeout` is too new for older Docker. The command uses `-t 180`, which both take
+  (no warning, seen), and `FakeDocker` refuses any other form of `docker stop`.
+- **Docker mode said "Stopped." also when Docker had killed the server** (fixed 2026-11-24): `docker stop` exits 0
+  either way. The launcher reads the container's exit code afterwards (137 for a process that ignores SIGTERM, 0 for
+  one that exits, seen) and says so as Node mode does. **The exit code alone wasn't proof** (the final review, fixed
+  the same day): a container stopped while it restarts keeps the code of whatever ended it last, and an out-of-memory
+  kill ends 137 too (seen on Docker 29.9.3: a `docker stop -t 180` of a container in an out-of-memory restart loop took
+  0.30 s and left `137 true`), so a quick stop was reported as a three-minute kill. Now "killed" needs the stop to have
+  run past `waitForStop`'s deadline (by the clock, before Docker's) and `{{.State.ExitCode}} {{.State.OOMKilled}}` to
+  be `137 false` (`cli/test/stop.test.ts`).
+- **A `stop` and a `start` run at the same time could lose the new server's pid file** (Node mode; found by the final
+  review, which reproduced it in 3 of 8 runs; fixed 2026-11-24). Both waited on the same stopping server; when `start`
+  saw it exit first, it recorded the next server, and `stop` then deleted that file without looking: the new server
+  ran unrecorded, and `status` said "stopped". `start`'s line also said the stop was "interrupted" while it still ran
+  in another terminal. Now each change compares first (the mark is renamed into place right after the comparison; the
+  removal renames the file aside, deletes it only if it still names the stopped server, and otherwise links it back),
+  and the file names the stopping command, so `start` says "another `usual-mail` command is stopping it" while that
+  process lives ([cli.md](cli.md), "Node mode"; `node-stop.test.ts` holds the `stop` still with SIGSTOP, so the race
+  happens every time).
+- **A stale `stopping` record naming a reused pid made `start` signal another process** (Node mode; found by the final
+  review, fixed 2026-11-24). Only "alive" was checked, and EPERM counted as alive: a record naming another process of
+  the same user had `start` send it SIGTERM, and SIGKILL three minutes later; one naming pid 1 showed "running
+  (stopping)" and made `start` and `stop` fail with "kill EPERM" until the file was deleted by hand. Now the process
+  must be this user's (EPERM counts as not running) and run with this data folder's `--data-dir`, read from its command
+  line (`/proc` on Linux, `ps` elsewhere), before it is signalled, and again before SIGKILL; 0.1.0's records (the pid
+  alone) still work, as the server's command line hasn't changed.
+- **SIGTERM during start-up was ignored in the container** (server; found by the final review, fixed 2026-11-24). Node
+  runs as PID 1 there, which ignores a signal it has no handler for, and `main.ts` installed its handler only after
+  start-up: a `docker stop` then was ignored, the server went on to listen, and Docker killed it at the deadline (seen:
+  10.1 s with `--stop-timeout 10`, exit 137; 180 s with the Compose files). Now `src/node/stop-signal.ts`, imported
+  first, holds the handler from about 100 ms in; start-up acts on it between steps and exits 0, and a start whose stop
+  was asked for starts no sync ([server.md](server.md); `server/test/stop-at-start.test.ts`; seen in Docker: exit 0
+  without listening). The part before the handler is still open (above).
+- **A sync asked for once its inbox's close was done still ran during the stop** (since v0.1.0; found by the
+  re-review, fixed 2026-11-24): `#sync` didn't check that the engine was started, so "sync now", a watch or a sent
+  draft for an inbox whose close had finished, while the stop waited for another inbox, opened its provider again and
+  ran its rounds, which the stop waited for. `#sync` now returns when the engine isn't started ([server.md](server.md)).
+- **A test harness whose fake mailboxes run in its own process must never block it** (2026-11-24): a synchronous
+  `execFileSync("docker", ["stop", …])` froze the in-process IMAP servers, so the server's batches in hand waited
+  for data until ImapFlow's 120 s socket timeout and the stop looked like a 136 s hang. Run such commands with an
+  async `execFile` or `spawn`. The IMAP provider takes plain IMAP and SMTP only on loopback (elsewhere it wants
+  STARTTLS), so a container reaches test mailboxes on the host through a relay started with
+  `--network container:<name>`, at `127.0.0.1`.
 - **A shell in the container is root's** (`docker exec`, Coolify's terminal, Render's Shell, `railway ssh`): files it
   writes in `/data` stay root's until the next start gives them back to `node`. The guide says `exec -u node` or
   `su node -c` for anything that writes.
@@ -1102,8 +1250,10 @@ and Snoozed; caught before any build was kept. Test the condition before the `sw
   1.2.0 took `latest`. Fetch into a variable on a line of its own (`list="$(gh api …)"`), where `set -e` applies, or
   `shopt -s inherit_errexit`.
 - **Some npm packages ship no licence file** (2026-11-23): `@ai-sdk/provider-utils` and `drizzle-orm` (Apache-2.0),
-  `@libsql/client`, `@libsql/core`, `@libsql/isomorphic-ws` and libSQL's per-platform packages (MIT; their
-  repositories have one), and `promise-limit` (ISC; no licence file or copyright line anywhere).
+  and `@libsql/client`, `@libsql/core` and libSQL's per-platform packages (MIT; their repositories have one).
   `server/scripts/licenses.mjs` names each with what stands in and fails the build for any other package without one.
+  `@libsql/isomorphic-ws` (MIT, its repository's text) and `promise-limit` (ISC, with no licence file or copyright line
+  anywhere, so only the standard text) needed one too until 2026-11-24, when the server took only libSQL's local
+  client and the image stopped installing `@libsql/client` with its remote clients' packages (Fixed, below).
   `THIRD_PARTY_NOTICES.md` used to say every package's text was in its `node_modules/` folder, which wasn't true in the
   image (no `node_modules` for the bundle) nor for these.

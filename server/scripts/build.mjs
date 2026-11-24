@@ -1,7 +1,9 @@
 // Bundles the Node server into dist/server.mjs: the server, core, the mail providers, the dashboard and the
-// connector, with their dependencies. Only libSQL stays outside, since it has a native part: it is loaded from
-// node_modules next to dist/, with migrations/ beside it. It also writes dist/runtime.package.json, which names only
-// what the bundle loads at run time (libSQL, at the version package.json pins), so an image installs just that, and
+// connector, with their dependencies, libSQL's local client among them (src/node/db.ts). Only `libsql`, the native
+// part, stays outside: it is loaded from node_modules next to dist/, with migrations/ beside it. It also writes
+// dist/runtime.package.json, which names only what the bundle loads at run time (`libsql`, at the version the
+// server's lockfile holds), so an image installs just that and its own dependencies, not the packages of libSQL's
+// clients for remote databases (`@libsql/client` depends on them whichever entry is used), and
 // dist/THIRD_PARTY_LICENSES.txt, the licence texts of every package the bundle holds (scripts/licenses.mjs); the
 // build fails when a bundled package has no licence file.
 //
@@ -16,8 +18,8 @@ import { thirdPartyLicences } from "./licenses.mjs";
 const serverDir = fileURLToPath(new URL("../", import.meta.url));
 const outdir = resolve(serverDir, process.argv[2] ?? "dist");
 
-/** Packages the bundle leaves outside: libSQL and its native part. */
-const external = ["@libsql/client", "libsql"];
+/** The package the bundle leaves outside: libSQL's native part. */
+const external = ["libsql"];
 
 const result = await build({
   absWorkingDir: serverDir,
@@ -34,10 +36,14 @@ const result = await build({
   logLevel: "info",
 });
 
-// The bundle's own run-time dependencies: the externals this package depends on directly, at its exact versions.
-// `libsql` comes with `@libsql/client`, so it needs no line of its own.
-const pkg = JSON.parse(readFileSync(join(serverDir, "package.json"), "utf8"));
-const dependencies = Object.fromEntries(external.filter((name) => pkg.dependencies?.[name]).map((name) => [name, pkg.dependencies[name]]));
+// The bundle's own run-time dependencies: each external at the version the server's lockfile holds (`libsql` comes
+// with `@libsql/client`, which package.json pins).
+const lock = JSON.parse(readFileSync(join(serverDir, "package-lock.json"), "utf8"));
+const dependencies = Object.fromEntries(external.map((name) => {
+  const version = lock.packages?.[`node_modules/${name}`]?.version;
+  if (!version) throw new Error(`The server's lockfile holds no ${name}`);
+  return [name, version];
+}));
 mkdirSync(outdir, { recursive: true });
 writeFileSync(
   join(outdir, "runtime.package.json"),

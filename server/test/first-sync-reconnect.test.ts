@@ -1,7 +1,8 @@
 // New credentials while an inbox's first sync runs (docs/contract-sync.md, "A paused inbox"): the change answers at
 // once, while the batch in hand is still being fetched; the sync stops once that batch is stored, the old provider is
 // closed, and the inbox is opened again with the new credentials, its first sync going on from the stored cursor with
-// the count never back to 0. A sync queued before the change never starts with the old provider.
+// the count never back to 0. A sync queued before the change never starts with the old provider, and the old
+// provider's batch in hand failing leaves the inbox `connecting`, not needing attention.
 
 import assert from "node:assert/strict";
 import { afterEach, test } from "node:test";
@@ -80,4 +81,32 @@ test("a sync queued before new credentials doesn't start with the old provider",
   assert.equal(opened.length, 2);
   assert.equal((await onlyInbox(s)).done, 1);
   assert.deepEqual(s.errors, []);
+});
+
+test("the old provider's batch in hand failing after new credentials leaves the inbox connecting, not needing attention", async () => {
+  t = await makeServer({ limits: { syncBatch: 2 } });
+  const s = t;
+  let statusWhenReopened: string | undefined;
+  slow(s, async (call) => {
+    s.clock.advance(2_500);
+    if (call === 3) statusWhenReopened = (await s.server.listInboxes(s.person))[0]!.status;
+    if (call !== 2) return;
+    await s.server.updateInbox(s.person, (await onlyInbox(s)).id, { credentials: { mailbox: ADDRESS } });
+    // The old credentials stopped working (the reason for new ones): the batch in hand fails.
+    throw new Error("Token has been expired or revoked.");
+  });
+  const opened = syncedProviders(s);
+  const heard = listen(s);
+  await connectNow(s, ADDRESS, 20);
+  await s.server.whenIdle();
+  heard.stop();
+  const [old, fresh] = opened;
+  assert.deepEqual(old!.cursors, [null, "F2"]);
+  assert.equal(fresh!.cursors[0], "F2", "the new provider goes on from the last stored batch");
+  assert.equal(statusWhenReopened, "connecting", "the change's status stands while the new provider syncs");
+  assert.ok(!said(heard.events).some(([, status]) => status === "needs_attention"), "nothing said it needs attention");
+  assert.deepEqual(said(heard.events).at(-1)!.slice(1), ["ok", null]);
+  assert.equal((await onlyInbox(s)).done, 1);
+  assert.deepEqual(s.errors, [], "the old batch's failure isn't an error of the inbox");
+  assert.ok(s.infos.some((line) => line.includes("stopped as it was closed: Token has been expired or revoked.")), "only noted");
 });

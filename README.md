@@ -2,7 +2,7 @@
 
 One app for all your inboxes, each sorted the way that inbox needs, on a server you run yourself.
 
-**Status: early and not usable yet.** The first build is in progress. Nothing here is released.
+**Status: early.** 0.1.0 is the first release; much of it hasn't been tried outside this project's own tests.
 
 ## Deploy your own
 
@@ -50,27 +50,35 @@ On a VPS with Docker and a domain whose DNS points at it, [`compose.caddy.yaml`]
 behind Caddy, which gets the HTTPS certificate:
 
 ```
-git clone https://github.com/usual-labs/usual-mail.git && cd usual-mail
-docker build -t ghcr.io/usual-labs/usual-mail:latest .   # until the first release publishes the image
+mkdir usual-mail && cd usual-mail
+curl -fsSLo compose.yaml https://raw.githubusercontent.com/usual-labs/usual-mail/main/compose.caddy.yaml
 printf 'USUAL_MAIL_DOMAIN=mail.example.org\nUSUAL_MAIL_OWNER_EMAIL=you@example.org\n' > .env && chmod 600 .env
-docker compose -f compose.caddy.yaml up -d
+docker compose up -d
 ```
 
 Then open `https://mail.example.org` and set the server's password (with `USUAL_MAIL_OWNER_EMAIL`, after signing in
 with Google as that address, which needs your Google client in `.env` too; leave the line out to claim it with a
-password alone, at once). The owner's code still works: `docker compose -f compose.caddy.yaml exec usual-mail cat
-/data/owner-pairing-code`.
+password alone, at once).
 
-**The image isn't published yet.** `ghcr.io/usual-labs/usual-mail` comes with the first release; until then, build it
-on the machine that runs it, as above. Once it is published, the file alone is enough, without a copy of the
-repository. DNS, the firewall, pairing, backups and updates:
+The owner's code works too, until the server is claimed. Give the server a few seconds to start (it writes the code
+once it has), then read it:
+
+```
+docker compose exec usual-mail cat /data/owner-pairing-code
+```
+
+If `cat` says there is no such file yet, wait a moment and run it again. On the first start the code is also in
+`docker compose logs usual-mail`, printed once.
+
+The file pulls the published image, `ghcr.io/usual-labs/usual-mail:latest` (amd64 and arm64), and stands alone: the
+server needs no copy of the repository. DNS, the firewall, pairing, backups and updates:
 [docs/deploy.md, Docker on a server of your own](docs/deploy.md#docker-on-a-server-of-your-own).
 
 ### Coolify
 
 Paste [`compose.coolify.yaml`](compose.coolify.yaml) into a new Docker Compose resource, set an HTTPS domain and,
 strongly suggested, `USUAL_MAIL_OWNER_EMAIL` before the first deploy, then open the domain and set the password.
-The file pulls the published image, so it works from the first release on:
+The file pulls the published image:
 [docs/deploy.md, Coolify](docs/deploy.md#coolify).
 
 ### On your own computer

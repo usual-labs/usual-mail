@@ -1,6 +1,6 @@
 # Contributing to Usual Mail
 
-Usual Mail is early: the first build is in progress and nothing is released. Its contributor agreement
+Usual Mail is early (0.1.0 is its first release). Its contributor agreement
 ([CLA.md](CLA.md)) is still a **draft without a legal review**, so pull requests can't be merged until it is final.
 Issues and discussion are welcome now.
 

@@ -6,11 +6,13 @@ import { CONTAINER_PORT, DEFAULT_CONTAINER, DEFAULT_IMAGE, type RunSettings } fr
 import { note, type Context } from "../context.ts";
 import { Failure } from "../errors.ts";
 import type { RunResult } from "../runner.ts";
-import { findCheckout, type Launcher, type RunState } from "./launcher.ts";
+import { findCheckout, KILLED_WORDS, STOP_SECONDS, waitForStop, type Launcher, type RunState } from "./launcher.ts";
 
 /** A label on the container holding a hash of its settings, so `init` knows when to make it again. */
 export const SETTINGS_LABEL = "dev.usual.mail.settings";
 const PROBE_MS = 10_000;
+/** A container's exit code when its process was killed: 128 + SIGKILL's 9. */
+const KILLED_EXIT = 137;
 
 export function dockerLauncher(ctx: Context, run: RunSettings): Launcher {
   const docker = ctx.env.USUAL_MAIL_DOCKER || "docker";
@@ -19,10 +21,10 @@ export function dockerLauncher(ctx: Context, run: RunSettings): Launcher {
   const user = ctx.userIds();
   // The address the browser reaches the server at, for Google sign-in: the port is published on 127.0.0.1 only, and
   // inside the container the server listens on every address, so it can't know it. In the hash, so a container made
-  // before this is made again (its data stays).
+  // before this is made again (its data stays). So is the time it gets to stop (`--stop-timeout`).
   const publicUrl = `http://127.0.0.1:${run.port}`;
   const settings = createHash("sha256")
-    .update(JSON.stringify({ image, port: run.port, dataDir: run.dataDir, user, publicUrl }))
+    .update(JSON.stringify({ image, port: run.port, dataDir: run.dataDir, user, publicUrl, stopSeconds: STOP_SECONDS }))
     .digest("hex")
     .slice(0, 16);
 
@@ -60,6 +62,9 @@ export function dockerLauncher(ctx: Context, run: RunSettings): Launcher {
       name,
       "--restart",
       "unless-stopped",
+      // As the Compose files give it: a plain `docker stop`, and Docker's own at shutdown, wait as long.
+      "--stop-timeout",
+      String(STOP_SECONDS),
       "--publish",
       `127.0.0.1:${run.port}:${CONTAINER_PORT}`,
       "--volume",
@@ -73,6 +78,27 @@ export function dockerLauncher(ctx: Context, run: RunSettings): Launcher {
     ];
     const result = await call(args, 120_000);
     if (result.code !== 0) throw new Failure(failed("docker run", result));
+  }
+
+  /**
+   * Stops the running container, giving the server as long as the Compose files do to store the mail in hand, and
+   * says when Docker had to kill it. `-t`, not `--time` (deprecated in Docker 29, which warns) nor `--timeout` (too
+   * new for older Docker).
+   */
+  async function stopRunning(): Promise<void> {
+    let result: RunResult | undefined;
+    const stopping = call(["stop", "-t", String(STOP_SECONDS), name], (STOP_SECONDS + 60) * 1000).then((r) => (result = r));
+    const inTime = await waitForStop(ctx, () => result !== undefined);
+    const stopped = await stopping;
+    if (stopped.code !== 0) throw new Failure(failed("docker stop", stopped));
+    // `docker stop` succeeds whether the server stopped by itself or Docker killed it at its deadline, so the
+    // container says which. Its exit code alone isn't enough: a container stopped while it restarts keeps the code of
+    // whatever ended it last, such as an out-of-memory kill (137 too). Killed by this stop only when the stop ran past
+    // `waitForStop`'s deadline (Docker's comes after it, counted from its SIGTERM) and the container ended with
+    // SIGKILL's code without Docker's out-of-memory flag.
+    if (inTime) return;
+    const exit = await call(["container", "inspect", "--format", "{{.State.ExitCode}} {{.State.OOMKilled}}", name]);
+    if (exit.code === 0 && exit.stdout.trim() === `${KILLED_EXIT} false`) note(ctx, KILLED_WORDS);
   }
 
   return {
@@ -109,7 +135,9 @@ export function dockerLauncher(ctx: Context, run: RunSettings): Launcher {
         );
       }
       if (now.state !== "missing" && now.settings !== settings) {
-        // Made by an earlier `init` with other settings (or by hand): make it again. The data stays on disk.
+        // Made by an earlier `init` with other settings (or by hand): make it again. The data stays on disk. Stopped
+        // first, since `rm --force` kills a running server at once.
+        if (now.state === "running") await stopRunning();
         const removed = await call(["rm", "--force", name], 60_000);
         if (removed.code !== 0) throw new Failure(failed("docker rm", removed));
         await create();
@@ -129,8 +157,7 @@ export function dockerLauncher(ctx: Context, run: RunSettings): Launcher {
       const now = await inspect();
       if (now.state === "unknown") throw new Failure(now.detail ?? "Docker isn't answering.");
       if (now.state !== "running") return false;
-      const stopped = await call(["stop", name], 60_000);
-      if (stopped.code !== 0) throw new Failure(failed("docker stop", stopped));
+      await stopRunning();
       return true;
     },
 

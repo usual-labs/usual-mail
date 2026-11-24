@@ -28,6 +28,7 @@ export const noRunner: Runner = {
   },
   isAlive: () => false,
   signal: () => {},
+  commandLine: async () => null,
 };
 
 export interface Options {

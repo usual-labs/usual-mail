@@ -249,11 +249,11 @@ if (!failure) {
 // run-time dependencies, nothing a build needs.
 if (!failure && !process.env.USUAL_MAIL_BUNDLE) {
   const runtime = JSON.parse(await readFile(new URL("../dist/runtime.package.json", import.meta.url), "utf8"));
-  const pkg = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const lock = JSON.parse(await readFile(new URL("../package-lock.json", import.meta.url), "utf8"));
   const names = Object.keys(runtime.dependencies ?? {});
-  const wrong = names.filter((name) => runtime.dependencies[name] !== pkg.dependencies?.[name]);
-  if (names.join() !== "@libsql/client" || wrong.length) {
-    failure = new Error(`dist/runtime.package.json should name only @libsql/client at the server's version, not ${JSON.stringify(runtime.dependencies)}`);
+  const wrong = names.filter((name) => runtime.dependencies[name] !== lock.packages?.[`node_modules/${name}`]?.version);
+  if (names.join() !== "libsql" || wrong.length) {
+    failure = new Error(`dist/runtime.package.json should name only libsql at the lockfile's version, not ${JSON.stringify(runtime.dependencies)}`);
   }
 }
 if (failure) {

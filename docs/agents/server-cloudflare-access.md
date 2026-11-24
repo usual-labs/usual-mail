@@ -1,6 +1,9 @@
 # Server on Cloudflare: access, address and settings (build step 6)
 
-**Built 2026-11-21, local workerd only; nothing deployed, nothing reached Google or Cloudflare's API.** Step 6 of
+**Built 2026-11-21 and tested in local workerd; deployed once to a real account on 2026-11-23** (its first deploy,
+[server-cloudflare.md](server-cloudflare.md), "Seen on the first deploy": the address from each request's own host,
+the token check and the refusal of plain HTTP answered as built), **with no request to Google from there yet**, so
+"Not verified" below still stands. Step 6 of
 [server-cloudflare.md](server-cloudflare.md)'s build plan: the front Worker's remaining work, the server's public address,
 the Google client seam, the owner's code's last pieces, the per-address pairing count, the Worker's variables and the
 time zone. The decisions are in [decisions-cloudflare.md](decisions-cloudflare.md) ("the Cloudflare host's address, pairing

@@ -1,7 +1,7 @@
 # Server on Cloudflare
 
-**All seven steps of the build plan are built (2026-11-21); step 7 is the docs, with a Deploy button that can't work
-until the repository is public under a licence.** Step 3's
+**All seven steps of the build plan are built (2026-11-21); step 7 is the docs, with a Deploy button not tried yet
+(the repository is public since 2026-11-24).** Step 3's
 `mail/` changes landed in `mail/` ([mail.md](mail.md)); steps 4 and 5, the host's limits, start-up, pictures and site
 icons, are in [server-cloudflare-limits.md](server-cloudflare-limits.md); step 6, the front Worker, the address, the
 Google client, the owner's code, the per-address count, the variables and the time zone, in

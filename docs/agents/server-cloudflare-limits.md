@@ -1,6 +1,8 @@
 # Server on Cloudflare: limits, start-up, pictures and site icons (build steps 4 and 5)
 
-**Built 2026-11-21, local workerd only; nothing deployed, nothing reached Cloudflare's API.** Steps 4 and 5 of
+**Built 2026-11-21 and tested in local workerd; deployed once to a real account on 2026-11-23** (its first deploy,
+[server-cloudflare.md](server-cloudflare.md), "Seen on the first deploy"), **with no sync run there yet**, so "Not
+verified" below still stands. Steps 4 and 5 of
 [server-cloudflare.md](server-cloudflare.md)'s build plan. A session started them and was stopped by a usage limit at
 15:29 that day, mid-change and without a report; the tree it left became the first local commit. A later session the same day
 checked that tree, fixed its four failing workerd tests (all four were test faults, below), added the picture,

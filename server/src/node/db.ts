@@ -1,7 +1,9 @@
-// The store on Node: a libSQL file (or memory), migrated on open.
+// The store on Node: a libSQL file (or memory), migrated on open. Only libSQL's local client: its main entry also
+// loads the clients for remote databases (HTTP and WebSocket), which the server never opens, and the bundle and the
+// image would carry them and their packages (scripts/build.mjs).
 
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
+import { createClient } from "@libsql/client/sqlite3";
+import { drizzle } from "drizzle-orm/libsql/sqlite3";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";

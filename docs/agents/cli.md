@@ -12,7 +12,7 @@ from Docker's DMG (not Homebrew), and its daemon never answered on macOS 27 (`do
 On 2026-11-23 it was replaced with **Docker Desktop 4.100.1** (Engine 29.9.3, Compose v5.7.1, buildx 0.38.1) from
 Docker's notarized DMG: quit, old app moved to the Trash, new app copied in. No password, licence or helper prompt
 came up, and the owner's other images and volumes were kept. To update it again, the same way or from its own
-updater. The image, `compose.yaml`, `init --mode docker` and the files for other hosts were then run (see Checks);
+updater. The image, `compose.yaml`, `init --mode docker` and the files for other hosts were then run ([cli-checks.md](cli-checks.md));
 those files are described in [deploy notes](decisions-deploy.md) and [the public guide](../deploy.md).
 
 ## Run and check
@@ -200,20 +200,82 @@ server where it runs.
 
 ### Docker mode
 
-`docker run --detach --name usual-mail --restart unless-stopped --publish 127.0.0.1:<port>:8484 --volume
-<data-dir>:/data --label dev.usual.mail.settings=<hash> --user <uid>:<gid> usual-mail`. The data directory is a
-folder on this machine, so the command can read the owner's code and `doctor` can check its permissions; the
-container runs as this machine's user so the files stay the person's own. The label holds a hash of the image,
-port, data directory and user, so a changed setting makes the container again (the data stays on disk). A
-container with that name but without the label is refused, never removed. `start`, `stop` and `logs` are `docker
-start`, `docker stop` and `docker logs`; a stopped container stays stopped after Docker restarts. The first sync's
-days are in the mounted data directory (`settings.json`), so they aren't part of the hash: `sync-days` stops and
-starts the container, which reads them at its start, without making it again.
+`docker run --detach --name usual-mail --restart unless-stopped --stop-timeout 180 --publish
+127.0.0.1:<port>:8484 --volume <data-dir>:/data --env USUAL_MAIL_PUBLIC_URL=http://127.0.0.1:<port> --label
+dev.usual.mail.settings=<hash> --user <uid>:<gid> usual-mail`. The data directory is a folder on this machine, so the
+command can read the owner's code and `doctor` can check its permissions; the container runs as this machine's user
+so the files stay the person's own. The label holds a hash of the image, port, data directory, user, public address
+and time to stop. The launcher's `start` compares it, so whichever command starts the container makes it again when
+the hash differs (a changed setting, or a container an older `usual-mail` made: the time to stop joined the hash
+on 2026-11-24, so every container made before is made again once); the data stays on disk. `init` does that to a
+running container too, stopped first as `stop` does, since `docker rm --force` kills it; `sync-days` stops a running
+one and starts it, so it is made again then; `start` makes again only a stopped one (a running one "runs already").
+A container with that name but without the label is refused, never removed. `start` and `logs` are `docker start` and
+`docker logs`; `stop` is `docker stop -t 180` (as long as the Compose files give the server, whose stop stores the
+mail in hand; `-t` because Docker 29 warns that `--time` is deprecated and older Docker lacks `--timeout`), and says
+after two seconds that it is waiting for that. `docker stop` succeeds whether the server stopped by itself or Docker
+killed it at the 180 seconds, so the launcher asks the container (`{{.State.ExitCode}} {{.State.OOMKilled}}`) and
+says it was killed, as Node mode does (`KILLED_WORDS`), only when the stop ran past `waitForStop`'s deadline and the
+answer is `137 false`. The exit code alone isn't proof (since 2026-11-24): a container stopped while it restarts keeps
+the code of whatever ended it last, and an out-of-memory kill also ends 137 (seen: a `docker stop` of a container in an
+out-of-memory restart loop took 0.30 s and left `137 true`). `waitForStop` is timed by the clock, so its deadline
+comes before Docker's, which counts from its own SIGTERM. A stopped container stays stopped after Docker restarts. The first
+sync's days are in the mounted data directory (`settings.json`), so they aren't part of the hash: `sync-days` stops
+and starts the container, which reads them at its start, made again only when the hash differs as above.
 
 ### Node mode
 
 `node <server-file> --data-dir <dir> --port <port> --host 127.0.0.1`, started in the background with its output
-appended to the log. `stop` sends SIGTERM, waits up to 10 seconds, then SIGKILL.
+appended to the log. `stop` sends SIGTERM and waits up to 180 seconds by the clock for the process to exit (as the
+Compose files do; 10 before 2026-11-24, which could cut off a first sync's batch), saying after two seconds that it is
+waiting for the server to store the mail in hand; then SIGKILL, with a line saying so (`waitForStop` in
+`src/launch/launcher.ts`).
+
+**The pid file** (`src/launch/pid-file.ts`) holds the server's process id; once a command has sent it SIGTERM, a
+second line, `stopping <pid>`, names that command's own process. 0.1.0 wrote the first line only, which still reads
+as a running server (checked: a server 0.1.0's `start` started is seen running and stopped by this one). It stays
+until the process has exited or been killed (since 2026-11-24; before, `stop` removed it first), so a stop
+interrupted with Ctrl-C leaves a live process on record: the server has already closed its port, so without the
+file `start` and `init` saw nothing running and a free port and started a second server on the same data folder.
+Such a server is "running" with the detail `stopping` (`STOPPING`; `status` shows "running (stopping)", `doctor`
+"runs with Node (stopping)"), everything that checks for a running server counts it, and the launcher's `start`
+(used by `start`, `init` and `sync-days`) first finishes the stop: it says so, marks the file with its own process,
+sends SIGTERM again (the server ignores a second one), waits the same 180 seconds, kills it after that, and only then
+starts the server. A `stop` run again does the same. The `start` command skips its "runs already" answer for a
+stopping server. `start`'s line says "after an interrupted `usual-mail stop`" only when the process the file names as
+stopping is gone; while it is alive (a `stop` still waiting in another terminal) it says "another `usual-mail`
+command is stopping it".
+
+**Commands at the same time keep each other's record, but for small windows** (since 2026-11-24). A `stop` and a `start` waiting on the
+same server both see it exit; if `start` saw it first and recorded the next server, `stop` used to delete that record
+(the review reproduced it in 3 of 8 runs; `node-stop.test.ts` now holds the `stop` still with SIGSTOP and saw it every
+time). Now every change is made only while the file still names the server that command acted on: the mark and the
+final removal both compare first. POSIX has no compare-and-swap for files, so the mark is written whole under the
+command's own name and renamed into place straight after the comparison, and the removal renames the file aside
+(atomic: one whole version that nobody else can change), deletes it only if it names that server, and otherwise links
+it back unless a newer record is there by then; on a filesystem without hard links the link fails, and it is renamed
+back once no file is there (since 2026-11-24, `pid-file.test.ts`; before, the record set aside was deleted). `start`
+writes its new record by renaming too, so a reader never sees half a file. A `start` that finished a stop leaves alone
+a server another command started meanwhile, but two `start`s that both find nothing running at the same moment can
+still both start one (as in 0.1.0; the `start` command's port check usually refuses the second). Windows are left:
+the mark reads, then renames, so a record written between the two is overwritten (as is one written between the
+fallback's check and its rename), and a command killed in the middle of a change can leave its temporary file or
+lose the record ([known-issues.md](known-issues.md), Open, "Node mode's pid file"; a lock file opened with `O_EXCL`
+would close them).
+
+**Only this data folder's server is ever signalled** (since 2026-11-24). The process the file names must be alive,
+this user's to signal (`Runner.isAlive` counts EPERM, another user's process, as not running) and run with
+`--data-dir <dataDir>` as the launcher starts it (`Runner.commandLine`: `/proc/<pid>/cmdline` on Linux, `ps -ww -o
+command=` elsewhere; a command line that can't be read counts as not the server). The match is on that text anywhere
+in the command line, not on the exact arguments. This command's own process never counts (since 2026-11-24,
+`pid-file.test.ts`): its id may be one a server had, and its own command line may hold the same `--data-dir`.
+Otherwise it isn't the server: the id may have been reused after the server ended unseen. Then `status` says "stopped", `stop` says "It wasn't running."
+and removes that record (if it is still the same), and `start` starts the server. Before, a stale `stopping` record
+naming another process of the same user made `start` send it SIGTERM (and SIGKILL after three minutes), and one naming
+pid 1 made `status` say "running (stopping)" and `start` and `stop` fail with "kill EPERM" until the file was deleted
+by hand. The check is repeated before SIGKILL. Two servers on one data folder would both match, which is what the
+check is for. A server running as another user (started with `sudo`) counts as not running, and the record goes after
+SIGKILL even if the process is still there; both are in [known-issues.md](known-issues.md).
 
 ## `inbox reconnect`
 
@@ -249,18 +311,19 @@ appended to the log. `stop` sends SIGTERM, waits up to 10 seconds, then SIGKILL.
   more). The build stage copies the context, runs `npm ci --omit=dev` in every package the server names as
   `file:../<folder>` (today `core`, `dashboard`, `mail` and `mcp`, so the bundler finds each one's dependencies),
   then `npm ci` and `npm run build` in `server/`. A second step installs only the bundle's run-time dependencies
-  in `/runtime`: `server/dist/runtime.package.json` (written by the build: `@libsql/client` at the server's pinned
+  in `/runtime`: `server/dist/runtime.package.json` (written by the build: `libsql`, libSQL's native part, at the version the server's lockfile holds; the bundle holds libSQL's local client since 2026-11-24; before, `@libsql/client` at the server's pinned
   version) with the server's `package-lock.json`, `npm install --omit=dev`, so libSQL comes at the lockfile's
   versions and nothing else does. (Pruning the build's `node_modules` instead, as before, left esbuild's binary,
   TypeScript and drizzle-kit's helpers in it: npm keeps what the linked sibling packages pull in.) The image holds
-  that `package.json` and `node_modules` (12 MB, libSQL only; the rest is bundled), `dist/server.mjs` and
+  that `package.json` and `node_modules` (`libsql` and its own dependencies, 17 MB on arm64 since 2026-11-24; the rest is bundled), `dist/server.mjs` and
   `migrations/`. It keeps data in the volume `/data` (owned by `node`, 0700), listens on 8484 on all of the
-  container's addresses, and checks `GET /healthz` with Node's `fetch` every 30 seconds. The bundle is 7.5 MB and
-  the image 392 MB unpacked; it builds in about 10 seconds here (30 for amd64 under emulation).
+  container's addresses, and checks `GET /healthz` with Node's `fetch` every 30 seconds. The bundle is 7.6 MB and
+  the image 387 MB unpacked on arm64 (2026-11-24); it builds in about 10 seconds here (30 for amd64 under emulation).
 - **The entry point, `docker-entrypoint.sh`** (since 2026-11-23; installed as `/usr/local/bin/usual-mail-entrypoint`):
   the image has no `USER`, so it starts as root. The folder's owner decides: root's becomes `node`'s; in `node`'s
   folder, anything not `node`'s becomes `node`'s (`find … -exec chown`) and the folder is made 0700; anyone else's
-  is left alone with a line naming `--user <uid:gid>`. Then a trial `setpriv … true`, `HOME=/home/node`, and the
+  is left alone with a line naming `--user <uid:gid>`. Before all that, a folder on a read-only mount (its own, one
+  above it, or the container's, found with `findmnt -T`) stops it with its own line. Then a trial `setpriv … true`, `HOME=/home/node`, and the
   command as `node` with `setpriv` (util-linux, in the base image). When a step fails for lack of capabilities
   (`--cap-drop ALL`), it prints one line pointing to `--user 1000:1000` and exits 1. Started as another user
   (`--user`, as `init` does), it changes nothing and runs the command as that user. Why: hosts such as Railway mount
@@ -273,8 +336,8 @@ appended to the log. `stop` sends SIGTERM, waits up to 10 seconds, then SIGKILL.
   in their generated sources (`src/generated/assets.ts`, `src/ui/design.generated.ts`), which are checked in.
   `apps/`, `cli/` and `docs/` stay out too.
 - **`compose.yaml`:** one service, `image: ghcr.io/usual-labs/usual-mail:latest` with `build: .` (since 2026-11-23:
-  Compose pulls the image, and when the pull fails, as now with nothing published, builds it from the checkout;
-  `--build` always builds), a named volume at `/data`, the port published on 127.0.0.1 only, `restart: unless-stopped`, and comments on the owner's code (in the volume whenever no person's
+  Compose pulls the image, and builds it from the checkout when the pull fails;
+  `--build` always builds), a named volume at `/data`, the port published on 127.0.0.1 only, `restart: unless-stopped`, `stop_grace_period: 3m` (the server's stop waits for the mail in hand; [decisions-deploy.md](decisions-deploy.md)), and comments on the owner's code (in the volume whenever no person's
   device is paired) and on reaching it from other devices: a private network such as Tailscale or WireGuard, or a
   reverse proxy with HTTPS, never the bare port on every network. Its volume comment says the database holds the
   mailbox passwords and the AI key sealed, and the volume the key that seals them.
@@ -297,7 +360,7 @@ appended to the log. `stop` sends SIGTERM, waits up to 10 seconds, then SIGKILL.
   `init` needs to make the container again is in its settings. `compose.yaml` is for people who prefer Compose.
 - **A bind-mounted data folder in Docker mode,** run as the host user, so the owner's code file is readable from
   the host and the files are the person's own. `compose.yaml` uses a named volume instead, which is simpler there.
-- **`init` builds a missing image only from a checkout,** since no image is published. Node mode never builds the
+- **`init` builds a missing image only from a checkout:** it doesn't pull the published image yet. Node mode never builds the
   server, because that would write into `server/`; it says how instead.
 - **Hats:** the twelve light fills are copied into `src/hats.ts` and a test compares them with
   `design/tokens.json`. `inbox add` stores the hat's light fill as `Inbox.color` (design/specs/hat.md) and
@@ -331,119 +394,17 @@ appended to the log. `stop` sends SIGTERM, waits up to 10 seconds, then SIGKILL.
   contract's sign-in, pairing limit and `Retry-After`, `GET /v1/me`, inbox versions, credentials checked before
   they are kept, the owner's code (written whenever no person's device is paired, again on expiry, removed once
   used), statuses and error bodies, so they don't depend on the server compiling. Docker and the server process
-  are fakes (`test/fakes.ts`) that start the stand-in. Tests use a scratch home directory under the system's
-  temporary folder, a virtual clock for waits, and never the real `~/.config`.
+  are fakes (`test/fakes.ts`) that start the stand-in. One test file uses real processes instead:
+  `test/node-stop.test.ts` runs the command from source with a stand-in server script, for what only real signals,
+  command lines and pid files show (an interrupted stop, a stop still running elsewhere, records naming another
+  program or pid 1, 0.1.0's record). `test/pid-file.test.ts` covers the pid file's removal when another command
+  wrote a newer record (with a hard link, and by a rename where links fail) and this command's own process never
+  counting as the server, with `node:fs` replaced through `syncBuiltinESMExports`. Tests use a scratch home directory under the system's temporary folder, a virtual clock for
+  waits (but for that file), and never the real `~/.config`.
 
-## Checks (2026-11-17, this Mac: Node 22.23.2, npm 10.9.8)
+## Checks
 
-- **First-sync progress (2026-11-23):** `npm run check`: type check clean; 169 tests in 19 suites pass. Changed:
-  `inbox list` with an inbox fetching "fetching your mail · 1,200 of 3,400" and one that needs attention with a count
-  (its reason shown, not the count) in `commands.test.ts`, and `doctor`'s line for an inbox in its first sync in
-  `init.test.ts` (both failed first). The bundle wasn't rebuilt.
-- **`google prompt` and the shared reading of the client file (2026-11-21):** `npm run check`: type check clean; 168
-  tests in 19 suites pass (165 before). New in `test/google.test.ts`: `google prompt` prints exactly core's prompt for
-  the server's address with two blanks left and the note on standard error, `--json`; no address (exit 1, the server's
-  words, nothing on standard output) and an older server (`not_found`); `google set` refusing a client id of spaces as
-  the server does. The stand-in serves `googleSetup` with core's `googleSetup`. `node src/cli.ts google prompt` ran
-  against the built server on a scratch directory (server-checks.md). `cli/dist` not rebuilt. After the review the
-  same day: 169 (`writeOwnerOnly` refuses a link at its temporary name and leaves it, and `google set` onto a
-  directory fails in words with no temporary file left; seen failing with the old write).
-
-- **After the owner's first run against Gmail (2026-11-17):** `npm run check`: type check clean; 167 tests in 19
-  suites pass (160 in 18 before). New, each failing first: `test/sync-days.test.ts` (6: `init` keeps the days in the
-  data directory and a later plain `start` honours them in Node mode; the question and its default from the variable;
-  `sync-days` shows, changes, restarts, says what happens to inboxes, warns about the variable; `--data-dir` and other
-  fields kept; Docker restarts the container without making it again; `doctor` warns when the server's days differ);
-  the redirect hint in `google`, `google set` and `doctor` (`test/google.test.ts`); the fourth `init` question. The
-  stand-in reads `settings.json` when it starts. `npm run build` wrote the bundle. Joined against the built server:
-  see [server.md](server.md) ("Checks").
-
-- **Sign in with Google, then the removal of the per-inbox AI switch, then the disclosure route (2026-11-17):** `npm
-  run check`: type check clean; 160 tests in 18 suites pass (the route's test: what `ai set` prints is the stand-in's
-  answer for each service, word for word; 159 before it) (168 after Sign in with Google; the switch's own tests went with it). New
-  `test/google.test.ts` (9): `google set --file` copies the downloaded file as it is, mode 0600, the secret printed
-  nowhere; asked unseen or `--secret-stdin`, never from the command line; a Desktop app client, a file that isn't one
-  and an unknown data directory refused with nothing written; `google` in each state; `inbox add` signing in (the
-  browser opened with Google's address, the outcome waited for, `--trust` set after, nothing pasted), `--no-browser`
-  and a declined sign-in (exit 1, the server's words); pasting still works; `inbox reconnect` in place, another
-  account refused, asking first in a terminal; `doctor`'s `google` check (warn with steps, fail for a file others can
-  read, ok). `init --mode docker` passes `USUAL_MAIL_PUBLIC_URL` (the init test failed first). Rewritten for the
-  switch's removal: `ai set` shows the words and asks before reading the key (`--yes`), a "no" changes nothing,
-  another service shows its words again and no longer turns anything off; `inbox ai`, `inbox add --ai/--no-ai`, the
-  AI column and doctor's "off for every inbox" are gone. `npm run build` wrote the bundle. The stand-in serves
-  `startGoogleSignIn` and `googleSignIn` and has no `aiProcessing`.
-- **Joined:** the built command against the built server with `--dev-fake-google` (the live run in the
-  [overview](01-overview.md)): `init --server`, `doctor`'s `google` warning, `google set --file` (the file copied
-  byte for byte, 0600, sign-in available at once), `inbox add --provider gmail --no-browser` (connected, synced),
-  `inbox reconnect --no-browser` after Google refused the token (reconnected in place). That run predates the switch's
-  removal; the command's AI part was checked against the stand-in only after it.
-
-- **Fifth revision:** `npm run check`: type check clean; 154 tests in 18 suites pass (116 in 11 before). New:
-  `test/ai.test.ts` (22: status in every state and with an agent's token, the service's words without control
-  characters; `ai set` sending the key once and never printing or storing it, in a terminal and from standard input,
-  refusing it on the command line, a refusal that repeats the key shown as `•••`, another service turning AI off,
-  `--json` asking nothing; models, history with what it adds and its question, pause, resume, test) and
-  `test/inbox-ai.test.ts` (16: the switch with the words shown first and the question, `--yes`, `--json` with the
-  words on standard error, OpenAI's words without "passes it on", off, no key, the server's `conflict`; `inbox add`
-  offering AI only with a key; icon and place; `doctor`'s AI check). Changed: `inbox list`'s columns, and an agent's
-  token stopping `inbox add` at `GET /v1/ai` before connecting. `npm run build` writes `dist/usual-mail.mjs` (142 kB).
-- **The built command against the stand-in** (a scratch home, no real config): `ai status` (not set up), `ai set
-  --gateway vercel --key-stdin`, `inbox ai on Acme` without a terminal (the words, then exit 2 naming `--yes`), with
-  `--yes`, `inbox list` and `ai test` printed as the tests expect; the key was in no file under the scratch home.
-- **Earlier rounds** (first milestone, fourth revision): 116 tests in 11 suites; the built command drove the joined
-  story against the built server (init through the owner's file, inbox add and reconnect with a wrong password
-  refused unprinted, agent add, pair, pause and resume, rate limits with `Retry-After`, doctor, agent remove, inbox
-  remove); the Dockerfile's build steps were replayed outside Docker and the runtime layout passed the server's smoke
-  test. Those runs used the fourth revision's server and haven't been repeated against the fifth.
-- **Independent review (2026-11-17):** `npm run check` again: 154 tests in 18 suites pass; `npm run build` wrote the
-  bundle. **Joined** against the fifth revision's built server (`--dev-fake-ai`, a scratch home, requests only):
-  `init --server` paired through the owner's code file (removed once used); `inbox add` refused `--ai` without a key,
-  refused a wrong password with the provider's words, then connected; `ai set` refused a key typed after it without
-  repeating it, took a made-up key from `--key-stdin`, said it turns nothing on and showed the status the server's
-  test left (`working`, AI off for every inbox); `inbox ai on` without a terminal printed the words, then exit 2
-  naming `--yes`; with `--yes` turned it on; `ai pause`, `ai history 30` (asked first without `--yes`, "adds 2
-  threads"), `ai resume`, `ai models`, `ai test`; `ai status` and `doctor` in key refused (the scrubbed `detail` shown);
-  another service turned AI off and reset the models, a new key for the same one kept it. The key was in no file under
-  the scratch home and in nothing printed. Found: piping the output into a program that stops reading early (`| head`)
-  ends the command with an unhandled `EPIPE` and a stack trace (the change it made had already been sent).
-- **After the review's decisions (2026-11-17):** `npm run check`: type check clean; 159 tests in 19 suites pass;
-  `npm run build` wrote the bundle (147 KB). New: `ai remove` (asks first; `--yes`, `--json`; nothing to remove
-  without a key), the words from core (`test/inbox-ai.test.ts` checks core's sentences whole), and output cut short
-  exits quietly (`exitQuietlyOnClosedPipe` in `src/pipes.ts`: at the first write whose reader has gone, exit 0 with
-  nothing printed; `test/pipes.test.ts` runs the entry point with its output closed, which printed the `EPIPE` stack
-  trace before). The stand-in's AI now remembers the service when the key is removed and keeps the chosen models, as
-  the server does.
-- **Docker image and deploy files (2026-11-23, Docker Desktop 4.100.1, arm64):** `docker build` (native) and
-  `docker buildx build --platform linux/amd64` both built; the amd64 image ran under emulation with libSQL's
-  `linux-x64-gnu` binary, healthy, uid 1000. `docker compose up -d` (project `usual-mail-test`, port 8484) pulled,
-  got "denied" from GHCR, built and started; `/healthz` answered; the server ran as uid 1000 with `/data` 0700 and
-  its files 0600. The owner's code from the volume paired the command (`init --server`, separate
-  `XDG_CONFIG_HOME`), and the code file went; `PUT /v1/google/client` wrote `google-client.json` (0600, `node`).
-  `restart` and `down` then `up` kept the pairing, `secret.key` and the Google client. A non-empty volume owned by
-  root (with `lost+found`, as a real disk has) made the old image exit 1 (`EACCES`); `--user 0` ran it as root;
-  the new entry point gave it to `node`, including files root had written, with `secret.key` unchanged, and with
-  `--user 0` still ran the server as uid 1000. `init --mode docker --port 8484` (scratch data folder and config)
-  built the image `usual-mail`, ran it as 501:20 with the bind mount, paired, `stop`/`start` worked and a second
-  `init` said "Nothing changed". `compose.caddy.yaml` from an empty folder with `localhost` and spare ports: HTTPS
-  through Caddy's local CA, port 80 redirected (308), the command paired over HTTPS, `/v1/events` streamed through
-  Caddy, and the guide's stop-copy backup restored into a fresh volume with the old token working.
-  `compose.coolify.yaml` under plain Compose with Coolify-like values: healthy, key from the environment (no
-  `secret.key`); with an `http://…sslip.io` address the server exits 2 and restarts forever. Idle memory: 91 MiB
-  (Caddy 21 MiB). Every test container, volume, network, builder and image was removed afterwards.
-- **After the review of the deploy files (2026-11-23, same Docker):** the image built with the workflow's pinned
-  BuildKit v0.35.1 and SBOM scanner 1.12.1 (provenance and SBOM on), with `LICENSE` and `THIRD_PARTY_NOTICES.md` in
-  `/app`; `shellcheck -s sh` clean on the entry point. Healthy as uid 1000, with no entry-point line: a fresh named
-  volume; a root-owned volume with `lost+found` and a root file (given to `node`, the file's 0644 kept); the guide's
-  `docker cp` restore of a backup owned 501:20 (given to `node`, `secret.key` unchanged); `--user 1000:1000`;
-  `--cap-drop ALL --user 1000:1000`. `--user 1001` on a 1001-owned volume ran as 1001:0. Started as root on that
-  volume, the entry point left it 1001's, printed the `--user 1001:1001` line, and the server exited 1 (`EACCES`);
-  with that flag it ran. `--cap-drop ALL` as root (on `node`'s and on root's volume) and dropping only SETUID and
-  SETGID each printed the `--user 1000:1000` line and exited 1; under `unless-stopped` it looped with one line per
-  try. `exec -u node` and `su node -c` wrote files as `node`; a file root wrote was `node`'s after a restart.
-  `USUAL_MAIL_SECRET_KEY` set to a backup's `secret.key` text was accepted. `compose.coolify.yaml` under plain
-  Compose with `SERVICE_URL_USUALMAIL` and `SERVICE_URL_USUALMAIL_8484` set as Coolify sets them: `/v1/info` gave
-  the redirect address `https://mail.example.org/v1/google/callback`, without the port. `docker stop` took under a
-  second, exit 0. Every test container, volume, builder and image was removed afterwards.
+What each pass ran and saw is in [cli-checks.md](cli-checks.md), newest first.
 
 ## Not done or not verified
 
@@ -455,19 +416,20 @@ appended to the log. `stop` sends SIGTERM, waits up to 10 seconds, then SIGKILL.
 
 - **The image has run only in Docker Desktop on this Mac** (2026-11-23). Unverified: a Linux host (bind mounts with
   `--user` there, and SELinux, which needs `:Z`), Let's Encrypt through Caddy, Coolify, Render and Railway themselves,
-  and the publishing workflow on GitHub. `init --mode docker` doesn't pull a published image (none exists yet).
+  and the publishing workflow on GitHub. `init --mode docker` builds the image from a checkout and doesn't pull the
+  published one (`ghcr.io/usual-labs/usual-mail`, published since v0.1.0).
 - The bundle that stopped at start in the third round is fixed (the server's build gives it a `require`, and its
   `npm run check` starts the bundle).
 - Accepted new credentials were only checked against the stand-in; no real mailbox was used.
 - Interactive questions were checked in a pseudo-terminal on this Mac in the second round only; no other terminal
   or Windows.
-- Node mode doesn't start the server at login (no launchd or systemd service). A stale process id could, in
-  theory, name another process.
+- Node mode doesn't start the server at login (no launchd or systemd service).
 - `doctor` checks the owner's code file only when `init` set the server up on this machine; for a server elsewhere
   it can't see the data directory.
 - No way to change an inbox's trust after it is added, its name or colour, agent access on its own, or anything else
   the dashboard and apps own. No question asks about saving sent mail; `--no-save-sent` and `--save-sent` set it.
-- No install script, Homebrew formula, npm package or published image. The command is run from a checkout.
+- No install script, Homebrew formula or npm package for the command; it is run from a checkout. (The server's image
+  is published; the command isn't.)
 
 ## For the coordinator
 

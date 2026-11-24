@@ -41,7 +41,7 @@ still publish to app stores and offer other terms. A trademark on the name comes
   `CLA.md` says not to rely on).
 - **`THIRD_PARTY_NOTICES.md`** is the one list of what comes from others: the fonts (OFL-1.1), Hugeicons' free set
   (MIT), the Public Suffix List (MPL-2.0), the tracker list (BSD-3-Clause, with its two sources' MIT and BSD-3-Clause
-  notices in full), the wallpaper (the Unsplash License, its photo page linked), the 94 production npm packages in the lockfiles (MIT, Apache-2.0,
+  notices in full), the wallpaper (the Unsplash License, its photo page linked), the 87 production npm packages the parts include (the lockfiles' production packages but those of libSQL's remote clients and the type declarations they bring; 94 before 2026-11-24) (MIT, Apache-2.0,
   ISC, BSD-2-Clause, BSD-3-Clause, MIT-0; `@zone-eu/mailsplit` used under MIT of "MIT OR EUPL-1.1+", `json-schema`
   under BSD-3-Clause of "AFL-2.1 OR BSD-3-Clause"; no Apache-2.0 package has a NOTICE file), GRDB.swift 7.12.0
   (MIT) and the apps' SF Symbols. All may be distributed with Usual Mail under the AGPL. The LGPL-3.0 packages in the
@@ -49,8 +49,10 @@ still publish to app stores and offer other terms. A trademark on the name comes
 - **The licence texts travel with the Docker image** (review of 2026-11-23): `/app/THIRD_PARTY_LICENSES.txt`, written
   by `server/scripts/licenses.mjs` from the bundle's esbuild metafile plus the image's `node_modules`; the build fails
   when a package has no licence text. Packages that ship none get their repository's LICENSE or the standard text
-  (`server/scripts/licences/`); `promise-limit` (ISC) has no licence file or copyright line anywhere, so it gets the
-  standard ISC text only. The Cloudflare Worker gets none, since the project passes on no copy of it
+  (`server/scripts/licences/`). `promise-limit` (ISC), which has no licence file or copyright line anywhere and got
+  the standard ISC text only, is no longer shipped (2026-11-24): the server takes only libSQL's local client, so the
+  image installs `libsql` and its own dependencies, not `@libsql/client` with its remote clients' packages
+  ([known-issues.md](known-issues.md), Fixed). The Cloudflare Worker gets none, since the project passes on no copy of it
   ([decisions-deploy.md](decisions-deploy.md)).
 - **The website's terms and privacy policy** (`site/public/terms/`, `site/public/privacy/`) say nothing about the
   licence, so they were left unchanged; see improvement-ideas.md for a line to consider when the repository is public.

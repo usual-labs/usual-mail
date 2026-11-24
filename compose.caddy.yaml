@@ -4,11 +4,15 @@
 #
 # 1. Point a DNS name at the server: an A record to its IPv4 address (and an AAAA record if it has IPv6). Let ports
 #    80 and 443 in through its firewall; Caddy needs both.
-# 2. Put this file on the server as compose.yaml, and beside it a file named .env with your domain:
+# 2. Put this file on the server as compose.yaml, and beside it a file named .env with your domain and, strongly
+#    suggested, your email (then only signing in with Google as it sets the server up; that needs the Google client):
 #      USUAL_MAIL_DOMAIN=mail.example.org
+#      USUAL_MAIL_OWNER_EMAIL=you@example.org
 # 3. docker compose up -d
 #    Caddy asks for the certificate on the first start; `docker compose logs caddy` shows how that went.
-# 4. Pair the usual-mail command (on your own computer) with the owner's code:
+# 4. Claim it: open https://mail.example.org and set the server's password (docs/deploy.md, "Claiming your server").
+#    Or get in with the owner's code instead, until the server is claimed. The server writes it a few seconds after
+#    it starts (if `cat` finds no such file yet, wait a moment and try again):
 #      docker compose exec usual-mail cat /data/owner-pairing-code
 #      usual-mail init --server https://mail.example.org --code <that code>
 #
@@ -23,6 +27,9 @@ services:
   usual-mail:
     image: ghcr.io/usual-labs/usual-mail:latest
     restart: unless-stopped
+    # Stopping waits for the mail in hand to be stored: a moment usually, up to about two and a half minutes during a
+    # Gmail inbox's first sync. Docker's default of 10 seconds would kill it before then (docs/deploy.md).
+    stop_grace_period: 3m
     environment:
       # The address people reach the server at. Google sends people back to it followed by /v1/google/callback.
       USUAL_MAIL_PUBLIC_URL: https://${USUAL_MAIL_DOMAIN:?Set USUAL_MAIL_DOMAIN in .env to the server's domain}

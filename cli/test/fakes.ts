@@ -24,6 +24,10 @@ const no = (stderr: string, code = 1): RunResult => ({ code, stdout: "", stderr 
 
 interface Container {
   state: "running" | "exited";
+  /** The server's exit code once stopped: 0 when it stopped by itself, 137 when it was killed. */
+  exitCode: number;
+  /** Docker's `State.OOMKilled`: the kernel killed it for memory. */
+  oomKilled: boolean;
   label: string;
   port: number;
   dataDir: string;
@@ -38,6 +42,20 @@ export class FakeDocker implements Runner {
   answering = true;
   /** Output of `docker logs`. */
   log = "Usual Mail server on http://0.0.0.0:8484\n";
+  /** Real milliseconds `docker stop` takes, as a server storing the mail in hand does. */
+  stopTakesMs = 0;
+  /**
+   * True when the container's exit code is 137 after `docker stop`: Docker killed it at its deadline, or, with a quick
+   * stop, an earlier kill left that code.
+   */
+  stopKills = false;
+  /** Docker's OOMKilled flag on the container after `docker stop`. */
+  oomKilled = false;
+  /**
+   * When set, `docker stop` returns once this says so, and a turn of the event loop later: Docker counts its deadline
+   * from its SIGTERM, a moment after the command began waiting.
+   */
+  stopUntil: (() => boolean) | undefined;
 
   async run(command: string, args: string[]): Promise<RunResult> {
     this.calls.push([command, ...args]);
@@ -51,6 +69,9 @@ export class FakeDocker implements Runner {
       case "container": {
         const container = this.containers.get(rest.at(-1)!);
         if (!container) return no(`Error: No such container: ${rest.at(-1)}`);
+        const format = rest[rest.indexOf("--format") + 1] ?? "";
+        if (format === "{{.State.ExitCode}} {{.State.OOMKilled}}") return ok(`${container.exitCode} ${container.oomKilled}\n`);
+        if (format === "{{.State.ExitCode}}") return ok(`${container.exitCode}\n`);
         return ok(`${container.state}|${container.label}\n`);
       }
       case "run":
@@ -63,11 +84,24 @@ export class FakeDocker implements Runner {
         return ok(`${rest[0]}\n`);
       }
       case "stop": {
-        const container = this.containers.get(rest[0]!);
-        if (!container) return no(`Error: No such container: ${rest[0]}`);
+        // Only the form that works on old and new Docker: `-t <seconds>`. Docker 29 warns that `--time` is
+        // deprecated (`--timeout` is new), so anything else fails here, for the tests to notice.
+        const [flag, seconds, name, ...extra] = rest;
+        if (flag !== "-t" || !/^\d+$/.test(seconds ?? "") || !name || extra.length) {
+          return no(`fake docker: docker stop takes -t <seconds> <name>, not: ${rest.join(" ")}`, 125);
+        }
+        const container = this.containers.get(name);
+        if (!container) return no(`Error: No such container: ${name}`);
+        if (this.stopTakesMs) await new Promise((resolve) => setTimeout(resolve, this.stopTakesMs));
+        if (this.stopUntil) {
+          while (!this.stopUntil()) await new Promise((resolve) => setImmediate(resolve));
+          await new Promise((resolve) => setImmediate(resolve));
+        }
         await serverFor(container.dataDir).close();
         container.state = "exited";
-        return ok(`${rest[0]}\n`);
+        container.exitCode = this.stopKills ? 137 : 0;
+        container.oomKilled = this.oomKilled;
+        return ok(`${name}\n`);
       }
       case "rm": {
         const name = rest.at(-1)!;
@@ -104,6 +138,9 @@ export class FakeDocker implements Runner {
     return false;
   }
   signal(): void {}
+  async commandLine(): Promise<string | null> {
+    return null;
+  }
 
   async #run(args: string[]): Promise<RunResult> {
     const value = (flag: string) => args[args.indexOf(flag) + 1]!;
@@ -115,7 +152,7 @@ export class FakeDocker implements Runner {
     const dataDir = value("--volume").replace(/:\/data$/, "");
     const label = value("--label").split("=")[1]!;
     await serverFor(dataDir).listen(port);
-    this.containers.set(name, { state: "running", label, port, dataDir, args });
+    this.containers.set(name, { state: "running", exitCode: 0, oomKilled: false, label, port, dataDir, args });
     return ok("0123456789abcdef\n");
   }
 
@@ -128,7 +165,15 @@ export class FakeDocker implements Runner {
 export class FakeNode implements Runner {
   readonly started: string[][] = [];
   readonly signals: Array<[number, string]> = [];
+  /** How many more times `isAlive` says yes after SIGTERM, as a server storing the mail in hand does. */
+  lingers = 0;
+  /** Set when a server was started on a data folder whose earlier server was still stopping. */
+  overlapped = false;
+  /** Live processes and their data folders. */
   #pids = new Map<number, string>();
+  /** Each process's command line, as `ps` shows it. */
+  #commands = new Map<number, string>();
+  #stopping = new Map<number, number>();
   #next = 40_000;
 
   async run(command: string, args: string[]): Promise<RunResult> {
@@ -142,22 +187,48 @@ export class FakeNode implements Runner {
     this.started.push([command, ...args]);
     const value = (flag: string) => args[args.indexOf(flag) + 1]!;
     const dataDir = value("--data-dir");
+    if ([...this.#stopping.keys()].some((pid) => this.#pids.get(pid) === dataDir)) this.overlapped = true;
     const server = serverFor(dataDir);
     await server.listen(Number(value("--port")));
     appendFileSync(options.logFile, `Usual Mail server on ${server.url} (data in ${dataDir})\n`, { mode: 0o600 });
     const pid = this.#next++;
     this.#pids.set(pid, dataDir);
+    this.#commands.set(pid, [command, ...args].join(" "));
     return pid;
   }
 
   isAlive(pid: number): boolean {
+    const left = this.#stopping.get(pid);
+    if (left !== undefined) {
+      if (left > 0) {
+        this.#stopping.set(pid, left - 1);
+        return true;
+      }
+      this.#stopping.delete(pid);
+      this.#pids.delete(pid);
+      return false;
+    }
     const dataDir = this.#pids.get(pid);
     return Boolean(dataDir && servers.get(dataDir)?.listening);
+  }
+
+  async commandLine(pid: number): Promise<string | null> {
+    return this.#pids.has(pid) ? (this.#commands.get(pid) ?? null) : null;
   }
 
   signal(pid: number, signal: string): void {
     this.signals.push([pid, signal]);
     const dataDir = this.#pids.get(pid);
+    if (signal === "SIGTERM" && this.lingers > 0) {
+      // As the server does: its port closes at once while it stores the mail in hand, and a second SIGTERM changes
+      // nothing.
+      if (this.#stopping.has(pid)) return;
+      this.#stopping.set(pid, this.lingers);
+      if (dataDir) void servers.get(dataDir)?.close();
+      return;
+    }
+    this.#stopping.delete(pid);
+    this.#pids.delete(pid);
     if (dataDir) void servers.get(dataDir)?.close();
   }
 }

@@ -4,9 +4,11 @@
 it as the REST routes in `core/src/api.ts`, beside the interfaces and with the mail providers listed in
 `src/node/parts.ts`. It runs on Node 22 with a SQLite file. The code that differs on Cloudflare sits behind small
 interfaces; the Cloudflare host is in `src/cloudflare/` (a Worker and one Durable Object, Gmail only; all seven build
-steps built, tested in local workerd only, never deployed: [server-cloudflare.md](server-cloudflare.md)). It follows the contract's fifth revision of 2026-11-17, as
-amended the same day and again after its review (the coordinator's decisions: what leaves the server, the key in any
-form, the screening gate and one-time codes, rules a person taught, recent filed history, blocked senders in a thread,
+steps built and tested in local workerd, deployed once to a real account on 2026-11-23 with `npx wrangler deploy`,
+where no sign-in, sync or AI has run yet and the Deploy button is untried:
+[server-cloudflare.md](server-cloudflare.md)). It follows the contract's fifth revision of 2026-11-17, as amended the
+same day and again after its review (the coordinator's decisions: what leaves the server, the key in any form, the
+screening gate and one-time codes, rules a person taught, recent filed history, blocked senders in a thread,
 `Thread.sender`, `Thread.categorizedByActor`, several categories in one list, model kinds on the gateway).
 
 **Sign in with Google for Gmail** (2026-11-17, below) **has run against Google once:** the owner's own sign-in on
@@ -42,7 +44,7 @@ the Worker without deploying; [server-cloudflare.md](server-cloudflare.md)).
 | `npm test` | The tests only (`node --test test/*.test.ts`) |
 | `npm run dev` | Runs `src/node/main.ts` from source and restarts on changes. Data in `./data` |
 | `npm run demo` | Runs from source in demo mode |
-| `npm run build` | `scripts/build.mjs`: bundles `src/node/main.ts` with esbuild into `dist/server.mjs` (server, core, mail, dashboard, connector, the AI SDK and their dependencies; 6.9 MB). `@libsql/client` stays external. It also writes `dist/runtime.package.json`, naming only `@libsql/client` at the version `package.json` pins, which the Docker image installs on its own, and `dist/THIRD_PARTY_LICENSES.txt`, the licence texts of every package and file the bundle holds (`scripts/licenses.mjs`; fails when a package has none). `node scripts/build.mjs <folder>` builds into another folder, leaving `dist/` (which a running server may use) alone |
+| `npm run build` | `scripts/build.mjs`: bundles `src/node/main.ts` with esbuild into `dist/server.mjs` (server, core, mail, dashboard, connector, the AI SDK and their dependencies; 7.6 MB, 7,973,470 bytes for 0.1.1 with the owner's password, 2026-11-24), with libSQL's local client (`src/node/db.ts` imports `@libsql/client/sqlite3` and `drizzle-orm/libsql/sqlite3`, never the main entries, which load the clients for remote databases). Only `libsql`, the native part, stays external. It also writes `dist/runtime.package.json`, naming only `libsql` at the version the server's lockfile holds, which the Docker image installs on its own (with `detect-libc`, `@neon-rs/load` and the platform's packages; since 2026-11-24 not `@libsql/client`, whose remote clients' packages, `promise-limit` among them, came with it), and `dist/THIRD_PARTY_LICENSES.txt`, the licence texts of every package and file the bundle holds (`scripts/licenses.mjs`; fails when a package has none; the repository's own code beside a `<name>.LICENSE` isn't listed, only its data files). `node scripts/build.mjs <folder>` builds into another folder, leaving `dist/` (which a running server may use) alone |
 | `npm run smoke` | `scripts/smoke-bundle.mjs`: starts `dist/server.mjs` on a scratch data directory, waits for `/healthz`, pairs with the owner's code file, checks `GET /sign-in` (200), `POST /v1/search/ask` without an AI key (the sentence as typed, `not_set_up`, nothing sent), `POST /mcp` without a token (401), `GET /v1/ai/status` (`not_set_up`) and that the start line says the AI goes through the AI SDK, connects an IMAP inbox on an in-process test server, syncs (an HTML message whose picture must point at the picture route with its tracker taken out, and whose picture at a private address must be refused with 502 without any connection), sends a reply over SMTP, and stops it. Then it starts the bundle twice on another data directory (the second start keeps the owner's code without printing it and reads the first sync's days from `settings.json`), starts it with `--dev-fake-ai --host 0.0.0.0` and checks it refuses to start, and checks `dist/runtime.package.json`. `USUAL_MAIL_BUNDLE` names another bundle (the runtime file isn't checked then) |
 | `npm start` | Runs `dist/server.mjs`. It needs `node_modules` (for libSQL) and `migrations/` next to `dist/` |
 | `npm run db:generate` | Writes the next migration into `migrations/` after `src/db/schema.ts` changes. It asks questions when a column is both added and removed, so run it in a terminal. **A running server applies whatever `migrations/meta/_journal.json` lists at its next start, whatever bundle it runs**, so a file placed there is live: generate and test a new migration in a copy of `server/` (its own `migrations/`, `node_modules` linked), move it in as the last step, and treat it as frozen once there (a later change is a new migration) |
@@ -285,12 +287,41 @@ server, and its status.
   seconds again) and drops the provider; the round loop reads `paused` on the row it ingests under the lock and stops
   after that batch is stored, without `historyDone`, the held write-backs, the repair or another sync, when the row is
   paused or the inbox is closing; a sync queued before the close doesn't start (which only new credentials or `stop`
-  can show: a pause's row already refuses it). `removeInbox` deletes the rows under the lock first, sends
+  can show: a pause's row already refuses it), and no round starts while the inbox is closing, so a close that began
+  while the sync was still opening its provider fetches nothing (final review, 2026-11-24). A sync that fails while its
+  inbox is closing stores no status, only an info line: after new credentials the old provider's batch may fail, and
+  the inbox stays `connecting` for the new one. `removeInbox` deletes the rows under the lock first, sends
   `inbox.removed`, then asks for the close and revokes a Google token at once (not after the close: a revoke minutes
   later could come after the same account was signed in again); the batch in hand then finds no inbox and stores
-  nothing, and `#sync` logs no failure for an inbox that is gone. The batch being fetched isn't cut short (up to 200
+  nothing, and neither `#sync` nor a refused write-back logs a failure for an inbox that is gone. The batch being
+  fetched isn't cut short (up to 200
   messages on Node: about two and a half minutes of Gmail; known-issues.md). Resuming reopens the inbox and the next
-  sync goes on from the stored cursor, still history.
+  sync goes on from the stored cursor, still history. **`stop` closes every inbox together** (2026-11-24): it maps
+  `#close` over the open inboxes and waits for them all, and since `#close` marks its inbox closing before its first
+  wait, all are marked before any batch could start, and the stop waits for the longest batch in hand. Closed one
+  after another, as before, an inbox whose close hadn't begun went on starting batches while another's was stored
+  (`first-sync-stop.test.ts`; seen in the image too, [decisions-deploy.md](decisions-deploy.md)). **A sync runs only
+  while the engine is started** (2026-11-24, the re-review): `#sync` returns at once when `#started` is false, and no
+  round starts once it turns false. Before, a sync asked for after an inbox's close was done ("sync now", its watch, a
+  sent draft) while the stop still waited for another inbox's batch opened the provider again and ran its rounds,
+  which the stop then waited for (a probe saw 176 batches; `first-sync-stop.test.ts` saw 17 and a 3.5 s stop, and
+  fails without the guard). Both hosts start the server before serving requests; the Cloudflare host never calls
+  `stop()`, so its engine stays started (`npm run check:cloudflare` passes). Two tests synced a "first process" that
+  was never started (`provider-inbox.test.ts`'s come-back after a stop, `sync-provider.test.ts`'s repair after a
+  restart); they now `start()` it, as a process does.
+- **A stop asked for during start-up** (Node host, 2026-11-24, for 0.1.1). `src/node/stop-signal.ts` is
+  `main.ts`'s first import, so SIGTERM and SIGINT have a handler from about 100 ms into the process (the built bundle,
+  measured), before the rest of the code is evaluated. In the container Node is PID 1, which ignores a signal it has
+  no handler for: with the handler installed only after start-up, a `docker stop` during start-up was ignored, the
+  server went on to listen, and Docker killed it at the deadline. A signal during start-up is acted on between steps
+  (`quitIfAsked` after the key file, after the store opens, after `MailServer.create`, after demo seeding), never in
+  the middle of one, and the process exits 0: nothing is in hand before syncing starts. `MailServer.start({ signal
+  })` skips the steps left once the signal is aborted (search's catch-up, the engine, the AI, costs and sender
+  pictures; `SyncEngine.start(signal)` also checks after reading the inboxes), so a stop asked for during the start
+  starts no sync and `stop()` straight after it has nothing in hand. After start-up, a signal stops the server as
+  before; one that came during the last steps (listening, the owner's code) runs when they are done. Still open: a
+  signal before Node has parsed the bundle, or during the entry point's shell, is lost
+  ([known-issues.md](known-issues.md)). The Cloudflare host calls `start()` without a signal.
 - **Upgrade from the fourth revision** (`0004_fifth_revision.sql` and `src/db/upgrade.ts`): piles become categories
   (`people` conversation, `reads` newsletter, `receipts` receipt, `screening` screened in `unknown`); triage becomes
   `categorizedBy` (`by_rule` rule, `by_agent` agent, `by_person` person, `pending` none); a thread nobody had decided
@@ -536,9 +567,13 @@ reaches Google, and none reaches the real network for a picture.
   `#closes`' order: the provider in use was dropped and the first sync stalled); a removal answers at once, gone from
   the list and `inbox.removed` sent before the answer, the same address connected again meanwhile as a new inbox that
   syncs all of it, the old batch dropped and its failure not logged (fails without `#sync`'s gone check).
-  `first-sync-reconnect` (2): new credentials during the second batch answer at once, the old provider asked nothing
+  `first-sync-reconnect` (3): new credentials during the second batch answer at once, the old provider asked nothing
   more and closed, the new one going on from cursor `F4`, the count never back to 0; a sync queued before new
-  credentials never reaches the old provider (fails without `#sync`'s closing check). The pause and removal tests
+  credentials never reaches the old provider (fails without `#sync`'s closing check); the old provider's batch failing
+  after new credentials leaves the inbox `connecting`, not `needs_attention`, and logs no error (2026-11-24).
+  `first-sync-pause`'s fifth test (2026-11-24): a pause while the sync opens its provider (its credentials opened
+  slowly) fetches nothing. `sync.test.ts`, "inbox lifecycle": a come-back's write-back refused because the inbox was
+  removed meanwhile logs no error. The pause and removal tests
   failed before the background close (each answered only after the batch, `settlesWithin`'s second ran out), and
   before the round loop's check all ten calls ran. `first-sync-counts` (3): a count alone reaches the person and an agent given the inbox, not one
   given another, and never touches the change notifier; no count shown once done or while paused; `toInbox`'s guard
