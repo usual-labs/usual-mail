@@ -145,10 +145,11 @@
     }
 
     /// The concept's measures, read off its frame (414 points wide): the top row's controls 16 from the screen's edges
-    /// and 24 above the card; the row at the card's foot 20 from the edges, so the four tabs and the screening capsule
-    /// fit a 393-point screen with the longest tab's name showing.
+    /// and 16 above the card (24 in the concept, made "a bit less" at the owner's word of 2026-11-24); the row at the
+    /// card's foot 20 from the edges, so the four tabs and the screening capsule fit a 393-point screen with the
+    /// longest tab's name showing.
     enum PhoneLayout {
-        static let gap: CGFloat = 24
+        static let gap: CGFloat = 16
         static let topMargin: CGFloat = 16
         static let barMargin: CGFloat = 20
     }

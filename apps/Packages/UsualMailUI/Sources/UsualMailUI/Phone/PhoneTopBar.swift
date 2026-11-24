@@ -71,25 +71,19 @@
                 }
                 Section {
                     ForEach(PhoneSwitch.pages, id: \.self) { page in
-                        Toggle(isOn: ticked(PhoneSwitch.ticks(page, nav: nav)) { press(page) }) {
-                            Label {
-                                Text(page.title)
-                            } icon: {
-                                page.icon.image.renderingMode(.template)
-                            }
+                        row(icon: page.icon, chosen: PhoneSwitch.ticks(page, nav: nav)) {
+                            press(page)
+                        } title: {
+                            Text(page.title)
                         }
                         .badge(RailCount.count(page, in: counts))
                     }
                 }
                 Section {
-                    Button {
+                    row(icon: .add, chosen: false) {
                         addingGmail = true
-                    } label: {
-                        Label {
-                            Text(AddGmailSheet.title)
-                        } icon: {
-                            Icon.add.image.renderingMode(.template)
-                        }
+                    } title: {
+                        Text(PhoneSwitch.addGmail)
                     }
                 }
             } label: {
@@ -102,21 +96,50 @@
         }
 
         /// A profile's row: the mail stack on it, from any stack, at the page the mail stack last had. An inbox whose
-        /// name isn't its address shows the address under it.
+        /// name isn't its address shows the address under it. Both are cut to one line (`PhoneSwitch.menuTitle`).
         private func profile(_ id: String?, icon: Icon, name: String, address: String?) -> some View {
-            Toggle(isOn: ticked(nav.profileMark.marks(id)) { chooseProfile(id) }) {
-                Label {
-                    Text(verbatim: name)
-                    if let address, !address.isEmpty, address != name { Text(verbatim: address) }
-                } icon: {
-                    icon.image.renderingMode(.template)
+            row(icon: icon, chosen: nav.profileMark.marks(id)) {
+                chooseProfile(id)
+            } title: {
+                Text(verbatim: PhoneSwitch.menuTitle(name))
+                if let address, !address.isEmpty, address != name {
+                    Text(verbatim: PhoneSwitch.menuTitle(address))
                 }
             }
+            .accessibilityLabel(Text(verbatim: name))
         }
 
-        /// A menu row's tick: on while its page shows; choosing it, ticked or not, goes there.
-        private func ticked(_ on: Bool, go: @escaping () -> Void) -> Binding<Bool> {
-            Binding(get: { on }, set: { _ in go() })
+        /// One row of the menu: a plain button, so the system keeps no column for ticks, whose icon is a tick while
+        /// it is what shows (owner's words of 2026-11-24: "change the selected icon to [a] check mark"). Every icon is
+        /// drawn into the same box (`Icon.menuImage`), since the design package's are drawn larger than the app's.
+        private func row<Title: View>(
+            icon: Icon, chosen: Bool, action: @escaping () -> Void, @ViewBuilder title: () -> Title
+        ) -> some View {
+            Button(action: action) {
+                Label {
+                    title()
+                } icon: {
+                    if chosen { Image(systemName: "checkmark") } else { icon.menuImage }
+                }
+            }
+            .accessibilityAddTraits(chosen ? .isSelected : [])
+        }
+    }
+
+    extension Icon {
+        /// The side of the box every icon of the switcher's menu is drawn into.
+        static let menuSide: CGFloat = 18
+
+        /// The icon drawn into a `menuSide` box, as a template the menu tints. The system's menu shows a picture at
+        /// its own size, and the design package's drawings are larger than this package's 16-point ones.
+        var menuImage: Image {
+            let side = Icon.menuSide
+            guard let drawing = UIImage(named: rawValue, in: catalog, with: nil) else { return image }
+            let box = CGSize(width: side, height: side)
+            let drawn = UIGraphicsImageRenderer(size: box).image { _ in
+                drawing.draw(in: CGRect(origin: .zero, size: box))
+            }
+            return Image(uiImage: drawn.withRenderingMode(.alwaysTemplate))
         }
     }
 

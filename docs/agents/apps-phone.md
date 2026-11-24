@@ -41,16 +41,31 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   the connection in the background and events aren't replayed.
 - **`PhoneTopBar`**: search (opens over the stack, its field given the focus), the switcher, settings; search and
   settings lit while their page shows. The switcher's capsule names what shows (`PhoneSwitch.label`: an inbox by its
-  address, "All inboxes", or the page) and opens the system's menu: every inbox and All inboxes (ticked in the mail
-  stack), then To reply, Pinned and Snoozed with the server's counts as badges and Inbox (the one showing ticked),
-  then "Add a Gmail account" (the shared sheet). Its ink follows the wallpaper under it (`RailTone`).
+  address, "All inboxes", or the page) and opens the system's menu: every inbox and All inboxes (the one showing in
+  the mail stack chosen), then To reply, Pinned and Snoozed with the server's counts as badges and Inbox (the one
+  showing chosen), then "Add Gmail" (the shared sheet, "Add a Gmail account"). The rows are plain buttons, so the
+  menu keeps no column for ticks; the chosen row's icon is a check mark instead (owner's words of 2026-11-24), and
+  every icon is drawn into the same 18-point box (`Icon.menuImage`; the design package's inbox icons, as the rocket,
+  showed larger than the app's own). The menu's words are cut to one line in the middle
+  before they reach it, 16 characters at most (`PhoneSwitch.menuTitle`, "someon…y.example"; owner's words of
+  2026-11-24, "dont let the items wrap, do ellipsis"; the full name stays the row's accessibility label). Tried and
+  dropped the same day: the app's own popover in Geist 12 with the chosen row in bold (the owner: "its not native
+  anymore"), and in the system's menu a bold title and a line limit, which it ignores, as it does any font: the
+  system's menu stays, in its own type. Its ink follows the wallpaper under it (`RailTone`). The
+  top row sits 16 above the card (the concept's 24, "a bit less" at the owner's word of 2026-11-24;
+  `PhoneLayout.gap`).
 - **The row at the card's foot** is the Mac's `TopBar` with `compact`: the tabs and the screening capsule; with a mail
   open the back button as an arrow alone and the mail's buttons; Settings' tabs as icons, the chosen one named;
-  search's capsule back. No title capsule on To reply, Pinned, Snoozed and Inbox (the switcher names them). Each
-  capsule takes touches 6 points above and below its 32. Snooze and more open upwards as popovers.
+  search's capsule back. No title capsule on To reply, Pinned, Snoozed and Inbox (the switcher names them). Settings'
+  tabs sit in the middle of the row, not at its right as on the Mac (owner's words of 2026-11-24, "only in iphone";
+  `TopBar.centres`). Each capsule takes touches 6 points above and below its 32. Snooze and more open upwards as
+  popovers.
 - **Without a pointer** (`Pointer.exists` false): a row's time always shows, and so does a seen notification's tick.
   A long press on a row shows the Mac's right-click menu (the same `contextMenu`).
 - **Pages:** the card's side margin is `Theme.pageInset`, 16 on the iPhone (the concept's) and the Mac's 24.
+- **Settings' Blocked tab:** Unblock is the light button (`LightButtonLabel`, the secondary one beside a step's dark
+  button) in the middle of its row, not the Mac's link at the row's top (owner's words of 2026-11-24, "like a button.
+  not primary though, secondary", the iPhone only; `BlockedRow`).
 - **First run:** the cards are as wide as the screen leaves (`onboardingCard`), pairing's wordmark sits below the
   status bar, and its fields don't capitalise.
 
@@ -91,7 +106,8 @@ device under the simulator's name (`usual-mail devices`). It went straight to Ho
   the real inboxes.
 - **Found and fixed:** mail showed through the glass of the row at the foot as it scrolled under it. `safeAreaBar`
   brought no scroll edge effect to lists this deep, so `PhoneCard` fades its content out within the row's height.
-- **Seen and left:** an inbox named by its address wraps onto two lines in the system's menu.
+- **Seen and left:** an inbox named by its address wrapped onto two lines in the system's menu (cut to one line
+  since 2026-11-24, `PhoneSwitch.menuTitle`).
 - **One action, at the owner's "Yes, pin and undo":** a read mail pinned from its long-press menu left Home, and the
   undo strip ("Pinned." with Undo) showed centred just above the row at the foot; Undo put the mail back in its
   place and Pinned read "Nothing pinned." No other action was taken on real mail, and only mail already read was
@@ -100,6 +116,11 @@ device under the simulator's name (`usual-mail devices`). It went straight to Ho
 To run it again: `xcrun simctl spawn <device> defaults write labs.usual.UsualMail UsualMailSample YES`, then install
 and launch the Debug build (`build/DerivedData-ios/Build/Products/Debug-iphonesimulator/UsualMail.app`); the launch
 options are the Mac's (`-UsualMailPlace inbox` and the rest), read from the app's defaults.
+
+A build installed over the paired app must be signed as the earlier one was (the gitignored `Config/Local.xcconfig`,
+which a fresh worktree lacks): the pairing token is in the simulator's Keychain under `<team>.labs.usual.UsualMail`,
+and an unsigned build (`CODE_SIGNING_ALLOWED=NO`) has no `application-identifier`, so it can't read it and opens on
+Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; don't pair again for it.
 
 ## Sending it to TestFlight (2026-11-20)
 

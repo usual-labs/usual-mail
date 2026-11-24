@@ -58,7 +58,9 @@ struct BlockedTab: View {
 }
 
 /// One blocked sender: their initials, name and address (and inbox), who blocked them and when, how many messages
-/// came since, and Unblock.
+/// came since, and Unblock: on the Mac a link at the top of the row, on the iPhone the light button, a secondary one,
+/// in the row's middle (owner's words of 2026-11-24: "should be like a button. not primary though, secondary", the
+/// iPhone only).
 private struct BlockedRow: View {
     let sender: BlockedSender
     let inbox: String?
@@ -67,37 +69,62 @@ private struct BlockedRow: View {
     let unblock: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Avatar(name: BlockedWords.name(sender), key: sender.address)
-                .padding(.top, 1)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(verbatim: BlockedWords.name(sender))
-                    .font(Theme.sans(12))
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
-                Text(verbatim: BlockedWords.address(sender, inbox: inbox))
-                    .font(Theme.sans(10))
-                    .foregroundStyle(Theme.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                Text(
-                    verbatim: [byline, BlockedWords.since(sender.messagesSinceBlocked)].compactMap(\.self)
-                        .joined(separator: " · ")
-                )
-                .font(Theme.sans(10))
-                .foregroundStyle(Theme.time)
-                .lineLimit(1)
-                if let refusal {
-                    SettingsView.refusal(refusal)
-                        .transition(.blurReveal)
-                }
+        HStack(alignment: Self.unblockAlignment, spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                Avatar(name: BlockedWords.name(sender), key: sender.address)
+                    .padding(.top, 1)
+                details
             }
             Spacer(minLength: 12)
-            SettingsView.link("Unblock", action: unblock)
+            unblockButton
                 .accessibilityLabel("Unblock \(BlockedWords.name(sender))")
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Where Unblock sits against the row: level with the name on the Mac, in the middle on the iPhone.
+    private static var unblockAlignment: VerticalAlignment {
+        #if os(iOS)
+            .center
+        #else
+            .top
+        #endif
+    }
+
+    @ViewBuilder private var unblockButton: some View {
+        #if os(iOS)
+            Button(action: unblock) { LightButtonLabel(title: "Unblock") }
+                .buttonStyle(PlainControlStyle())
+        #else
+            SettingsView.link("Unblock", action: unblock)
+        #endif
+    }
+
+    /// Their name, address and inbox, the byline, and why an unblock was refused.
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(verbatim: BlockedWords.name(sender))
+                .font(Theme.sans(12))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+            Text(verbatim: BlockedWords.address(sender, inbox: inbox))
+                .font(Theme.sans(10))
+                .foregroundStyle(Theme.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Text(
+                verbatim: [byline, BlockedWords.since(sender.messagesSinceBlocked)].compactMap(\.self)
+                    .joined(separator: " · ")
+            )
+            .font(Theme.sans(10))
+            .foregroundStyle(Theme.time)
+            .lineLimit(1)
+            if let refusal {
+                SettingsView.refusal(refusal)
+                    .transition(.blurReveal)
+            }
+        }
     }
 }
 

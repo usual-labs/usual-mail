@@ -58,17 +58,38 @@ struct PhoneTests {
         #expect(nav.place == .tab(.home) && nav.profileMark.marks(nil))
     }
 
+    @Test func theMenuCutsLongWordsInTheMiddle() {
+        // The system's menu wraps what is long; the words are cut to one line before they reach it, keeping an
+        // address's domain.
+        #expect(PhoneSwitch.menuTitle("All inboxes") == "All inboxes")
+        #expect(PhoneSwitch.menuTitle("sixteen-letters!") == "sixteen-letters!")
+        #expect(PhoneSwitch.menuTitle("someone@far-away.example") == "someon…y.example")
+        #expect(PhoneSwitch.menuTitle("someone@far-away.example").count == PhoneSwitch.menuLength)
+        #expect(PhoneSwitch.addGmail.count <= PhoneSwitch.menuLength)
+    }
+
     // MARK: The row at the card's foot
 
     @Test func theCompactRowKeepsTheTabsAndTheMailsButtons() {
         // On a tab's page and with a mail open, the items are the Mac's.
         for reading in [false, true] {
-            for place in Tab.allCases.map(Place.tab) + [.screening, .search, .settings] {
+            for place in Tab.allCases.map(Place.tab) + [.screening, .search] {
                 #expect(
                     TopBar.items(place: place, reading: reading, compact: true)
                         == TopBar.items(place: place, reading: reading))
+                #expect(!TopBar.centres(place: place, compact: true))
             }
         }
+    }
+
+    @Test func settingsTabsSitInTheMiddleOnTheIPhoneOnly() {
+        // The iPhone's row has Settings' five tabs with no gap before them, centred; the Mac's keeps the gap, which
+        // puts them at the right.
+        let tabs = SettingsTab.allCases.map(TopBar.Item.settings)
+        #expect(TopBar.items(place: .settings, reading: false, compact: true) == tabs)
+        #expect(TopBar.centres(place: .settings, compact: true))
+        #expect(TopBar.items(place: .settings, reading: false) == [.gap] + tabs)
+        #expect(!TopBar.centres(place: .settings, compact: false))
     }
 
     @Test func theCompactRowHasNoTitleCapsule() {

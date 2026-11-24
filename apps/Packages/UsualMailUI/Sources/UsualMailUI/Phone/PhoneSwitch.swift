@@ -28,6 +28,23 @@ struct PhoneSwitch: Equatable {
         }
     }
 
+    /// The menu's "Add a Gmail account", short enough for one line.
+    static let addGmail = "Add Gmail"
+
+    /// The most characters a menu row's words keep on one line. The system's menu takes no line limit and wraps a
+    /// long address (owner's words of 2026-11-24: "dont let the items wrap, do ellipsis"); in the simulator it wrapped
+    /// an address of 18 characters after 17.
+    static let menuLength = 16
+
+    /// `text` as a menu row shows it: as it is when it fits, else its start and its end with an ellipsis between, the
+    /// end kept longer, so an address keeps its domain: "someon…y.example".
+    static func menuTitle(_ text: String, length: Int = menuLength) -> String {
+        guard text.count > length, length > 2 else { return text }
+        let kept = length - 1
+        let head = kept * 2 / 5
+        return String(text.prefix(head)) + "…" + String(text.suffix(kept - head))
+    }
+
     /// Whether the menu ticks `page`: the stack showing, under search too.
     static func ticks(_ page: Place, nav: Navigation) -> Bool {
         nav.stackPlace == page

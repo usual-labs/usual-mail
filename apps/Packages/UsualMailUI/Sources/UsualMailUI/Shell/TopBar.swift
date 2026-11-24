@@ -24,7 +24,8 @@ import UsualMailKit
 /// On the iPhone the same row sits at the foot of the card (`compact`, the owner's concept of 2026-11-20: the tabs and
 /// controls "come down from the top"), with what a narrow screen and a finger ask for: a back button is the arrow
 /// alone once a mail is open, so the mail's five buttons fit; To reply, Pinned, Snoozed and the Inbox page show no
-/// title capsule, as the switcher above the card names them; a capsule takes touches 6 points above and below its 32;
+/// title capsule, as the switcher above the card names them; Settings' tabs sit in the middle of the row, not at its
+/// right; a capsule takes touches 6 points above and below its 32;
 /// and the snooze and more menus open upwards as popovers.
 struct TopBar: View {
     @Binding var place: Place
@@ -67,6 +68,7 @@ struct TopBar: View {
                 }
             }
         }
+        .frame(maxWidth: TopBar.centres(place: place, compact: compact) ? .infinity : nil)
         .frame(height: 32 + 2 * touchSlop)
         .opacity(hidden ? 0 : 1)
         .allowsHitTesting(!hidden)
@@ -111,13 +113,15 @@ struct TopBar: View {
     /// five mail actions. With a mail open from Screening: the screening capsule, a gap, let in, block and more. On To
     /// reply, Pinned, Snoozed and the Inbox page: the title capsule, and with a mail open, the five mail actions after
     /// it. On Settings: a gap, then its five tabs, at the right. On search: its capsule back, and with a mail open, the
-    /// five mail actions after it. `compact`, the iPhone's: no title capsule until a mail is open.
+    /// five mail actions after it. `compact`, the iPhone's: no title capsule until a mail is open, and Settings' tabs
+    /// with no gap, as the row centres them (`centres`).
     static func items(place: Place, reading: Bool, compact: Bool = false) -> [Item] {
         let actions = reading ? BarAction.mailActions.map(Item.action) : []
         if compact, !reading, [.toReply, .pinned, .snoozed, .inbox].contains(place) { return [] }
         switch place {
         case .settings:
-            return [.gap] + SettingsTab.allCases.map(Item.settings)
+            let tabs = SettingsTab.allCases.map(Item.settings)
+            return compact ? tabs : [.gap] + tabs
         case .search:
             return [.back, .gap] + actions
         case .toReply, .pinned, .snoozed, .inbox:
@@ -129,6 +133,13 @@ struct TopBar: View {
         case .tab, .screening:
             return Tab.allCases.map(Item.tab) + [.gap, .screening]
         }
+    }
+
+    /// Whether the row's items sit in its middle rather than from its left: Settings' tabs on the iPhone (the owner's
+    /// words of 2026-11-24, "in settings page, make the bottom tabs centered. only in iphone"). The Mac keeps them at
+    /// the right, past the gap.
+    static func centres(place: Place, compact: Bool) -> Bool {
+        compact && place == .settings
     }
 
     // MARK: Capsules
