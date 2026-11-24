@@ -1,10 +1,11 @@
 // Wrong pairing codes and passwords counted per client address at the object's door on Cloudflare
-// (server-cloudflare-access.md, "Pairing failures per address"). The service counts them per address too, ten each
-// and a hundred from everyone (service/attempts.ts), on both hosts; here the object counts failed pairing answers
-// (401: `POST /v1/pair`, `/v1/owner/sign-in`, `/v1/owner/claim`, the dashboard's `POST /sign-in` and `/claim`) per
-// address, an IPv6 address by its /64 (client-address.ts), and answers 429 itself after five in ten minutes, without
-// passing the request on. Attempts still in flight count too, so a burst from one address can't slip past the limit.
-// In memory only, as the service's own count: an eviction forgets both.
+// (server-cloudflare-access.md, "Pairing failures per address"). The service counts them too, on both hosts: ten per
+// address, thirty per IPv6 /48 and a thousand from everyone (service/attempts.ts). Here the object counts failed pairing
+// answers (401: `POST /v1/pair`, `/v1/owner/sign-in`, `/v1/owner/claim`, the dashboard's `POST /sign-in` and `/claim`)
+// per address, an IPv6 address by its /64 (client-address.ts), and answers 429 itself after five in ten minutes, without
+// passing the request on. Five is below the service's ten, so one address always meets this door first; the /48 and the
+// ceiling are the service's alone, and the service's 429s aren't counted here. Attempts still in flight count too, so a
+// burst from one address can't slip past the limit. In memory only, as the service's own count: an eviction forgets both.
 
 import { PAIRING_WINDOW_MS } from "../service/attempts.ts";
 

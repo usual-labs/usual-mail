@@ -4,7 +4,8 @@ Built 2026-11-24 at the owner's request ("I think we need to handle it better…
 on the `ios-ui-tweaks` branch. The contract is [contract.md](../contract.md#the-owners-password); the rest of the
 server is in [server.md](server.md), the Cloudflare host in [server-cloudflare-access.md](server-cloudflare-access.md).
 Reviewed for security by a separate agent after it shipped on `main` (`09675db`); its findings were fixed on
-2026-11-24 ([After the security review](#after-the-security-review)). Never run against a real deploy or a real Google
+2026-11-24 ([After the security review](#after-the-security-review)), and a re-review's follow-ups the same day
+([After the re-review](#after-the-re-review)). Never run against a real deploy or a real Google
 account.
 
 ## Decided by the owner (2026-11-24)
@@ -37,8 +38,9 @@ account.
   `created_at`. Empty after the upgrade.
 - **The limit:** `devices.checkPairingLimit` and `countPairingFailure` over `service/attempts.ts`, shared by wrong
   pairing codes and wrong passwords: ten from one client address (an IPv6 address by its /64) in ten minutes, then
-  `rate_limited` for that address ("from your address"); a hundred from everyone, then for everyone ("from everyone
-  together"). The address comes from `Host.clientAddress` ([server.md](server.md), "Wrong codes and passwords are
+  `rate_limited` for that address ("from your address"); thirty from one IPv6 /48, then for that /48 ("from your
+  network"); a thousand from everyone, then for everyone ("from everyone together"). The keys come from
+  `client-address.ts`'s `clientKey` over `Host.clientAddress` ([server.md](server.md), "Wrong codes and passwords are
   counted per client address"). Claims aren't counted (a proof is 256 bits).
 - **Recovery codes** (`devices.requestRecoveryCode`): a person code of 30 minutes, told to the owner's code's listener
   with `kind: "recovery"`; the keeper now holds `kind` and `expiresAt`. A recovery code stays while another person's
@@ -91,6 +93,42 @@ The review (2026-11-24, a separate agent, against `09675db` on Node and in worke
    claim's log line quotes the name. A teach prompt turns them into spaces in a sender's name, and offers no list-id
    match that holds one, so its rule still passes `line()`.
 
+## After the re-review
+
+A second review (2026-11-24, against `37f0a93`) gave the fix a go, with follow-ups, fixed on `owner-claim-fix`:
+
+1. **Medium: the ceiling of a hundred still locked everyone out.** Ten IPv4 addresses or ten IPv6 /64s sending ten
+   wrong passwords each blocked the owner's password, the owner's code and recovery codes for ten minutes, renewably.
+   Now an IPv6 /48 counts too (thirty, so ten /64s of one site are capped together) and the ceiling is a thousand: at
+   most 144,000 tries a day, which finds one 40-bit code waiting all day with a chance of about one in 7.6 million
+   (`attempts.ts` derives it). Locking everyone out now takes a hundred
+   IPv4 addresses or thirty-four /48s at once. Each key keeps at most its limit's newest failures (which is exactly
+   what the wait needs), the ceiling's list at most a thousand, and at most 10,000 addresses and 10,000 /48s are
+   remembered. On Cloudflare the door's five per /64 stays, below the service's ten, so the two still agree.
+2. **Low: the stricter `line()` refused whole batches.** A decision's reason with a newline made a 200-thread
+   `decide` invalid. Prose (decisions' and actions' reasons, brief highlights, a rule's text) is now `prose()`, which
+   turns control characters, DEL, C1 and U+2028/2029 into spaces, collapses white space and trims (`asOneLine`); names
+   (devices, inboxes, the owner's sign-in and claim) and a rule's `listId` and `subjectContains` still refuse them.
+   A teach prompt stored before the fix, with a control character in the sender's name in its rule's text, now makes
+   its rule; one whose stored list id holds one is still refused (known-issues.md).
+3. **Nit: `USUAL_MAIL_TRUSTED_PROXIES` took `0.0.0.0/0` and `::/0`.** Any /0 range now stops the Node server at start,
+   in words (`parseRanges`, the only parser; Cloudflare reads `CF-Connecting-IP` and no proxy list).
+4. **A host whose proxy adds a public hop** (Render, as reported; Cloudflare's proxy in front of Caddy or Coolify) had
+   the server take Cloudflare's edge as the client. `cloudflare` in the setting stands for Cloudflare's 22 published
+   ranges (`CLOUDFLARE_RANGES`, copied 2026-11-24 with the source in the code, never fetched); `render.yaml` sets
+   `private,cloudflare`; deploy.md says the proxy in between must trust Cloudflare too (Caddy's `trusted_proxies`,
+   Traefik's `forwardedHeaders.trustedIPs`) and that Railway's private network falls inside `private`.
+5. **IPv6 behind Docker's IPv4-only Compose network** shares one key (the userland proxy hands Caddy the gateway's
+   address). `compose.caddy.yaml` is unchanged: `enable_ipv6: true` needs no daemon change on Engine 27+, but creating
+   the network fails where IPv6 or `ip6tables` doesn't work, and on older engines, so the server wouldn't start;
+   deploy.md gives the three lines to add and the limit, beside the AAAA record.
+6. Docs: deploy.md's "wipe and deploy again" gained Cloudflare's steps (a new Worker under a new name, the owner email
+   set with `--var` or before opening it; then delete the old one); self-hosting.md no longer implies `usual-mail
+   init` passes `USUAL_MAIL_TRUSTED_PROXIES` on (Node takes the starting command's environment; the Docker container
+   gets only its address, so behind a proxy use `compose.yaml`). Making the command carry it would mean a saved
+   setting, a new reason to remake the container and a second parser for the one setting the command would carry, so
+   the docs were corrected instead.
+
 Left as it is: `PUT /v1/owner/password` doesn't ask for the current password (improvement-ideas.md; the apps call
 it); the apps sending the password over plain HTTP on a LAN is the apps' to fix.
 
@@ -111,7 +149,18 @@ start; the claim caps; one-line names and the quoted log line), `test/client-add
 `test/owner-helpers.ts`. In workerd, `test/cloudflare/owner.test.ts` (5) and `pairing.test.ts`'s IPv6 test rewritten
 (it had asserted the global lock).
 
-Checks run 2026-11-24, before the review: `npm test` in `server/` (1,028, all passing after `rest.test.ts`'s info answer was updated),
+After the re-review: `owner-claim-safety.test.ts` (15) replaced the hundred with ten /64s in one /48 capped at thirty
+("from your network", the owner in from another /48 and IPv4, the /48 free after ten minutes) and with the reviewer's
+ten addresses of ten no longer locking everyone while a thousand do; `client-address.test.ts` (7) adds `clientKey`'s
+/48, the /0 refusal (alone and beside others, also through `readConfig`) and `cloudflare` (its ranges' edges, the
+walk past an edge, `private` alone taking the edge); `test/one-line-text.test.ts` (6): `asOneLine`, a batch of
+decisions with a line break in one reason applied whole, an action's reason, a brief's highlight and a rule's text
+made one line, names and match fields still refused, a new teach prompt's question and rule from a sender's name with
+breaks, and a prompt stored with a control character in its rule's text accepted. In workerd, `owner.test.ts` (7): the
+/48 through the door and the ceiling on a server of its own.
+
+Checks run after the re-review: [server-checks.md](server-checks.md) (its first entry). Checks run 2026-11-24, before
+the review: `npm test` in `server/` (1,028, all passing after `rest.test.ts`'s info answer was updated),
 `npm run check:cloudflare` (84 with the two new; type checks clean), `core`'s check, the dashboard's check (169), MCP's
 check (134).
 

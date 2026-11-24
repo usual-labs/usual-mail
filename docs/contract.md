@@ -648,9 +648,12 @@ version rises.**
   inbox (status, name, trust and so on) raises its version and sends the event.
 - **Times** are ISO 8601 in UTC with whole seconds and `Z`, for example `2026-11-16T09:30:00Z`. No fractions.
 - **Ids** are opaque strings.
-- **One-line text** (a device's or an inbox's name, a rule's text and its `listId` or `subjectContains`, an action's or
-  a decision's reason, a brief's highlight line) is trimmed, and is `invalid` when it holds a control character (C0,
-  DEL, C1) or a line or paragraph separator (U+2028, U+2029), so none can break a line of the server's log.
+- **One-line text.** A name (a device's, an inbox's) and what a rule matches on (`listId`, `subjectContains`) is
+  trimmed, and is `invalid` when it holds a control character (C0, DEL, C1) or a line or paragraph separator (U+2028,
+  U+2029): a name can't break a line of the server's log, and a match isn't quietly changed into another. Prose (a
+  rule's text, an action's or a decision's reason, a brief's highlight line) is made one line instead: each of those
+  characters becomes a space, every run of white space one space, and the result is trimmed; it is `invalid` only when
+  nothing is left or it is too long, so one reason with a line break doesn't refuse a whole batch.
 - **The dashboard** is mounted at the server's root. Two of its paths are part of the contract, so other
   interfaces may link to them: an inbox's page, `/inboxes/<id>` under the server's root (`DASHBOARD_PATHS.inbox` in
   `core/src/api.ts`), and setting up an unclaimed server, `/claim` (`DASHBOARD_PATHS.claim`), where the server's
@@ -665,10 +668,11 @@ version rises.**
   - A wrong, used or expired code answers `unauthorized`.
   - **Wrong codes count per client address** (an IPv6 address by its /64), with wrong owner's passwords: after ten
     from one address in ten minutes, that address gets `rate_limited` (with `Retry-After`) until the oldest of them is
-    ten minutes old, even with a good code; after a hundred from every address together, everyone does. The host says
-    who the client is: Cloudflare's `CF-Connecting-IP`; on Node the connection's address, or, only when it comes from
-    a proxy named in `USUAL_MAIL_TRUSTED_PROXIES`, the right-most address in `X-Forwarded-For` that isn't one of those
-    proxies. The counts are kept in memory; a restart forgets them. Cloudflare's door also answers 429 itself after
+    ten minutes old, even with a good code; after thirty from one IPv6 /48, every address in it does; after a thousand
+    from every address together, everyone does. The host says who the client is: Cloudflare's `CF-Connecting-IP`; on
+    Node the connection's address, or, only when it comes from a proxy named in `USUAL_MAIL_TRUSTED_PROXIES`
+    (addresses, ranges, `private` and `cloudflare`; a /0 range is refused at start), the right-most address in
+    `X-Forwarded-For` that isn't one of those proxies. The counts are kept in memory; a restart forgets them. Cloudflare's door also answers 429 itself after
     five from one address.
 - **An agent's token** is made by a person creating a pairing code of kind `agent` for chosen inboxes and
   pairing with it. There is no other way.

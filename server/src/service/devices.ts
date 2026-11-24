@@ -16,6 +16,7 @@ import { and, eq, gt, isNull } from "drizzle-orm";
 import { devices, inboxes, pairingCodes, type DeviceRow } from "../db/index.ts";
 import { iso, makePairingCode, makeToken, normalizePairingCode, sha256, TOKEN_PREFIX, unique } from "../util.ts";
 import { requirePerson } from "./access.ts";
+import type { Counted } from "./attempts.ts";
 import type { Ctx } from "./context.ts";
 import { toDevice } from "./rows.ts";
 import { check, PairingCodeInputSchema, PairInputSchema } from "./schemas.ts";
@@ -70,18 +71,19 @@ export async function createPairingCode(ctx: Ctx, caller: Caller, input: Pairing
 
 /**
  * `rate_limited` while ten wrong pairing codes or owner's passwords (`owner.ts`) came from the caller's address in the
- * last ten minutes, or a hundred from everyone (attempts.ts): they count together, so neither can be guessed, and one
- * address can't lock the owner out. `client` is the caller's address key (client.ts).
+ * last ten minutes, thirty from its IPv6 /48, or a thousand from everyone (attempts.ts): they count together, so neither
+ * can be guessed, and a few addresses can't lock the owner out. `client` is what the caller counts under
+ * (client-address.ts's `clientKey`).
  */
-export function checkPairingLimit(ctx: Ctx, client: string, what = "pairing codes"): void {
+export function checkPairingLimit(ctx: Ctx, client: Counted, what = "pairing codes"): void {
   const wait = ctx.pairingFailures.wait(client, ctx.now());
   if (!wait) return;
-  const who = wait.scope === "address" ? "from your address" : "from everyone together";
+  const who = { address: "from your address", network: "from your network", everyone: "from everyone together" }[wait.scope];
   throw new ServiceError("rate_limited", `Too many wrong ${what} ${who}. Try again in ${wait.retryAfter} seconds.`, { retryAfter: wait.retryAfter });
 }
 
 /** Counts one wrong pairing code or password from `client`. */
-export function countPairingFailure(ctx: Ctx, client: string): void {
+export function countPairingFailure(ctx: Ctx, client: Counted): void {
   ctx.pairingFailures.count(client, ctx.now());
 }
 
@@ -111,7 +113,7 @@ export async function addDevice(
  * or expired code is `unauthorized`; after too many of those, every try is `rate_limited` for a while, even
  * with a good code, so codes can't be guessed.
  */
-export async function pair(ctx: Ctx, input: PairInput, client: string): Promise<PairResult> {
+export async function pair(ctx: Ctx, input: PairInput, client: Counted): Promise<PairResult> {
   checkPairingLimit(ctx, client);
   const data = check(PairInputSchema, input, "Pairing");
   const codeHash = await sha256(normalizePairingCode(data.code));

@@ -18,21 +18,41 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   again ([server-owner.md](server-owner.md)).
 - **The owner's password is PBKDF2-SHA256 at 100,000 iterations** (2026-11-24), below OWASP's 600,000, because Workers
   refuse more. Online guessing is capped by the pairing limit (ten wrong passwords or codes in ten minutes per client
-  address, five at Cloudflare's door, and a hundred from everyone: at most 14,400 tries a day); a stolen database
+  address, five at Cloudflare's door, thirty per IPv6 /48, and a thousand from everyone: at most 144,000 tries a day);
+  a stolen database
   could be attacked offline faster than with a stronger hash. The stored form names the count, so a later build can raise it on Node and re-hash at sign-in.
 - **An owner email set without a Google client closes claiming** (2026-11-24, by design): the server can't prove the
   email, so the claim page says Google sign-in isn't set up and the owner's code is the way in. A fresh Cloudflare
   deploy has no Google client, so an owner email there means Data Studio once, then a password.
-- **A hundred wrong passwords or codes from many addresses lock signing in for everyone for ten minutes**
-  (2026-11-24; [server-owner.md](server-owner.md), `service/attempts.ts`). Since the security review's fix, failures
-  count per client address (an IPv6 address by its /64): ten from one address lock only that address; the global
-  ceiling of a hundred keeps guessing slow. So locking the owner out of new sign-ins now takes ten or more IPv4
-  addresses or /64s (a /48 holds 65,536 /64s, so it is still possible for someone with a block of IPv6); devices
-  already signed in keep working. Before the fix ten from anyone locked everyone (one IPv4 address and one /64 beat
-  Cloudflare's five per address). On Node behind a proxy every connection is the proxy's address, so one address
-  could still lock everyone out unless `USUAL_MAIL_TRUSTED_PROXIES` names the proxy (the deploy files set `private`;
-  Railway by hand); how Render's proxy connects and fills `X-Forwarded-For` is unverified. In memory: a restart
-  forgets the counts.
+- **A thousand wrong passwords or codes from many addresses lock signing in for everyone for ten minutes**
+  (2026-11-24; [server-owner.md](server-owner.md), `service/attempts.ts`). Failures count per client address (an IPv6
+  address by its /64): ten from one address lock only that address, thirty from one IPv6 /48 lock that /48, and the
+  ceiling of a thousand keeps guessing slow (144,000 tries a day; about one in 7.6 million against one 40-bit code
+  waiting all day). So locking the owner out of new sign-ins takes a hundred IPv4 addresses or thirty-four /48s
+  guessing at once, renewed every ten minutes; devices already signed in keep working. Before the re-review's fix a
+  hundred did (ten IPv4 addresses or ten /64s, even in one /48), and before the first review's fix ten from anyone.
+  IPv4 isn't counted by any wider block (improvement-ideas.md). Who the client is depends on the host: on Node behind
+  a proxy every connection is the proxy's address, so one client could lock everyone out unless
+  `USUAL_MAIL_TRUSTED_PROXIES` names the proxy (the Caddy and Coolify files set `private`, Render's
+  `private,cloudflare`, Railway by hand; `usual-mail init` passes none of it on, self-hosting.md says how). Behind
+  Cloudflare's proxy the server sees Cloudflare's edge unless the setting holds `cloudflare` and the proxy in between
+  trusts Cloudflare too (Caddy's `trusted_proxies`, Traefik's `forwardedHeaders.trustedIPs`); then anything connecting
+  from Cloudflare's addresses (another account's Worker) may write the address it counts under, under the same
+  ceiling. Behind `compose.caddy.yaml` with an AAAA record, every IPv6 client is the Compose network's gateway (Docker's
+  userland proxy), so they share one count; deploy.md gives the network's `enable_ipv6` as the fix, not in the file
+  because it stops the server where IPv6 or `ip6tables` doesn't work. `CLOUDFLARE_RANGES` is a copy of 2026-11-24: a
+  range Cloudflare adds later counts as its edge until the list is updated. How Render's proxy connects and fills
+  `X-Forwarded-For` is unverified. In memory: a restart forgets the counts.
+- **Thirty-four addresses can hold the Google claim closed for ten minutes** (2026-11-24, open; `google/owner-claim.ts`):
+  at most three sign-ins wait per client address (an IPv6 /64) and a hundred in all, so thirty-four addresses starting
+  three each fill it, renewably, until the server is claimed. Only before the owner claims a server with an owner
+  email; the owner's code still gets in. Counting the waiting sign-ins per /48 too, as wrong passwords are, would
+  raise it for IPv6.
+- **A teach prompt stored before 2026-11-24 whose list id holds a control character can't be accepted** (open, an edge
+  case): a rule's `listId` still refuses control characters, so answering yes is `invalid`, and `answerTeach` marks the
+  prompt answered before it makes the rule, so the prompt is gone too. New prompts never offer such a list id; one
+  with a control character only in the sender's name is accepted (its rule's text is made one line). Making the rule
+  before marking the prompt would keep it to answer no.
 - **A restart forgets where a recovery code waits** (2026-11-24): the host hears null and removes the file or the row,
   while the code itself stays valid in the store until its 30 minutes end. Ask for another.
 - **The claim proof travels in the address once** (`/claim?proof=`, 2026-11-24): it can sit in the browser's history.
@@ -581,6 +601,15 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
 
 ## Fixed
 
+- **The owner password's re-review follow-ups** (server, 2026-11-24, `owner-claim-fix`; each with a test that fails on
+  the code before). (1) A hundred wrong passwords or codes from everyone locked signing in for everyone: ten IPv4
+  addresses or ten /64s (even in one /48) were enough; now a /48 counts at thirty and the ceiling is a thousand (Open,
+  above). (2) The stricter one-line check refused whole batches: one decision's reason with a line break made a
+  200-thread `decide` invalid, and a teach prompt stored with a control character in a sender's name couldn't be
+  accepted; prose (reasons, highlights, a rule's text) is now made one line instead, while names and a rule's match
+  fields still refuse them. (3) `USUAL_MAIL_TRUSTED_PROXIES` took `0.0.0.0/0` and `::/0`, believing anyone's
+  `X-Forwarded-For`; any /0 now stops the Node server at start. (4) Behind a proxy that adds Cloudflare's hop the
+  server counted Cloudflare's edge; `cloudflare` in the setting walks past it.
 - **Closing an inbox left three gaps** (server, found by the final review of 2026-11-24, fixed the same day, each with
   a test that failed on the code before). (1) New credentials store `connecting`, but the old provider's batch in hand
   could then fail (the old credentials being why new ones came) and `#sync`'s catch stored `needs_attention` with the

@@ -41,9 +41,10 @@ services:
       - key: USUAL_MAIL_OWNER_EMAIL
         sync: false
       # Render's proxy is the only way in: believe the client address it writes in X-Forwarded-For, so wrong passwords
-      # count per client (docs/deploy.md, "Behind a proxy"; how Render's proxy connects hasn't been checked).
+      # count per client. Render is reported to have Cloudflare in front, so Cloudflare's edge is walked past too
+      # (docs/deploy.md, "Behind a proxy"; how Render's proxy connects hasn't been checked).
       - key: USUAL_MAIL_TRUSTED_PROXIES
-        value: private
+        value: private,cloudflare
       # Your Google client for Gmail (docs/google-setup.md), both or neither; or leave them empty and give it from
       # the Mac app.
       - key: USUAL_MAIL_GOOGLE_CLIENT_ID

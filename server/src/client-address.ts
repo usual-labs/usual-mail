@@ -1,8 +1,9 @@
 // Client addresses, on both hosts. Wrong passwords, wrong pairing codes and Google claim sign-ins are counted per
 // client address (service/attempts.ts): an IPv4 address as it is, an IPv6 address by its /64 (one household's or one
-// server's whole range). Cloudflare's edge says who the client is (CF-Connecting-IP). On Node it is the connection's
-// own address, unless that is a reverse proxy the host named in USUAL_MAIL_TRUSTED_PROXIES: then it is the address the
-// proxies wrote into X-Forwarded-For (`forwardedClient`).
+// server's whole range) and, for wrong passwords and codes, also by its /48 (one site's: up to 65,536 /64s). Cloudflare's
+// edge says who the client is (CF-Connecting-IP). On Node it is the connection's own address, unless that is a reverse
+// proxy the host named in USUAL_MAIL_TRUSTED_PROXIES: then it is the address the proxies wrote into X-Forwarded-For
+// (`forwardedClient`).
 
 /** Eight 16-bit groups of an IPv6 address, or null when it isn't one. */
 function ipv6Groups(text: string): number[] | null {
@@ -52,18 +53,31 @@ export function parseAddress(text: string): number[] | null {
   return groups.flatMap((group) => [group >> 8, group & 255]);
 }
 
+/** What one client's wrong passwords and codes count under (service/attempts.ts). */
+export interface ClientKey {
+  /** `addressKey`: an IPv4 address, an IPv6 address's /64, "unknown" or "other:…". */
+  address: string;
+  /** An IPv6 address's /48, counted too so a site's many /64s don't each get their own limit; null for the rest. */
+  block: string | null;
+}
+
 /**
- * The key an address is counted under: an IPv4 address as it is, an IPv6 address by its /64, an IPv4-mapped IPv6
- * address as its IPv4 address. No address at all shares one key ("unknown").
+ * The keys an address is counted under: an IPv4 address as it is; an IPv6 address by its /64, and its /48 beside it; an
+ * IPv4-mapped IPv6 address as its IPv4 address. No address at all shares one key ("unknown").
  */
-export function addressKey(address: string | null): string {
+export function clientKey(address: string | null): ClientKey {
   const text = address?.trim() ?? "";
-  if (!text) return "unknown";
+  if (!text) return { address: "unknown", block: null };
   const bytes = parseAddress(text);
-  if (!bytes) return `other:${text.slice(0, 64).toLowerCase()}`;
-  if (bytes.length === 4) return bytes.join(".");
+  if (!bytes) return { address: `other:${text.slice(0, 64).toLowerCase()}`, block: null };
+  if (bytes.length === 4) return { address: bytes.join("."), block: null };
   const groups = [0, 2, 4, 6].map((at) => ((bytes[at]! << 8) | bytes[at + 1]!).toString(16));
-  return `${groups.join(":")}::/64`;
+  return { address: `${groups.join(":")}::/64`, block: `${groups.slice(0, 3).join(":")}::/48` };
+}
+
+/** The key an address is counted under on its own (`clientKey`'s `address`). */
+export function addressKey(address: string | null): string {
+  return clientKey(address).address;
 }
 
 /** A range of addresses: its first bytes and how many bits of them count. */
@@ -81,6 +95,23 @@ export const PRIVATE_RANGES = [
   "::1/128", "fc00::/7", "fe80::/10",
 ];
 
+/**
+ * What `cloudflare` stands for in USUAL_MAIL_TRUSTED_PROXIES: the addresses Cloudflare's proxy connects to an origin
+ * from, as Cloudflare published them at https://www.cloudflare.com/ips/ (ips-v4 and ips-v6, the same as its API's
+ * /client/v4/ips), copied on 2026-11-24. Written here, never fetched while the server runs, so a range Cloudflare adds
+ * later is missing until this list is updated: a client reaching the server through it counts as that edge address.
+ */
+export const CLOUDFLARE_RANGES = [
+  "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
+  "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+  "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22",
+  "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32", "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29",
+  "2c0f:f248::/32",
+];
+
+/** The words USUAL_MAIL_TRUSTED_PROXIES takes, and the ranges each stands for. */
+const NAMED_RANGES = new Map<string, readonly string[]>([["private", PRIVATE_RANGES], ["cloudflare", CLOUDFLARE_RANGES]]);
+
 function parseRange(text: string): AddressRange | null {
   const [address, bits, extra] = text.split("/");
   if (extra !== undefined) return null;
@@ -94,18 +125,24 @@ function parseRange(text: string): AddressRange | null {
 
 /**
  * USUAL_MAIL_TRUSTED_PROXIES: addresses and ranges (192.0.2.10, 172.16.0.0/12, fd00::/8) separated by commas, and the
- * word `private` for `PRIVATE_RANGES`. Empty: none. Throws, naming the first entry it can't read.
+ * words `private` (`PRIVATE_RANGES`) and `cloudflare` (`CLOUDFLARE_RANGES`). Empty: none. Throws, naming the first entry
+ * it can't read, and refuses a /0 range (0.0.0.0/0, ::/0): that is every address, so anyone could write the
+ * X-Forwarded-For their wrong passwords count under.
  */
 export function parseRanges(text: string | undefined): AddressRange[] {
   const ranges: AddressRange[] = [];
   for (const entry of (text ?? "").split(",").map((part) => part.trim()).filter(Boolean)) {
-    if (entry.toLowerCase() === "private") {
-      ranges.push(...PRIVATE_RANGES.map((range) => parseRange(range)!));
+    const named = NAMED_RANGES.get(entry.toLowerCase());
+    if (named) {
+      ranges.push(...named.map((range) => parseRange(range)!));
       continue;
     }
     const range = parseRange(entry);
     if (!range) {
-      throw new Error(`USUAL_MAIL_TRUSTED_PROXIES takes addresses and ranges like 172.16.0.0/12 or fd00::/8, separated by commas, or the word private; "${entry.slice(0, 64)}" isn't one`);
+      throw new Error(`USUAL_MAIL_TRUSTED_PROXIES takes addresses and ranges like 172.16.0.0/12 or fd00::/8, separated by commas, or the words private and cloudflare; "${entry.slice(0, 64)}" isn't one`);
+    }
+    if (range.bits === 0) {
+      throw new Error(`USUAL_MAIL_TRUSTED_PROXIES can't hold "${entry.slice(0, 64)}": a /0 range is every address, so anyone could choose the address their wrong passwords count under. Name only your proxies' addresses or ranges, or private`);
     }
     ranges.push(range);
   }

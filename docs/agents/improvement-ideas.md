@@ -57,6 +57,22 @@ and the notes:
 - **Cap recovery-code requests per address** (`POST /v1/owner/recovery-code`, no token): one waits at a time and
   asking again returns it, so it costs a write and a log line on Node at most every 30 minutes; a per-address cap like
   the Google claim's would make even that bounded per client.
+- **Count IPv4 by a wider block too** (the re-review, 2026-11-24): an IPv6 /48 counts at thirty, but a hundred IPv4
+  addresses from one provider's range each still get their own ten. A /24 limit would cap them, at the cost of
+  households behind one carrier-grade NAT sharing it. And the Google claim's waiting sign-ins could count per /48 as
+  wrong passwords do (known-issues.md).
+- **Check `CLOUDFLARE_RANGES` against Cloudflare's list** (2026-11-24): the copy in `client-address.ts` is never
+  fetched while the server runs; a release step (or a script like `update-trackers.mjs`) comparing it with
+  `https://www.cloudflare.com/ips-v4` and `ips-v6` would catch a new range.
+- **Let `usual-mail init` carry `USUAL_MAIL_TRUSTED_PROXIES`** (2026-11-24, decided against for now): the command
+  passes the Docker container only its address, and Node mode the starting shell's environment, so behind a proxy the
+  guide says to export it (Node) or use `compose.yaml` (Docker). Carrying it would take a saved setting, a flag, the
+  container's settings hash (only when set, so existing containers aren't remade) and the server's parser's checks.
+- **Turn on IPv6 in `compose.caddy.yaml`'s network** (2026-11-24) once Docker Engine 27 is the floor and a host
+  without working `ip6tables` is rare enough: `networks: default: enable_ipv6: true` gives IPv6 clients their own
+  addresses instead of the gateway's (deploy.md, step 1). Try it on a real Linux VPS first.
+- **Make a teach prompt's rule before marking the prompt answered** (`answerTeach`, 2026-11-24): a rule refused today
+  consumes the prompt (known-issues.md).
 
 - **Let a pause cut the batch being fetched short** (2026-11-23, after the review's pause fix): a pause answers at
   once, but the batch in hand is still fetched in the background, up to about two and a half minutes of Gmail on Node,

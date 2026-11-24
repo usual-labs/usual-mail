@@ -3,6 +3,20 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **The owner password's re-review follow-ups (2026-11-24, `owner-claim-fix`):** `npm run check` in `server/` (both
+  type checks, 1,063 tests: 1,057 pass, 6 skipped, 0 fail; the build and the smoke test). `npm run check:cloudflare`:
+  both type checks clean, 91 tests pass. Each new test seen failing on a mutation that undoes its fix (the ceiling back
+  to a hundred, no /48 count, each prose field back to `line()`, an inbox's name made prose, the /0 refusal off, the
+  `cloudflare` word gone). `node scripts/build.mjs <scratch folder>` twice: `server.mjs` (7,984,584 bytes)
+  byte-identical; the smoke test passed on it (with `migrations` beside the folder and `node_modules` linked in, as the
+  image has them). Probed with that build on scratch ports and temp data folders: `USUAL_MAIL_TRUSTED_PROXIES` of
+  `0.0.0.0/0`, `::/0` and `private, ::/0` each exit 2 with the /0 sentence, `private,cloudflare` starts; behind
+  `private` (the probe connecting from 127.0.0.1 and naming clients in `X-Forwarded-For`), ten /64s of one /48 with
+  three wrong codes each then the right password from an eleventh /64 answered 429 "from your network" with
+  `Retry-After: 600`, another /48 and an IPv4 address 200; the reviewer's ten IPv4 addresses of ten then the owner 200;
+  at a thousand failures the owner 429 "from everyone together". In demo mode a decision batch of three with a line
+  break in one reason 200 with it made one line, a rule's text likewise, and a rule's `listId` with a tab, an inbox's
+  name and a device's name with a line break 400 `invalid`. Every server and folder removed afterwards.
 - **0.1.1 merged onto the owner's password (2026-11-24):** the stop fixes rebased by hand onto `main` after the
   owner's password (`09675db`) and the guides' claiming (`3fcda2e`); `main.ts` keeps both the owner email's wiring and
   the stop during start-up. Both type checks clean; `npm test` 1,035 tests (1,029 pass, 6 skipped, 0 fail).

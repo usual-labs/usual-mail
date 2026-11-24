@@ -11,9 +11,17 @@ const decidedCategory = v.picklist(CATEGORIES.filter((category) => category !== 
 const stack = v.picklist(STACKS);
 /** Control characters (C0, DEL, C1) and the line and paragraph separators: never part of a single line. */
 export const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
+const EVERY_CONTROL_CHARACTER = new RegExp(CONTROL_CHARACTERS.source, "g");
+
+/** `text` as one line: control characters and line separators as spaces, then every run of white space one space, trimmed. */
+export function asOneLine(text: string): string {
+  return text.replace(EVERY_CONTROL_CHARACTER, " ").replace(/\s+/g, " ").trim();
+}
+
 /**
- * One line of text: trimmed, then refused when anything in it would break a line (a device's name reaches the log, and
- * a newline there could forge a line of its own).
+ * One line of text that names something (a device, an inbox) or matches mail: trimmed, then refused when anything in it
+ * would break a line. A device's name reaches the log, where a newline could forge a line of its own; a rule's list id or
+ * subject words changed quietly would match other mail.
  */
 export const line = (max: number) => v.pipe(
   v.string(),
@@ -22,6 +30,14 @@ export const line = (max: number) => v.pipe(
   v.maxLength(max),
   v.check((text) => !CONTROL_CHARACTERS.test(text), "Can't hold line breaks, tabs or other control characters"),
 );
+
+/**
+ * One line of prose an agent or a person writes (a decision's or an action's reason, a brief's highlight, a rule's
+ * text): made one line (`asOneLine`) rather than refused, so one reason with a line break doesn't refuse a whole batch
+ * of 200 decisions, and a teach prompt stored before names were cleaned still makes its rule. None of these reaches the
+ * log.
+ */
+export const prose = (max: number) => v.pipe(v.string(), v.transform(asOneLine), v.minLength(1), v.maxLength(max));
 
 const address = v.strictObject({
   name: v.optional(v.pipe(v.string(), v.maxLength(300))),
@@ -47,7 +63,7 @@ export const ActionSchema = v.variant("kind", [
 export const ActInputSchema = v.strictObject({
   threadIds: v.pipe(v.array(id), v.minLength(1), v.maxLength(200)),
   action: ActionSchema,
-  reason: v.optional(line(500)),
+  reason: v.optional(prose(500)),
 });
 
 /** Actions a rule may take (core's `RULE_ACTIONS`). The others change nothing on brand-new mail or need a time. */
@@ -72,13 +88,13 @@ const ruleThen = v.pipe(v.array(ruleAction), v.minLength(1), v.maxLength(10));
 
 export const RuleDraftSchema = v.strictObject({
   inboxId: id,
-  text: line(500),
+  text: prose(500),
   match: RuleMatchSchema,
   then: ruleThen,
 });
 
 export const RulePatchSchema = v.strictObject({
-  text: v.optional(line(500)),
+  text: v.optional(prose(500)),
   match: v.optional(RuleMatchSchema),
   then: v.optional(ruleThen),
   enabled: v.optional(v.boolean()),
@@ -168,7 +184,7 @@ export const DecisionsSchema = v.pipe(
     category: decidedCategory,
     done: v.optional(v.boolean()),
     need: v.optional(v.picklist(["reply", "decide", "pay", "read"])),
-    reason: line(500),
+    reason: prose(500),
   })),
   v.minLength(1),
   v.maxLength(200),
@@ -193,7 +209,7 @@ export const BriefInputSchema = v.strictObject({
     v.array(v.strictObject({
       inboxId: id,
       summary: v.optional(v.pipe(v.string(), v.maxLength(10_000))),
-      highlights: v.pipe(v.array(v.strictObject({ threadId: id, line: line(1000) })), v.maxLength(50)),
+      highlights: v.pipe(v.array(v.strictObject({ threadId: id, line: prose(1000) })), v.maxLength(50)),
     })),
     v.maxLength(100),
   ),

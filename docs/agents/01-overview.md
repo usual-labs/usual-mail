@@ -31,7 +31,9 @@ contract, the server (both hosts), the dashboard and the apps ([server-owner.md]
 run against a real Google account or deploy. Reviewed for security the same day after it shipped; the fixes
 (`owner-claim-fix`): a server once used can never be claimed again, wrong passwords and codes count per client address
 (`USUAL_MAIL_TRUSTED_PROXIES` names a Node server's proxies), a claim ends the owner's code, the Google claim leaks no
-email and is capped per address, one-line text refuses control characters.
+email and is capped per address, a name refuses control characters. A re-review's follow-ups the same day: an IPv6 /48
+counted too (thirty) under a ceiling of a thousand, prose (reasons, highlights, a rule's text) made one line rather
+than refused, a /0 proxy range refused, and `cloudflare` in `USUAL_MAIL_TRUSTED_PROXIES` for hosts behind Cloudflare.
 
 **Later on 2026-11-17, more changes in every part, the Mac app's in its own session (done by 2026-11-18, but for
 the guided Google set-up of 2026-11-21):**

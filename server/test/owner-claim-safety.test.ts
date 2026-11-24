@@ -1,6 +1,6 @@
 // The owner's password, after its security review (2026-11-24): a server once used can never be claimed again, even
-// after every device is revoked; wrong passwords and codes are counted per client address (an IPv6 address by its /64)
-// under a ceiling for everyone; a claim, or a sign-in to a server with no person's device, ends the owner's code; the
+// after every device is revoked; wrong passwords and codes are counted per client address (an IPv6 address by its /64),
+// per IPv6 /48, and under a ceiling of a thousand for everyone; a claim, or a sign-in to a server with no person's device, ends the owner's code; the
 // Google claim's answer carries no owner email and its sign-ins are capped per address; and a device's name is one line.
 
 import assert from "node:assert/strict";
@@ -9,7 +9,7 @@ import type { ServiceError } from "@usualmail/core";
 import { sql } from "drizzle-orm";
 import { createApp } from "../src/index.ts";
 import { MAX_WAITING, MAX_WAITING_PER_ADDRESS } from "../src/google/owner-claim.ts";
-import { PAIRING_GLOBAL_LIMIT, PAIRING_LIMIT } from "../src/service/attempts.ts";
+import { PAIRING_BLOCK_LIMIT, PAIRING_GLOBAL_LIMIT, PAIRING_LIMIT } from "../src/service/attempts.ts";
 import { check, line } from "../src/service/schemas.ts";
 import { closeAll, code, googleFor, make, MINUTE, PASSWORD, type Fresh } from "./owner-helpers.ts";
 
@@ -122,14 +122,51 @@ describe("wrong passwords and codes count per client address", () => {
     assert.equal((await f.server.signInOwner({ password: PASSWORD, name: "Owner" })).device.kind, "person");
   });
 
-  test("a hundred from everyone together lock everyone, for ten minutes", async () => {
+  test("ten IPv6 /64s inside one /48 are capped by the /48's thirty; the owner from elsewhere still signs in", async () => {
     const f = await make();
     await f.server.claimOwner({ password: PASSWORD, name: "My Mac" });
-    for (let n = 0; n < PAIRING_GLOBAL_LIMIT / PAIRING_LIMIT; n++) {
-      f.client.address = `198.51.100.${n + 1}`;
-      for (let i = 0; i < PAIRING_LIMIT; i++) await assert.rejects(f.server.pair({ code: "WRONG-CODE", name: "x" }), (e) => code(e) === "unauthorized");
+    assert.equal(PAIRING_BLOCK_LIMIT, 30);
+    // Three wrong passwords or codes from each of ten /64s in 2001:db8:77::/48: none reaches its own ten.
+    for (let n = 0; n < 10; n++) {
+      f.client.address = `2001:db8:77:${n.toString(16)}::1`;
+      await assert.rejects(f.server.signInOwner({ password: "not the password", name: "x" }), (e) => code(e) === "unauthorized");
+      for (let i = 0; i < 2; i++) await assert.rejects(f.server.pair({ code: "WRONG-CODE", name: "x" }), (e) => code(e) === "unauthorized");
     }
+    // An eleventh /64 in the same /48, even with the right password, waits; so does one of the ten.
+    for (const address of ["2001:db8:77:ffff::1", "2001:0db8:0077:0003::abcd"]) {
+      f.client.address = address;
+      await assert.rejects(f.server.signInOwner({ password: PASSWORD, name: "x" }), (e) => {
+        assert.equal(code(e), "rate_limited");
+        assert.match(message(e), /from your network/);
+        assert.ok((e as ServiceError).retryAfter! > 0);
+        return true;
+      }, address);
+    }
+    // Another /48 and an IPv4 address don't share it.
+    f.client.address = "2001:db8:78::1";
+    assert.equal((await f.server.signInOwner({ password: PASSWORD, name: "Owner" })).device.kind, "person");
+    f.client.address = "192.0.2.80";
+    assert.equal((await f.server.signInOwner({ password: PASSWORD, name: "Owner" })).device.kind, "person");
+    f.clock.advance(10 * MINUTE + 1000);
+    f.client.address = "2001:db8:77:ffff::1";
+    assert.equal((await f.server.signInOwner({ password: PASSWORD, name: "Owner" })).device.kind, "person", "after ten minutes");
+  });
+
+  test("ten addresses sending ten each no longer lock everyone; a thousand from everyone together do, for ten minutes", async () => {
+    const f = await make();
+    await f.server.claimOwner({ password: PASSWORD, name: "My Mac" });
+    assert.equal(PAIRING_GLOBAL_LIMIT, 1_000);
+    const fail = async (address: string) => {
+      f.client.address = address;
+      for (let i = 0; i < PAIRING_LIMIT; i++) await assert.rejects(f.server.pair({ code: "WRONG-CODE", name: "x" }), (e) => code(e) === "unauthorized");
+    };
+    // The reviewer's lock-out: ten IPv4 addresses, ten each, a hundred in all.
+    for (let n = 0; n < 10; n++) await fail(`198.51.100.${n + 1}`);
     f.client.address = "192.0.2.77";
+    assert.equal((await f.server.signInOwner({ password: PASSWORD, name: "Owner" })).device.kind, "person", "a hundred no longer lock everyone");
+    // Up to a thousand, from a hundred addresses in all.
+    for (let n = 10; n < PAIRING_GLOBAL_LIMIT / PAIRING_LIMIT; n++) await fail(`198.51.${100 + Math.floor(n / 250)}.${(n % 250) + 1}`);
+    f.client.address = "192.0.2.78";
     await assert.rejects(f.server.signInOwner({ password: PASSWORD, name: "x" }), (e) => {
       assert.equal(code(e), "rate_limited");
       assert.match(message(e), /from everyone together/);

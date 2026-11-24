@@ -93,7 +93,15 @@ one since signed out, or an inbox) can never be claimed again.
 could have set things up for later: their own AI key (the server would then send your mail's text to their AI
 account), their own Google client (your Gmail sign-in would go through a client they control), agents or rules. So
 **wipe the server's data and deploy it again** (the safe default): delete its volume or disk, and its secret key if the
-host keeps one, then start again with `USUAL_MAIL_OWNER_EMAIL` set. If you keep it instead, choose **Forgot your
+host keeps one, then start again with `USUAL_MAIL_OWNER_EMAIL` set. **On Cloudflare** the data lives in the Worker's
+Durable Object, and Cloudflare's documentation doesn't say whether deleting a Worker deletes that too, so deploy a new
+Worker under a new name, which always starts with nothing stored: from your copy of the repository,
+`npx wrangler deploy --name <a new name> --var USUAL_MAIL_OWNER_EMAIL:<your email>` sets the owner email in the deploy
+itself; with the Deploy button, give it the new name and set `USUAL_MAIL_OWNER_EMAIL` in the new Worker's settings
+before opening its address ([self-hosting.md](self-hosting.md#its-settings)). Give the new Worker its own
+`USUAL_MAIL_SECRET_KEY` and Google client, register its address at Google (or move your custom domain to it), then
+delete the old Worker in the Cloudflare dashboard (Workers & Pages, the Worker, Settings, Delete) and check under
+Durable Objects that its `UsualMailServer` namespace went with it. If you keep it instead, choose **Forgot your
 password?**: the server writes a recovery code where only its host can read it (`/data/owner-pairing-code`, read as
 each host's steps below say, and its log), never on the page. Sign in with it, remove every device and agent you don't
 know on the Devices and agents page, set your own password on the Account page, and before connecting an inbox check
@@ -103,16 +111,34 @@ theirs).
 ### Behind a proxy
 
 Wrong passwords and pairing codes are counted per client address: ten from one address in ten minutes, and that
-address waits; a hundred from everyone, and everyone waits. Behind a reverse proxy every connection comes from the
-proxy, so set **`USUAL_MAIL_TRUSTED_PROXIES`** to the proxy's addresses (addresses and ranges separated by commas,
-such as `172.16.0.0/12`, or `private` for loopback and private networks). The server then takes the client from
-the `X-Forwarded-For` the proxy writes (the right-most address in it that isn't one of those proxies), and ignores that
-header from anyone else. Set it only when every connection comes through those proxies. Without it, one address could
-lock everyone out of new sign-ins for ten minutes (signed-in devices keep working). The Caddy, Coolify and Render files
-set `private`; on Railway, set it yourself. Caddy and Traefik (Coolify's proxy) write the address that reached them as
-the last entry, the one the server takes; Railway's edge is reported to connect from `100.64.0.0/10`, which `private`
-covers. None of this has been tried on Coolify, Render or Railway, and how Render's proxy connects and writes the
-header isn't known.
+address waits; thirty from one IPv6 /48 (a site's whole range), and that /48 waits; a thousand from everyone, and
+everyone waits. Behind a reverse proxy every connection comes from the proxy, so set **`USUAL_MAIL_TRUSTED_PROXIES`**
+to the proxy's addresses (addresses and ranges separated by commas, such as `172.16.0.0/12`, or `private` for loopback
+and private networks). The server then takes the client from the `X-Forwarded-For` the proxy writes (the right-most
+address in it that isn't one of those proxies), and ignores that header from anyone else. Set it only when every
+connection comes through those proxies. A `/0` range (`0.0.0.0/0`, `::/0`) would believe anyone's header, so the
+server refuses it and doesn't start. Without the setting, every client counts as the proxy, and one client's wrong
+passwords could make everyone wait for ten minutes (signed-in devices keep working). The Caddy and Coolify files set
+`private`, and the Render file `private,cloudflare`; on Railway, set it yourself. Caddy and Traefik (Coolify's proxy)
+write the address that reached them as the last entry, the one the server takes; Railway's edge is reported to connect
+from `100.64.0.0/10`, which `private` covers. None of this has been tried on Coolify, Render or Railway.
+
+**Behind Cloudflare's proxy** (a proxied, orange-cloud DNS record in front of Caddy or Coolify): the proxy in front
+of the server is then reached from Cloudflare's edge, so the address it writes is the edge's, and every client coming
+through the same edge shares one count. Set `USUAL_MAIL_TRUSTED_PROXIES=private,cloudflare`: `cloudflare` stands for
+the ranges Cloudflare publishes at [cloudflare.com/ips](https://www.cloudflare.com/ips/), written into the server
+(copied 2026-11-24, never fetched while it runs), so the server walks past the edge to the client Cloudflare wrote.
+The proxy in between must keep Cloudflare's header too, or it writes the edge alone: Caddy ignores an incoming
+`X-Forwarded-For` unless the connection comes from one of its `trusted_proxies`, so list Cloudflare's ranges there (a
+`servers { trusted_proxies static … }` block in the Caddyfile's global options; only the `static` source comes with
+Caddy); Traefik takes them as its entry points' `forwardedHeaders.trustedIPs` (in Coolify, the proxy's configuration).
+Neither has been tried here. Trusting Cloudflare's ranges means that anything connecting from them, such as another
+account's Cloudflare Worker, may be able to write the address it counts under; the ceiling of a thousand still holds.
+**Render** is reported to put Cloudflare in front of every service in the same way, which is why `render.yaml` sets
+`private,cloudflare`; where Cloudflare isn't in the way, `cloudflare` changes nothing. **On Railway**, `private` also
+covers its private network (reported to use `fd12::/16`, inside `fc00::/7`), so another service in the same project
+could connect to the server directly and write any `X-Forwarded-For`; keep services you don't trust out of the
+project.
 
 ## Which to choose
 
@@ -140,6 +166,24 @@ image and stands alone: you don't need a copy of the repository on the server.
 1. **DNS:** an A record for the name you choose (say `mail.example.org`) to the server's IPv4 address, and an AAAA
    record if it has IPv6. **Firewall:** let in ports 80 and 443 (TCP, and UDP 443 for HTTP/3). Caddy needs port 80
    to get the certificate. Nothing else needs to be open; the server's own port stays inside Docker.
+
+   **With an AAAA record, every IPv6 client counts as one.** The network Compose makes for the file is IPv4 only, so
+   Docker's userland proxy takes each IPv6 connection and hands it to Caddy from the network's gateway address: Caddy,
+   and so the server, sees that one address for every IPv6 client, and wrong passwords from one of them make every
+   IPv6 client wait ([Behind a proxy](#behind-a-proxy)); IPv4 clients aren't affected. The fix is an IPv6 network:
+   on Docker Engine 27 or newer, which gives a network an IPv6 subnet of its own when asked, add this to the end of
+   the file:
+
+   ```
+   networks:
+     default:
+       enable_ipv6: true
+   ```
+
+   The file doesn't do this itself because creating the network then fails on a host where IPv6 is turned off or
+   `ip6tables` doesn't work (Docker's own words), and on Docker older than 27 without a subnet given, so the server
+   wouldn't start at all. Not tried here (only Docker Desktop on a Mac, whose networking differs); leaving out the AAAA
+   record avoids it too.
 2. **Files:** in a folder of its own on the server, save `compose.caddy.yaml` as `compose.yaml`
    (`curl -fsSLo compose.yaml https://raw.githubusercontent.com/usual-labs/usual-mail/main/compose.caddy.yaml`), and
    beside it a file `.env` (readable only by you: `chmod 600 .env`):

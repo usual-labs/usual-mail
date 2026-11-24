@@ -22,6 +22,7 @@ import { inboxes, owner, type OwnerRow } from "../db/index.ts";
 import { claimProof } from "../google/owner-claim.ts";
 import { iso } from "../util.ts";
 import { requirePerson } from "./access.ts";
+import type { Counted } from "./attempts.ts";
 import type { Ctx } from "./context.ts";
 import { addDevice, checkPairingLimit, countPairingFailure, everPaired, expirePersonCodes, keepOwnerCodeCurrent, personPaired } from "./devices.ts";
 import { checkedPassword, hashPassword, passwordMatches } from "./password.ts";
@@ -107,8 +108,8 @@ export async function claimOwner(ctx: Ctx, input: OwnerClaimInput): Promise<Pair
   return paired;
 }
 
-/** Pairs the caller's device with the owner's password. `client` is the caller's address key (client.ts). Under the lock. */
-export async function signInOwner(ctx: Ctx, input: OwnerSignInInput, client: string): Promise<PairResult> {
+/** Pairs the caller's device with the owner's password. `client` is what the caller counts under (attempts.ts). Under the lock. */
+export async function signInOwner(ctx: Ctx, input: OwnerSignInInput, client: Counted): Promise<PairResult> {
   checkPairingLimit(ctx, client, "passwords or pairing codes");
   const data = check(SignInSchema, input, "Signing in");
   const stored = (await ownerRow(ctx))?.passwordHash;

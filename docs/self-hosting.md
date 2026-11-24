@@ -104,9 +104,15 @@ To use it from your phone or another computer, never open the port to every netw
 - use a private network between your own devices, such as Tailscale or WireGuard, and make the server reachable on
   that network's address only; or
 - put a reverse proxy that serves HTTPS (Caddy, nginx or Traefik) in front of it, and keep the server itself on
-  `127.0.0.1` for the proxy to reach. Set `USUAL_MAIL_TRUSTED_PROXIES=private` too, so the server counts wrong
-  passwords per client from the proxy's `X-Forwarded-For` rather than all as the proxy's
-  ([deploy.md](deploy.md#behind-a-proxy)).
+  `127.0.0.1` for the proxy to reach. The server should then count wrong passwords per client from the proxy's
+  `X-Forwarded-For`, rather than all as the proxy's, which takes `USUAL_MAIL_TRUSTED_PROXIES=private` where the server
+  starts ([deploy.md](deploy.md#behind-a-proxy)). `usual-mail` doesn't pass that setting on itself: **with Node**, the
+  server takes the environment of the `usual-mail` command that starts it (`init`, `start`, and `sync-days` when it
+  restarts the server), so export the variable in your shell's profile, not only for one command; **with Docker**, the
+  container `usual-mail` makes is given only its address, so behind a proxy run the server with
+  [`compose.yaml`](../compose.yaml) instead, which publishes it on `127.0.0.1:8484` the same way and has the setting
+  ready to turn on ([deploy.md](deploy.md#docker-on-a-server-of-your-own), "Another proxy instead of Caddy"). Without
+  it, one client's wrong passwords can make everyone wait for ten minutes.
 
 Pairing codes and tokens must never travel without HTTPS outside a private network. `usual-mail doctor` warns when
 other devices can reach the port. Only Caddy has been tried, on one Mac ([deploy.md](deploy.md)).
@@ -361,8 +367,9 @@ with the old one is refused in words, not counted as a wrong code).
 **Another device** needs a code from one already paired: the dashboard's **Devices and agents** page (sign in at the
 server's address with a code), or the command, paired with `usual-mail init --server <the address> --code <code>`,
 then `usual-mail pair`. The Mac app can't make a code yet. After five wrong codes or passwords from one network address
-(an IPv6 address by its /64) in ten minutes, the server refuses pairing and signing in from it for a while; after a
-hundred from everyone together, it refuses them for everyone for a while (paired devices keep working).
+(an IPv6 address by its /64) in ten minutes, the server refuses pairing and signing in from it for a while; after
+thirty from one IPv6 /48, from all of that /48; after a thousand from everyone together, it refuses them for everyone
+for a while (paired devices keep working).
 
 **The time zone.** The pairing of your first device gives the server its time zone, from where Cloudflare sees that
 request come from (behind a VPN, the VPN's); later pairings don't change it. Until then the server works in UTC.

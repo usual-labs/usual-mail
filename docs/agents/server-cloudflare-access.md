@@ -74,8 +74,10 @@ and the two header names), `address.ts`, `google.ts`, `pairing.ts`, `settings.ts
   the host answers 429 `rate_limited` with `Retry-After` (REST: "Too many wrong pairing codes or passwords from this
   address. Try again in N seconds."; the dashboard: a small page) without passing the request on. At most 10,000 addresses are
   remembered, in memory; an eviction forgets them, as it forgets the service's own count. Behind the door the service
-  counts per address too (since the owner password's security review, 2026-11-24): ten per address and a hundred
-  from everyone (`service/attempts.ts`), keyed the same way (`client-address.ts`). The door keeps the client's
+  counts per address too (since the owner password's security review, 2026-11-24): ten per address, thirty per IPv6
+  /48 and a thousand from everyone (`service/attempts.ts`), keyed the same way (`client-address.ts`). The door's five
+  per address are below the service's ten, so one address meets the door first; the /48 and the ceiling are the
+  service's alone (its 429s aren't counted at the door). The door keeps the client's
   address in its request place (`address.ts`, `requestClient`), which is the object's `Host.clientAddress`, so the
   service's counts and the Google claim's cap per address (three waiting) read `CF-Connecting-IP` as the front Worker
   passed it on. Before, the service's ten were global: five from an IPv4 address and five from an IPv6 /64 passed the
@@ -117,7 +119,10 @@ fixed in the test the same day ([server-cloudflare-limits.md](server-cloudflare-
 - `owner.test.ts` (2026-11-24, the review's fixes): a server whose only device row is revoked isn't claimable (409); a
   claim removes the owner's code's row and the code no longer pairs; pair, then `DELETE` the device itself: not
   claimable, 409, a new owner's code; five wrong passwords from an IPv4 address and five from a /64, then the owner
-  signs in from a third; with an owner email and a Google client, the claim's start holds no `login_hint` or email,
+  signs in from a third; ten /64s in one /48, three wrong codes each, then the right password from an eleventh /64
+  answers the service's 429 "from your network" while another /48 and an IPv4 address sign in (the re-review); on a
+  server of its own, a hundred wrong codes from twenty addresses don't lock the owner out and a thousand from two
+  hundred do ("from everyone together"); with an owner email and a Google client, the claim's start holds no `login_hint` or email,
   the fourth start from one `CF-Connecting-IP` answers 429 "from your address" whatever forwarding headers the client
   sends, and another address still starts.
 - `front.test.ts`: `USUAL_MAIL_TIME_ZONE` and `USUAL_MAIL_SYNC_DAYS` win and are logged, the pairing's zone still

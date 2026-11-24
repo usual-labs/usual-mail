@@ -1,7 +1,9 @@
 // The owner's password on Cloudflare, in workerd, after its security review (2026-11-24): a server once used can't be
 // claimed again, even with every device revoked (also one whose only devices were revoked before the upgrade); a claim
-// ends the owner's code in its table; one IPv4 address and one IPv6 /64 together no longer lock the owner out; and,
-// with an owner email, the Google claim's answer holds no email and its sign-ins are capped per CF-Connecting-IP.
+// ends the owner's code in its table; one IPv4 address and one IPv6 /64 together no longer lock the owner out; ten /64s
+// in one /48 are capped by the service's thirty for the /48, past the door's five per /64; it takes a thousand from
+// everyone to lock everyone out; and, with an owner email, the Google claim's answer holds no email and its sign-ins are
+// capped per CF-Connecting-IP.
 
 import assert from "node:assert/strict";
 import { after, before, describe, test } from "node:test";
@@ -83,6 +85,44 @@ describe("without an owner email", () => {
     assert.equal((await post(server, "/v1/owner/sign-in", wrong, "2001:db8:5:6::99")).status, 429);
     const owner = await post(server, "/v1/owner/sign-in", { password: PASSWORD, name: "Owner" }, "198.51.100.60");
     assert.equal(owner.status, 200, `the owner signs in from elsewhere: ${JSON.stringify(owner.body)}`);
+  });
+
+  test("ten /64s in one /48, three each, meet the service's thirty for the /48; the owner from elsewhere still signs in", async () => {
+    for (let n = 0; n < 10; n++) {
+      for (let i = 0; i < 3; i++) assert.equal((await post(server, "/v1/pair", { code: "WRONG-CODE", name: "Guess" }, `2001:db8:99:${n}::${i + 1}`)).status, 401);
+    }
+    const capped = await post(server, "/v1/owner/sign-in", { password: PASSWORD, name: "Owner" }, "2001:db8:99:ff::1");
+    assert.equal(capped.status, 429, JSON.stringify(capped.body));
+    assert.match(capped.body.error.message, /from your network/);
+    for (const address of ["2001:db8:9a::1", "198.51.100.61"]) {
+      const owner = await post(server, "/v1/owner/sign-in", { password: PASSWORD, name: "Owner" }, address);
+      assert.equal(owner.status, 200, `${address}: ${JSON.stringify(owner.body)}`);
+    }
+  });
+});
+
+describe("the ceiling for everyone", () => {
+  let server: TestServer;
+  before(async () => {
+    server = await startServer();
+  });
+  after(async () => {
+    await server?.stop();
+  });
+
+  test("a hundred from twenty addresses no longer lock everyone; a thousand do", async () => {
+    assert.equal((await post(server, "/v1/owner/claim", { password: PASSWORD, name: "Browser" }, "192.0.2.1")).status, 200);
+    const fail = async (n: number) => {
+      const address = `198.${18 + Math.floor(n / 250)}.${n % 250}.1`;
+      for (let i = 0; i < 5; i++) assert.equal((await post(server, "/v1/pair", { code: "WRONG-CODE", name: "Guess" }, address)).status, 401, address);
+    };
+    // The door's five per address, from twenty addresses: the old ceiling of a hundred.
+    for (let n = 0; n < 20; n++) await fail(n);
+    assert.equal((await post(server, "/v1/owner/sign-in", { password: PASSWORD, name: "Owner" }, "192.0.2.2")).status, 200);
+    for (let n = 20; n < 200; n++) await fail(n);
+    const locked = await post(server, "/v1/owner/sign-in", { password: PASSWORD, name: "Owner" }, "192.0.2.3");
+    assert.equal(locked.status, 429, JSON.stringify(locked.body));
+    assert.match(locked.body.error.message, /from everyone together/);
   });
 });
 

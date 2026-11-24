@@ -41,7 +41,8 @@ export interface Config {
   ownerEmail: string | null;
   /**
    * USUAL_MAIL_TRUSTED_PROXIES: the reverse proxies in front of the server, whose X-Forwarded-For says who the client
-   * is (node/client.ts). Empty: X-Forwarded-For is ignored and the connection's own address is the client's.
+   * is (node/client.ts). Empty: X-Forwarded-For is ignored and the connection's own address is the client's. A /0 range
+   * stops the server at start (client-address.ts's `parseRanges`).
    */
   trustedProxies: AddressRange[];
   help: boolean;
@@ -70,9 +71,10 @@ Environment only:
   USUAL_MAIL_OWNER_EMAIL     The owner's email: an unclaimed server is then claimed only by signing in with Google as
                              that address (needs the Google client below). Without it, the first visitor claims it
   USUAL_MAIL_TRUSTED_PROXIES The reverse proxies in front of the server, as addresses and ranges separated by commas
-                             (172.16.0.0/12, fd00::/8), or "private" for loopback and private networks. Only from them
+                             (172.16.0.0/12, fd00::/8), "private" for loopback and private networks, and "cloudflare"
+                             for Cloudflare's published ranges (behind its proxy: "private,cloudflare"). Only from them
                              is X-Forwarded-For believed, to count wrong passwords per client. Set it only when every
-                             connection comes through those proxies (default: none, X-Forwarded-For ignored)
+                             connection comes through those proxies; a /0 range is refused (default: none, ignored)
   USUAL_MAIL_GOOGLE_CLIENT_ID, USUAL_MAIL_GOOGLE_CLIENT_SECRET
                              The host's Google OAuth client (a web application client), both or neither. Without
                              them the server reads <data-dir>/google-client.json, as Google's console downloads it

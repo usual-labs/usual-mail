@@ -81,7 +81,7 @@ import type { GoogleOptions } from "../google/config.ts";
 import * as googleClient from "../google/setup.ts";
 import * as google from "../google/sign-in.ts";
 import { startOwnerClaim } from "../google/owner-claim.ts";
-import { addressKey } from "../client-address.ts";
+import { clientKey, type ClientKey } from "../client-address.ts";
 import type { CallbackPage } from "../google/store.ts";
 import { upgradeStore } from "../db/upgrade.ts";
 import type { Host, ServedPicture, WebPicture } from "../host.ts";
@@ -537,9 +537,9 @@ export class MailServer implements MailService {
     return this.#ctx.lock.run(() => devices.createPairingCode(this.#ctx, caller, input));
   }
 
-  /** The key the request being answered is counted under (`Host.clientAddress`), read before waiting for the lock. */
-  #client(): string {
-    return addressKey(this.#ctx.host.clientAddress?.() ?? null);
+  /** What the request being answered is counted under (`Host.clientAddress`), read before waiting for the lock. */
+  #client(): ClientKey {
+    return clientKey(this.#ctx.host.clientAddress?.() ?? null);
   }
 
   pair(input: PairInput): Promise<PairResult> {
@@ -558,7 +558,7 @@ export class MailServer implements MailService {
   }
 
   startOwnerClaim(): Promise<OwnerClaimStart> {
-    const client = this.#client();
+    const client = this.#client().address;
     return this.#ctx.lock.run(() => startOwnerClaim(this.#ctx, client));
   }
 
