@@ -68,26 +68,21 @@ export async function createPairingCode(ctx: Ctx, caller: Caller, input: Pairing
   return issueCode(ctx, "agent", ids, ctx.options.pairingCodeTtlMs);
 }
 
-/** Ten wrong codes in ten minutes, and `pair` answers `rate_limited` until the oldest of them is ten minutes old. */
-export const PAIRING_LIMIT = 10;
-export const PAIRING_WINDOW_MS = 10 * 60_000;
-
 /**
- * `rate_limited` while ten wrong pairing codes or owner's passwords (`owner.ts`) were given in the last ten minutes:
- * they count together, so neither can be guessed.
+ * `rate_limited` while ten wrong pairing codes or owner's passwords (`owner.ts`) came from the caller's address in the
+ * last ten minutes, or a hundred from everyone (attempts.ts): they count together, so neither can be guessed, and one
+ * address can't lock the owner out. `client` is the caller's address key (client.ts).
  */
-export function checkPairingLimit(ctx: Ctx, what = "pairing codes"): void {
-  const failures = ctx.pairingFailures;
-  while (failures.length > 0 && failures[0]! <= ctx.now() - PAIRING_WINDOW_MS) failures.shift();
-  if (failures.length >= PAIRING_LIMIT) {
-    const retry = Math.max(1, Math.ceil((failures[0]! + PAIRING_WINDOW_MS - ctx.now()) / 1000));
-    throw new ServiceError("rate_limited", `Too many wrong ${what}. Try again in ${retry} seconds.`, { retryAfter: retry });
-  }
+export function checkPairingLimit(ctx: Ctx, client: string, what = "pairing codes"): void {
+  const wait = ctx.pairingFailures.wait(client, ctx.now());
+  if (!wait) return;
+  const who = wait.scope === "address" ? "from your address" : "from everyone together";
+  throw new ServiceError("rate_limited", `Too many wrong ${what} ${who}. Try again in ${wait.retryAfter} seconds.`, { retryAfter: wait.retryAfter });
 }
 
-/** Counts one wrong pairing code or password. */
-export function countPairingFailure(ctx: Ctx): void {
-  ctx.pairingFailures.push(ctx.now());
+/** Counts one wrong pairing code or password from `client`. */
+export function countPairingFailure(ctx: Ctx, client: string): void {
+  ctx.pairingFailures.count(client, ctx.now());
 }
 
 /** A new device and its token, shown once; only the token's hash is kept. `extra` is written in the same batch. */
@@ -116,8 +111,8 @@ export async function addDevice(
  * or expired code is `unauthorized`; after too many of those, every try is `rate_limited` for a while, even
  * with a good code, so codes can't be guessed.
  */
-export async function pair(ctx: Ctx, input: PairInput): Promise<PairResult> {
-  checkPairingLimit(ctx);
+export async function pair(ctx: Ctx, input: PairInput, client: string): Promise<PairResult> {
+  checkPairingLimit(ctx, client);
   const data = check(PairInputSchema, input, "Pairing");
   const codeHash = await sha256(normalizePairingCode(data.code));
   const code = await ctx.db.select().from(pairingCodes).where(and(
@@ -126,7 +121,7 @@ export async function pair(ctx: Ctx, input: PairInput): Promise<PairResult> {
     gt(pairingCodes.expiresAt, ctx.now()),
   )).get();
   if (!code) {
-    countPairingFailure(ctx);
+    countPairingFailure(ctx, client);
     throw new ServiceError("unauthorized", "That pairing code is wrong, used or expired");
   }
   const paired = await addDevice(ctx, { name: data.name, kind: code.kind, inboxIds: code.inboxIds }, [
@@ -171,13 +166,29 @@ export async function personPaired(ctx: Ctx): Promise<boolean> {
 }
 
 /**
+ * Whether any device was ever paired here, revoked ones included: a server someone has used, which can never be claimed
+ * again (owner.ts). Device rows are never deleted, only revoked, and this relies on that.
+ */
+export async function everPaired(ctx: Ctx): Promise<boolean> {
+  return (await ctx.db.select({ id: devices.id }).from(devices).limit(1).get()) !== undefined;
+}
+
+/**
+ * Ends every unused person code at once, for the batch that pairs the first person's device: while none is paired, the
+ * only person codes are owner's codes, which must not outlive the server's being claimed or signed into.
+ */
+export function expirePersonCodes(ctx: Ctx) {
+  return ctx.db.update(pairingCodes).set({ expiresAt: ctx.now() })
+    .where(and(eq(pairingCodes.kind, "person"), isNull(pairingCodes.usedAt), gt(pairingCodes.expiresAt, ctx.now())));
+}
+
+/**
  * A new pairing code for the owner, while no person's device is paired. Until then the only person codes are
  * earlier owner codes, and those stop working, so only the newest code printed works.
  */
 export async function ownerPairingCode(ctx: Ctx): Promise<PairingCode | null> {
   if (await personPaired(ctx)) return null;
-  await ctx.db.update(pairingCodes).set({ expiresAt: ctx.now() })
-    .where(and(eq(pairingCodes.kind, "person"), isNull(pairingCodes.usedAt), gt(pairingCodes.expiresAt, ctx.now())));
+  await expirePersonCodes(ctx);
   return issueCode(ctx, "person", null, ctx.options.ownerCodeTtlMs);
 }
 

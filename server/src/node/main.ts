@@ -25,6 +25,7 @@ import { readConfig, USAGE } from "./config.ts";
 import { firstSyncDays, firstSyncWords, saveFirstSyncDays } from "./settings.ts";
 import { fakeAuthorizationUrl, fakeGoogleFetch, googleClientSource, redirectUriFor, saveGoogleClientFile, savedGoogleClient } from "./google.ts";
 import { openDatabase } from "./db.ts";
+import { requestClient, withRequestClient } from "./client.ts";
 import { loadSecretKey, nodeScheduler } from "./host.ts";
 import { ownerCodeLines, ownerCodePath, readOwnerCode, removeOwnerCode, writeOwnerCode } from "./owner-code.ts";
 import { parts } from "./parts.ts";
@@ -95,6 +96,7 @@ const host: Host = {
   ...(!config.demo && { pictures: new DiskPictureSource({ dir: join(config.dataDir, "pictures") }) }),
   // Sender pictures from organisations' own sites, under the same rules; kept in the store. Demo mode fetches nothing.
   ...(!config.demo && { siteIcons: new NodeSiteIcons() }),
+  clientAddress: requestClient,
 };
 
 const demo = config.demo ? demoProviders(() => host.clock.now()) : null;
@@ -168,8 +170,11 @@ if (stopAsked.aborted) {
 }
 
 const app = createApp(server, { scheduler: nodeScheduler, log: consoleLog, interfaces: parts.interfaces });
+// Each request runs with its client's address known (Host.clientAddress): the connection's, or what the proxies named in
+// USUAL_MAIL_TRUSTED_PROXIES wrote in X-Forwarded-For. Wrong codes and passwords count per client.
+const handle = withRequestClient(config.trustedProxies, app.fetch);
 const listening = Promise.withResolvers<void>();
-const http = serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
+const http = serve({ fetch: handle, port: config.port, hostname: config.host }, (info) => {
   listeningPort = info.port;
   const where = config.demo ? "demo mode, sample data in memory" : `data in ${config.dataDir}`;
   console.log(`Usual Mail server ${SERVER_VERSION} on http://${config.host}:${info.port} (${where}; AI through ${models.label})`);

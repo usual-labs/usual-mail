@@ -40,6 +40,10 @@ services:
       # addresses within minutes (docs/deploy.md, "Claiming your server"). Needs the Google client below.
       - key: USUAL_MAIL_OWNER_EMAIL
         sync: false
+      # Render's proxy is the only way in: believe the client address it writes in X-Forwarded-For, so wrong passwords
+      # count per client (docs/deploy.md, "Behind a proxy"; how Render's proxy connects hasn't been checked).
+      - key: USUAL_MAIL_TRUSTED_PROXIES
+        value: private
       # Your Google client for Gmail (docs/google-setup.md), both or neither; or leave them empty and give it from
       # the Mac app.
       - key: USUAL_MAIL_GOOGLE_CLIENT_ID

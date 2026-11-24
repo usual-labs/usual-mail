@@ -18,7 +18,7 @@ import { aesGcmSecrets } from "../secrets.ts";
 import { MailServer } from "../service/server.ts";
 import { migrateStore, openDatabase } from "./database.ts";
 import type { Env } from "./env.ts";
-import { OwnHosts, readPublicUrl, requestRedirectUri } from "./address.ts";
+import { OwnHosts, readPublicUrl, requestClient, requestRedirectUri } from "./address.ts";
 import { cloudflareGoogle, googleStartWords } from "./google.ts";
 import { createOwnerCodeTable, keepOwnerCodeInTable, SpentOwnerCodes } from "./owner-code.ts";
 import { AddressCounter } from "./pairing.ts";
@@ -110,6 +110,9 @@ export class UsualMailServer extends DurableObject<Env> {
       siteIcons: web.siteIcons,
       // Smaller batches, plans and stored messages than Node's, and search's catch-up in the background (limits.ts).
       limits: options.limits ?? CLOUDFLARE_LIMITS,
+      // CF-Connecting-IP of the request being answered, as the front Worker passed it on (the door keeps it; a client's
+      // own copy is dropped there): wrong codes and passwords, and Google claim sign-ins, count per address.
+      clientAddress: requestClient,
     };
     const models = sdkModelAccess();
     // Google sign-in: the client a person's device gives (sealed in storage) or the Worker's secrets; the redirect

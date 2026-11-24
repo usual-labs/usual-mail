@@ -1,7 +1,7 @@
 // The server's owner and their password (docs/contract.md, "The owner's password"; the owner's decisions of
-// 2026-11-24). One owner per server, one row. While the server has no password and no person's device it can be
-// claimed: by whoever comes first, or, when the host names the owner's email, by whoever Google proves has it
-// (google/owner-claim.ts). A claim, and every sign-in with the password, pairs the caller's device as a person's, so
+// 2026-11-24). One owner per server, one row. A server nobody has used yet (no password, no device ever paired, no
+// inbox) can be claimed: by whoever comes first, or, when the host names the owner's email, by whoever Google proves has
+// it (google/owner-claim.ts). Once used it never can be again, even after every device is revoked. A claim, and every sign-in with the password, pairs the caller's device as a person's, so
 // a browser or an app signed in that way is listed, kept and removed like any paired device. Wrong passwords count
 // with wrong pairing codes (devices.ts). Forgetting it: a signed-in device sets a new one; otherwise a recovery code,
 // made where the host keeps the owner's code (devices.ts, `requestRecoveryCode`).
@@ -18,12 +18,12 @@ import {
 } from "@usualmail/core";
 import { eq } from "drizzle-orm";
 import * as v from "valibot";
-import { owner, type OwnerRow } from "../db/index.ts";
+import { inboxes, owner, type OwnerRow } from "../db/index.ts";
 import { claimProof } from "../google/owner-claim.ts";
 import { iso } from "../util.ts";
 import { requirePerson } from "./access.ts";
 import type { Ctx } from "./context.ts";
-import { addDevice, checkPairingLimit, countPairingFailure, keepOwnerCodeCurrent, personPaired } from "./devices.ts";
+import { addDevice, checkPairingLimit, countPairingFailure, everPaired, expirePersonCodes, keepOwnerCodeCurrent, personPaired } from "./devices.ts";
 import { checkedPassword, hashPassword, passwordMatches } from "./password.ts";
 import { check, line } from "./schemas.ts";
 
@@ -63,10 +63,22 @@ async function ownerRow(ctx: Ctx): Promise<OwnerRow | undefined> {
   return ctx.db.select().from(owner).where(eq(owner.id, 1)).get();
 }
 
+/**
+ * Whether nobody has used this server yet: no device was ever paired (revoked ones count: device rows are never
+ * deleted) and it holds no inbox. Claimable only then, so it is one-way: revoking every device of a server in use (a
+ * browser's "Sign out", an app's "Disconnect", or a v0.1.0 server upgraded with no password) leaves the owner's code as
+ * the way back in, never a claim open to anyone. No migration is needed: the rows that decide it are already there on
+ * every server, on both hosts.
+ */
+async function unused(ctx: Ctx): Promise<boolean> {
+  if (await everPaired(ctx)) return false;
+  return (await ctx.db.select({ id: inboxes.id }).from(inboxes).limit(1).get()) === undefined;
+}
+
 /** `ServerInfo.owner`: whether there is a password, and whether and how the server can be claimed. */
 export async function ownerInfo(ctx: Ctx): Promise<OwnerInfo> {
   const password = Boolean((await ownerRow(ctx))?.passwordHash);
-  const claimable = !password && !(await personPaired(ctx));
+  const claimable = !password && (await unused(ctx));
   return { password, claimable, ...(claimable && { claim: ctx.options.ownerEmail ? "google" : "password" }) };
 }
 
@@ -84,27 +96,32 @@ export async function claimOwner(ctx: Ctx, input: OwnerClaimInput): Promise<Pair
     email = proven.email;
   }
   const now = ctx.now();
+  // The owner's code that waited (every unused person code, while none is paired) stops working in the same batch, so
+  // whoever could read it can't pair once the server is claimed.
   const paired = await addDevice(ctx, { name: data.name, kind: "person", inboxIds: null }, [
+    expirePersonCodes(ctx),
     ctx.db.insert(owner).values({ id: 1, email, passwordHash: await hashPassword(password, ctx.host.random), passwordSetAt: now, createdAt: now }),
   ]);
-  // The owner's code that waited is done with.
   await keepOwnerCodeCurrent(ctx);
-  ctx.host.log.info(`This server now has an owner, claimed from the device "${paired.device.name}".`);
+  ctx.host.log.info(`This server now has an owner, claimed from the device ${JSON.stringify(paired.device.name)}.`);
   return paired;
 }
 
-/** Pairs the caller's device with the owner's password. Under the lock. */
-export async function signInOwner(ctx: Ctx, input: OwnerSignInInput): Promise<PairResult> {
-  checkPairingLimit(ctx, "passwords or pairing codes");
+/** Pairs the caller's device with the owner's password. `client` is the caller's address key (client.ts). Under the lock. */
+export async function signInOwner(ctx: Ctx, input: OwnerSignInInput, client: string): Promise<PairResult> {
+  checkPairingLimit(ctx, client, "passwords or pairing codes");
   const data = check(SignInSchema, input, "Signing in");
   const stored = (await ownerRow(ctx))?.passwordHash;
   if (!stored) throw new ServiceError("conflict", words.noPassword);
   if (!(await passwordMatches(data.password, stored))) {
-    countPairingFailure(ctx);
+    countPairingFailure(ctx, client);
     throw new ServiceError("unauthorized", words.wrong);
   }
-  const paired = await addDevice(ctx, { name: data.name, kind: "person", inboxIds: null });
-  await keepOwnerCodeCurrent(ctx);
+  // The first person's device since none was paired: the owner's code that waited stops working with it.
+  const first = !(await personPaired(ctx));
+  const paired = await addDevice(ctx, { name: data.name, kind: "person", inboxIds: null }, first ? [expirePersonCodes(ctx)] : []);
+  // Whatever code waited then (the owner's, or a recovery code from before the last device went) is ended: drop it.
+  await keepOwnerCodeCurrent(ctx, first ? ctx.ownerCode?.waiting ?? undefined : undefined);
   return paired;
 }
 

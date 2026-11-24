@@ -27,8 +27,11 @@ root, `compose.caddy.yaml`, `compose.coolify.yaml`, `render.yaml`, a workflow th
 **On 2026-11-24 the owner got a password** (the owner's decisions that day): the first visitor to an unclaimed server
 sets it and owns the server, unless the host names `USUAL_MAIL_OWNER_EMAIL`, which Google must prove; the dashboard
 and the Mac and iPhone apps sign in with it; a recovery code goes where the owner's code goes. Built in core, the
-contract, the server (both hosts), the dashboard and the apps ([server-owner.md](server-owner.md)); tested, not yet
-reviewed for security, never run against a real Google account or deploy.
+contract, the server (both hosts), the dashboard and the apps ([server-owner.md](server-owner.md)); tested, never
+run against a real Google account or deploy. Reviewed for security the same day after it shipped; the fixes
+(`owner-claim-fix`): a server once used can never be claimed again, wrong passwords and codes count per client address
+(`USUAL_MAIL_TRUSTED_PROXIES` names a Node server's proxies), a claim ends the owner's code, the Google claim leaks no
+email and is capped per address, one-line text refuses control characters.
 
 **Later on 2026-11-17, more changes in every part, the Mac app's in its own session (done by 2026-11-18, but for
 the guided Google set-up of 2026-11-21):**

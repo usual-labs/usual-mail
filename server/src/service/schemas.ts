@@ -9,7 +9,19 @@ const time = v.pipe(v.string(), v.minLength(1), v.maxLength(40));
 /** A category someone can decide: any but `unknown`, which nobody chooses. */
 const decidedCategory = v.picklist(CATEGORIES.filter((category) => category !== "unknown"), "A category is conversation, newsletter, invoice, receipt, notification or otp; nobody chooses unknown");
 const stack = v.picklist(STACKS);
-export const line = (max: number) => v.pipe(v.string(), v.trim(), v.minLength(1), v.maxLength(max));
+/** Control characters (C0, DEL, C1) and the line and paragraph separators: never part of a single line. */
+export const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
+/**
+ * One line of text: trimmed, then refused when anything in it would break a line (a device's name reaches the log, and
+ * a newline there could forge a line of its own).
+ */
+export const line = (max: number) => v.pipe(
+  v.string(),
+  v.trim(),
+  v.minLength(1),
+  v.maxLength(max),
+  v.check((text) => !CONTROL_CHARACTERS.test(text), "Can't hold line breaks, tabs or other control characters"),
+);
 
 const address = v.strictObject({
   name: v.optional(v.pipe(v.string(), v.maxLength(300))),

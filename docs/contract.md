@@ -648,6 +648,9 @@ version rises.**
   inbox (status, name, trust and so on) raises its version and sends the event.
 - **Times** are ISO 8601 in UTC with whole seconds and `Z`, for example `2026-11-16T09:30:00Z`. No fractions.
 - **Ids** are opaque strings.
+- **One-line text** (a device's or an inbox's name, a rule's text and its `listId` or `subjectContains`, an action's or
+  a decision's reason, a brief's highlight line) is trimmed, and is `invalid` when it holds a control character (C0,
+  DEL, C1) or a line or paragraph separator (U+2028, U+2029), so none can break a line of the server's log.
 - **The dashboard** is mounted at the server's root. Two of its paths are part of the contract, so other
   interfaces may link to them: an inbox's page, `/inboxes/<id>` under the server's root (`DASHBOARD_PATHS.inbox` in
   `core/src/api.ts`), and setting up an unclaimed server, `/claim` (`DASHBOARD_PATHS.claim`), where the server's
@@ -660,7 +663,13 @@ version rises.**
   to one device: a person's app or browser, or an agent. `GET /v1/me` returns the device the token belongs to.
 - A token comes from `POST /v1/pair` with a pairing code a person created. A code works once.
   - A wrong, used or expired code answers `unauthorized`.
-  - After ten wrong codes in ten minutes, `POST /v1/pair` answers `rate_limited` until the ten minutes pass.
+  - **Wrong codes count per client address** (an IPv6 address by its /64), with wrong owner's passwords: after ten
+    from one address in ten minutes, that address gets `rate_limited` (with `Retry-After`) until the oldest of them is
+    ten minutes old, even with a good code; after a hundred from every address together, everyone does. The host says
+    who the client is: Cloudflare's `CF-Connecting-IP`; on Node the connection's address, or, only when it comes from
+    a proxy named in `USUAL_MAIL_TRUSTED_PROXIES`, the right-most address in `X-Forwarded-For` that isn't one of those
+    proxies. The counts are kept in memory; a restart forgets them. Cloudflare's door also answers 429 itself after
+    five from one address.
 - **An agent's token** is made by a person creating a pairing code of kind `agent` for chosen inboxes and
   pairing with it. There is no other way.
 - **The owner's code.** Whenever no person's device is paired (at a start, after the last one signs out or is
@@ -681,18 +690,25 @@ version rises.**
 Decided by the owner on 2026-11-24. One owner per server, with a password (and an email, optional). Signing in with
 it pairs the device as a person's: a browser or an app signed in that way is listed, kept and removed like any paired
 device. Pairing codes stay: for agents, for the owner's other devices, and as the way back in.
-- **`GET /v1/info`** answers `owner: OwnerInfo`: `password` (one is set), `claimable` (no password and no person's
-  device), and while claimable `claim`: `"password"` or `"google"`. A server without it has no password.
+- **`GET /v1/info`** answers `owner: OwnerInfo`: `password` (one is set), `claimable` (nobody has used the server yet:
+  no password, no device ever paired, revoked ones included, and no inbox), and while claimable `claim`: `"password"`
+  or `"google"`. A server without it has no password.
 - **Claiming** (`POST /v1/owner/claim`, no token): an unclaimed server's first claim makes its caller the owner and
-  answers `PairResult`, like pairing. Once the server has a password or a person's device it answers `conflict`: a
-  server paired before passwords existed can't be claimed, and gets its password from a signed-in device.
+  answers `PairResult`, like pairing. Claimable is one-way: once the server has a password, an inbox, or any device
+  (even one since revoked, by a browser's "Sign out" or an app's "Disconnect"), it answers `conflict` for good. The
+  owner's code is then the way back in, and a server paired before passwords existed gets its password from a
+  signed-in device. A claim ends the owner's code that waited (every unused person code, in the same write), and so
+  does the first sign-in with the password while no person's device is paired.
   - **First visitor:** without an owner email, whoever claims first owns the server. The server's log says that it
     was claimed and from which device's name.
   - **The host's owner email** (`USUAL_MAIL_OWNER_EMAIL`, optional, every host): claiming then needs `proof`, which
     only Sign in with Google gives (`POST /v1/owner/claim/google`, no token: the identity scope `openid email`
-    through the host's Google client and its usual redirect address). When the ID token's verified email (issuer,
+    through the host's Google client and its usual redirect address, without a login hint, so the answer never holds
+    the owner email; at most three waiting from one client address and a hundred in all, then `rate_limited` until the
+    oldest expires). When the ID token's verified email (issuer,
     audience, expiry and `email_verified` checked; it comes straight from Google's token endpoint) is the owner
-    email, the callback sends the browser to the dashboard's `/claim?proof=<proof>`. A proof works once, for ten
+    email, compared exactly after lower-casing (the address the Google account shows, without removing dots or a
+    `+` part), the callback sends the browser to the dashboard's `/claim?proof=<proof>`. A proof works once, for ten
     minutes, and is kept only as its hash, in memory. Without it `claimOwner` answers `forbidden`; with an unknown,
     used or expired one, `unauthorized`. The owner's email is then Google's, not one typed. A typed email is never
     proof. A value that isn't an email address keeps claiming closed. Without a Google client nothing can be claimed
@@ -701,8 +717,8 @@ device. Pairing codes stay: for agents, for the owner's other devices, and as th
   as PBKDF2-SHA256 with a 16-byte salt and 100,000 iterations (the most Workers allow), in a form that names the
   scheme and the count.
 - **Signing in** (`POST /v1/owner/sign-in`, no token): the right password answers `PairResult`; a wrong one
-  `unauthorized`; none set yet `conflict`. Wrong passwords count with wrong pairing codes: ten of either in ten
-  minutes and both answer `rate_limited` for everyone, as pairing does.
+  `unauthorized`; none set yet `conflict`. Wrong passwords count with wrong pairing codes, per client address and for
+  everyone together, as above.
 - **Setting it** (`PUT /v1/owner/password`, a person): a first password or a new one, without the old one, since a
   person's device already has the owner's whole access. `GET /v1/owner` answers the owner, never the password.
 - **A recovery code** (`POST /v1/owner/recovery-code`, no token), when the password is forgotten and no device is at

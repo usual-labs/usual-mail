@@ -81,6 +81,7 @@ import type { GoogleOptions } from "../google/config.ts";
 import * as googleClient from "../google/setup.ts";
 import * as google from "../google/sign-in.ts";
 import { startOwnerClaim } from "../google/owner-claim.ts";
+import { addressKey } from "../client-address.ts";
 import type { CallbackPage } from "../google/store.ts";
 import { upgradeStore } from "../db/upgrade.ts";
 import type { Host, ServedPicture, WebPicture } from "../host.ts";
@@ -536,8 +537,14 @@ export class MailServer implements MailService {
     return this.#ctx.lock.run(() => devices.createPairingCode(this.#ctx, caller, input));
   }
 
+  /** The key the request being answered is counted under (`Host.clientAddress`), read before waiting for the lock. */
+  #client(): string {
+    return addressKey(this.#ctx.host.clientAddress?.() ?? null);
+  }
+
   pair(input: PairInput): Promise<PairResult> {
-    return this.#ctx.lock.run(() => devices.pair(this.#ctx, input));
+    const client = this.#client();
+    return this.#ctx.lock.run(() => devices.pair(this.#ctx, input, client));
   }
 
   revokeDevice(caller: Caller, id: Id): Promise<void> {
@@ -551,11 +558,13 @@ export class MailServer implements MailService {
   }
 
   startOwnerClaim(): Promise<OwnerClaimStart> {
-    return this.#ctx.lock.run(() => startOwnerClaim(this.#ctx));
+    const client = this.#client();
+    return this.#ctx.lock.run(() => startOwnerClaim(this.#ctx, client));
   }
 
   signInOwner(input: OwnerSignInInput): Promise<PairResult> {
-    return this.#ctx.lock.run(() => owner.signInOwner(this.#ctx, input));
+    const client = this.#client();
+    return this.#ctx.lock.run(() => owner.signInOwner(this.#ctx, input, client));
   }
 
   owner(caller: Caller): Promise<Owner> {

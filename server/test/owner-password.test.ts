@@ -4,76 +4,15 @@
 
 import assert from "node:assert/strict";
 import { afterEach, describe, test } from "node:test";
-import { ServiceError, type PairingCode } from "@usualmail/core";
-import { aesGcmSecrets, createApp, FakeModels, MailServer, MemoryEventBus, ProviderRegistry, webRandom, type Host } from "../src/index.ts";
-import type { GoogleClient, GoogleFetch } from "../src/google/config.ts";
+import type { ServiceError } from "@usualmail/core";
+import { createApp, webRandom } from "../src/index.ts";
 import { verifiedEmail } from "../src/google/oauth.ts";
-import { openDatabase } from "../src/node/db.ts";
-import type { OwnerCodeKind } from "../src/service/devices.ts";
 import { hashPassword, passwordMatches } from "../src/service/password.ts";
 import { ownerEmailSetting } from "../src/service/owner.ts";
-import { ManualClock } from "../src/testing/index.ts";
 import { START } from "./helpers.ts";
+import { CLIENT, closeAll, code, googleFor, make, MINUTE, PASSWORD, type Fresh } from "./owner-helpers.ts";
 
-const PASSWORD = "correct horse battery";
-const CLIENT: GoogleClient = { clientId: "owner-client.apps.googleusercontent.example", clientSecret: "GOCSPX-test-secret" };
-const REDIRECT = "http://127.0.0.1:8484/v1/google/callback";
-const MINUTE = 60_000;
-
-const code = (error: unknown) => (error instanceof ServiceError ? error.code : String(error));
-
-interface Heard {
-  code: PairingCode | null;
-  made: boolean;
-  kind: OwnerCodeKind;
-}
-
-interface Fresh {
-  server: MailServer;
-  clock: ManualClock;
-  heard: Heard[];
-  infos: string[];
-  close: () => void;
-}
-
-/** A server nobody has paired with or claimed, keeping its owner's code as a host does. */
-async function fresh(options: { ownerEmail?: string; googleFetch?: GoogleFetch } = {}): Promise<Fresh> {
-  const store = await openDatabase(":memory:");
-  const clock = new ManualClock(START);
-  const infos: string[] = [];
-  const host: Host = {
-    db: store.db,
-    clock,
-    scheduler: clock,
-    random: webRandom,
-    events: new MemoryEventBus(),
-    secrets: await aesGcmSecrets(webRandom.bytes(32), webRandom),
-    log: { info: (message) => infos.push(message), error: (message) => infos.push(`ERROR ${message}`) },
-  };
-  const server = await MailServer.create(host, {
-    providers: new ProviderRegistry(),
-    models: new FakeModels(),
-    ...(options.ownerEmail !== undefined && { ownerEmail: options.ownerEmail }),
-    ...(options.googleFetch && {
-      google: { client: async () => CLIENT, redirectUri: () => REDIRECT, fetch: options.googleFetch, authorizationUrl: "https://accounts.google.example/o/oauth2/v2/auth" },
-    }),
-  });
-  await server.start();
-  const heard: Heard[] = [];
-  await server.keepOwnerCode((code, made, kind) => heard.push({ code, made, kind }));
-  return { server, clock, heard, infos, close: () => { void server.stop().finally(() => store.close()); } };
-}
-
-let open: Fresh[] = [];
-async function make(options?: Parameters<typeof fresh>[0]): Promise<Fresh> {
-  const f = await fresh(options);
-  open.push(f);
-  return f;
-}
-afterEach(() => {
-  for (const f of open) f.close();
-  open = [];
-});
+afterEach(closeAll);
 
 describe("claiming an unclaimed server", () => {
   test("the first to claim it owns it, its device is a person's, and the owner's code is done with", async () => {
@@ -195,22 +134,11 @@ describe("recovery codes", () => {
 });
 
 describe("claiming with the host's owner email", () => {
-  /** Google's token endpoint, answering an ID token for `email`. */
-  function googleFor(email: string, verified = true): GoogleFetch {
-    return async (input) => {
-      const url = String(input);
-      assert.ok(url.startsWith("https://oauth2.googleapis.com/token"), url);
-      const claims = { iss: "https://accounts.google.com", aud: CLIENT.clientId, exp: Date.parse(START) / 1000 + 3600, email, email_verified: verified };
-      const idToken = `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.sig`;
-      return Response.json({ access_token: "at", id_token: idToken, scope: "openid https://www.googleapis.com/auth/userinfo.email" });
-    };
-  }
-
   async function signIn(f: Fresh): Promise<{ status: number; redirect?: string; message: string }> {
     const start = await f.server.startOwnerClaim();
     const url = new URL(start.url);
     assert.equal(url.searchParams.get("scope"), "openid email");
-    assert.equal(url.searchParams.get("login_hint"), "owner@example.org");
+    assert.equal(url.searchParams.get("login_hint"), null, "the owner's email isn't in an answer anyone can ask for");
     assert.equal(url.searchParams.get("access_type"), null, "no offline access");
     const page = await f.server.finishGoogleSignIn(new URLSearchParams({ state: url.searchParams.get("state")!, code: "google-code" }));
     return page;

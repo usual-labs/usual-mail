@@ -77,18 +77,42 @@ A new server has no owner. **Whoever opens its address first and sets a password
 new HTTPS certificates find new addresses within minutes. So either:
 
 - **set `USUAL_MAIL_OWNER_EMAIL`** to your email before the server first starts (Render and Coolify ask for it; with
-  Compose, in `.env`). Then the server is set up only by signing in with Google as that address, which needs the
-  Google client (`USUAL_MAIL_GOOGLE_CLIENT_ID` and `_SECRET`, or the file); or
+  Compose, in `.env`): the exact address your Google account shows, since it is compared as written (only upper and
+  lower case don't matter; dots and a `+` part are not removed). Then the server is set up only by signing in with
+  Google as that address, which needs the Google client (`USUAL_MAIL_GOOGLE_CLIENT_ID` and `_SECRET`, or the file); or
 - **open the address and set the password at once**, as soon as the server is up.
 
-Then sign in to the dashboard and the apps with that password. The owner's code (each host's steps below) still
-works too, and is the way in when nobody can sign in.
+Then sign in to the dashboard and the apps with that password. Claiming ends the owner's code that waited (each
+host's steps below say where it is): before anyone claims the server, that code gets you in without a password; after,
+the server makes a new one only when no device is paired, once the last one signs out or is removed. To pair the
+`usual-mail` command after claiming, make a pairing code on the dashboard's **Devices and agents** page and run
+`usual-mail init --server <the address> --code <that code>`. A server once used (a password set, a device paired, even
+one since signed out, or an inbox) can never be claimed again.
 
-**If someone else got there first,** the dashboard's sign-in says the server already has an owner. Choose **Forgot
-your password?**: the server writes a recovery code where only its host can read it (`/data/owner-pairing-code`, read
-as each host's steps below say, and its log), never on the page. Sign in with it, remove their devices on the Devices
-and agents page, and set your own password on the Account page. A new server is empty until you connect an inbox, so
-nothing of yours was there to see.
+**If someone else got there first,** the dashboard's sign-in says the server already has an owner. Whoever claimed it
+could have set things up for later: their own AI key (the server would then send your mail's text to their AI
+account), their own Google client (your Gmail sign-in would go through a client they control), agents or rules. So
+**wipe the server's data and deploy it again** (the safe default): delete its volume or disk, and its secret key if the
+host keeps one, then start again with `USUAL_MAIL_OWNER_EMAIL` set. If you keep it instead, choose **Forgot your
+password?**: the server writes a recovery code where only its host can read it (`/data/owner-pairing-code`, read as
+each host's steps below say, and its log), never on the page. Sign in with it, remove every device and agent you don't
+know on the Devices and agents page, set your own password on the Account page, and before connecting an inbox check
+the AI settings (set your own key or none) and the Google client (`usual-mail google`; give your own, replacing
+theirs).
+
+### Behind a proxy
+
+Wrong passwords and pairing codes are counted per client address: ten from one address in ten minutes, and that
+address waits; a hundred from everyone, and everyone waits. Behind a reverse proxy every connection comes from the
+proxy, so set **`USUAL_MAIL_TRUSTED_PROXIES`** to the proxy's addresses (addresses and ranges separated by commas,
+such as `172.16.0.0/12`, or `private` for loopback and private networks). The server then takes the client from
+the `X-Forwarded-For` the proxy writes (the right-most address in it that isn't one of those proxies), and ignores that
+header from anyone else. Set it only when every connection comes through those proxies. Without it, one address could
+lock everyone out of new sign-ins for ten minutes (signed-in devices keep working). The Caddy, Coolify and Render files
+set `private`; on Railway, set it yourself. Caddy and Traefik (Coolify's proxy) write the address that reached them as
+the last entry, the one the server takes; Railway's edge is reported to connect from `100.64.0.0/10`, which `private`
+covers. None of this has been tried on Coolify, Render or Railway, and how Render's proxy connects and writes the
+header isn't known.
 
 ## Which to choose
 
@@ -134,8 +158,10 @@ image and stands alone: you don't need a copy of the repository on the server.
    `curl https://mail.example.org/healthz` answers `{"ok":true}`.
 4. **Claim it:** open `https://mail.example.org` and set the server's password (after signing in with Google as the
    owner email, when `.env` names one). Sign in to the dashboard and the apps with it
-   ([self-hosting.md](self-hosting.md#5-pair-the-mac-app)). To pair the `usual-mail` command on your own computer, or
-   to get in with the owner's code instead:
+   ([self-hosting.md](self-hosting.md#5-pair-the-mac-app)). To pair the `usual-mail` command on your own computer
+   afterwards, make a pairing code on the dashboard's **Devices and agents** page and run
+   `usual-mail init --server https://mail.example.org --code <that code>`. Claiming ends the owner's code. Before
+   anyone claims the server, it gets you in without a password instead:
 
    ```
    docker compose exec usual-mail cat /data/owner-pairing-code
@@ -203,7 +229,10 @@ pass the `Host` header through (the web dashboard marks its sign-in cookie `Secu
 not `127.0.0.1`; nginx sends its upstream's address unless told `proxy_set_header Host $host`), set
 `X-Forwarded-Proto: https` (or the dashboard's sign-in page warns that it isn't on HTTPS), and not buffer
 `GET /v1/events`, a stream of server-sent events (the server sends `X-Accel-Buffering: no` for nginx, and a comment
-every 25 seconds; keep the proxy's read timeout above that). Caddy does all three by itself.
+every 25 seconds; keep the proxy's read timeout above that). Caddy does all three by itself. Have the proxy set
+`X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr`) and set `USUAL_MAIL_TRUSTED_PROXIES:
+private` in `compose.yaml`'s `environment` ([Behind a proxy](#behind-a-proxy)): with the port published on
+`127.0.0.1`, only this machine's proxy reaches the server.
 
 ## Coolify
 
@@ -219,9 +248,10 @@ hasn't run on Coolify itself yet. It pulls the published image.
    HTTP, which the server refuses, so the container would stop at every start.
 4. Under Environment Variables, set `USUAL_MAIL_OWNER_EMAIL` to your email (strongly suggested: [Claiming your
    server](#claiming-your-server)), and optionally `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET`.
-5. **Deploy,** then open `https://mail.example.org` and set the server's password. The owner's code also works: in the
-   service's log, or in its terminal with `cat /data/owner-pairing-code`, for
-   `usual-mail init --server https://mail.example.org --code <that code>`.
+5. **Deploy,** then open `https://mail.example.org` and set the server's password. Before anyone claims it, the
+   owner's code also gets you in: in the service's log, or in its terminal with `cat /data/owner-pairing-code`, for
+   `usual-mail init --server https://mail.example.org --code <that code>`. After claiming, pair the command with a
+   code from the dashboard's **Devices and agents** page instead.
 
 Coolify fills `USUAL_MAIL_PUBLIC_URL` from the domain without the port (`SERVICE_URL_USUALMAIL`). The file also
 names `SERVICE_URL_USUALMAIL_8484`, which tells Coolify's proxy the port, but that variable's value keeps the port
@@ -264,9 +294,10 @@ then **Blueprint**, and choose it.
 2. Render makes `USUAL_MAIL_SECRET_KEY` once (256 random bits in base64). **Copy it somewhere safe** and never
    change it: the disk's snapshots don't hold it.
 3. Once it is live, open `https://<your service>.onrender.com` and set the server's password (after signing in
-   with Google, when you gave `USUAL_MAIL_OWNER_EMAIL`: Render asks for it, strongly suggested). The owner's code
-   also works: in the log, or in the service's **Shell** with `cat /data/owner-pairing-code`, for
-   `usual-mail init --server https://<your service>.onrender.com --code <that code>`.
+   with Google, when you gave `USUAL_MAIL_OWNER_EMAIL`: Render asks for it, strongly suggested). Before anyone claims
+   it, the owner's code also gets you in: in the log, or in the service's **Shell** with
+   `cat /data/owner-pairing-code`, for `usual-mail init --server https://<your service>.onrender.com --code <that code>`.
+   After claiming, pair the command with a code from the dashboard's **Devices and agents** page instead.
 4. For a domain of your own, add it under **Custom Domains**, then set `USUAL_MAIL_PUBLIC_URL` to it and register
    the new redirect address at Google.
 
@@ -297,6 +328,7 @@ make the template, set up one service:
 3. **Networking:** generate a domain for the service with target port **8484**, or add your own.
 4. **Variables:** `USUAL_MAIL_PUBLIC_URL` = `https://${{RAILWAY_PUBLIC_DOMAIN}}` (or your domain with `https://`);
    `USUAL_MAIL_OWNER_EMAIL`, your email (strongly suggested: [Claiming your server](#claiming-your-server));
+   `USUAL_MAIL_TRUSTED_PROXIES` = `private` ([Behind a proxy](#behind-a-proxy));
    `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` = `180`, the time to stop; optionally the two Google variables. Railway's
    default for the time between SIGTERM and SIGKILL is 0 seconds
    ([Railway: variables](https://docs.railway.com/reference/variables),
@@ -306,8 +338,9 @@ make the template, set up one service:
    (`/data/secret.key`); to keep it apart from the data instead, set `USUAL_MAIL_SECRET_KEY` to 32 random bytes in
    base64 (`openssl rand -base64 32`) before the first start, and never change it.
 5. **Settings:** health check path `/healthz`; one replica (Railway allows no more with a volume).
-6. Deploy, then open the address and set the server's password. The owner's code also works: in the deploy log, or
-   `railway ssh`, then `cat /data/owner-pairing-code`.
+6. Deploy, then open the address and set the server's password. Before anyone claims it, the owner's code also gets
+   you in: in the deploy log, or `railway ssh`, then `cat /data/owner-pairing-code`. After claiming, pair the command
+   with a code from the dashboard's **Devices and agents** page instead.
 
 It needs the Hobby plan or above: the free plan sleeps. **Railway allows SMTP only on Pro and above**, so on Hobby
 inboxes connected over IMAP can't send; Gmail can. A service with a volume is down for a moment at each redeploy.

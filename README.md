@@ -12,8 +12,9 @@ summaries need your own AI key.
 
 **Then claim it.** A new server has no owner: open its address in a browser and set its password, and you own it.
 Whoever does that first owns it, and scanners find new addresses within minutes, so either claim it at once or set
-`USUAL_MAIL_OWNER_EMAIL` to your email before it first starts: then only signing in with Google as that address sets
-it up ([docs/deploy.md, Claiming your server](docs/deploy.md#claiming-your-server)). Sign in to the dashboard and the
+`USUAL_MAIL_OWNER_EMAIL` to your email before it first starts (the exact address your Google account shows): then only
+signing in with Google as that address sets it up ([docs/deploy.md, Claiming your server](docs/deploy.md#claiming-your-server)).
+If someone else claimed it first, wipe its data and deploy again. Sign in to the dashboard and the
 Mac app with the address and that password ([docs/self-hosting.md](docs/self-hosting.md#5-pair-the-mac-app)); the Mac
 app you build from this repository for now.
 
@@ -24,9 +25,11 @@ app you build from this repository for now.
 The server runs in your own Cloudflare account, as one Worker and one Durable Object, and needs **Workers Paid** ($5
 a month at least). The maintainer has deployed it to a real account with `npx wrangler deploy` (2026-11-23), where it
 answered over HTTPS. **The button itself hasn't been tried yet**, and neither Google sign-in nor a sync has run on Cloudflare.
-Recommended: set the secret `USUAL_MAIL_SECRET_KEY` and the variable `USUAL_MAIL_OWNER_EMAIL` in the Worker's
-settings before you first open its address (the Deploy form can't ask for an optional value). The steps, the settings
-and the `wrangler` way: [docs/self-hosting.md, On Cloudflare](docs/self-hosting.md#on-cloudflare).
+From the deploy until the variable `USUAL_MAIL_OWNER_EMAIL` is set, whoever opens the server's address first, not only
+you, can claim it, and the default address (`usual-mail` on your `workers.dev` subdomain) is easy to guess. The Deploy
+form can't ask for an optional value, so set `USUAL_MAIL_OWNER_EMAIL` and the secret `USUAL_MAIL_SECRET_KEY` in the
+Worker's settings right after deploying. The steps, the settings and the `wrangler` way:
+[docs/self-hosting.md, On Cloudflare](docs/self-hosting.md#on-cloudflare).
 
 ### Render
 
@@ -58,7 +61,8 @@ docker compose up -d
 
 Then open `https://mail.example.org` and set the server's password (with `USUAL_MAIL_OWNER_EMAIL`, after signing in
 with Google as that address, which needs your Google client in `.env` too; leave the line out to claim it with a
-password alone, at once).
+password alone, at once). To pair the `usual-mail` command afterwards, make a pairing code on the dashboard's
+**Devices and agents** page: claiming ends the owner's code.
 
 The owner's code works too, until the server is claimed. Give the server a few seconds to start (it writes the code
 once it has), then read it:

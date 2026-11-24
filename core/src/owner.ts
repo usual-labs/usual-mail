@@ -21,8 +21,9 @@ export interface OwnerInfo {
   /** Whether the owner has set a password, so a device may sign in with it (`POST /v1/owner/sign-in`). */
   password: boolean;
   /**
-   * Whether the server can be claimed now: it has no password and no person's device is paired. Once either exists
-   * it can't: a server paired before the password existed gets its password from a signed-in device.
+   * Whether the server can be claimed now: nobody has used it yet (no password, no device ever paired, revoked ones
+   * included, and no inbox). One-way: once used it never can be again, even with every device revoked; then the owner's
+   * code is the way back in, and a server paired before the password existed gets its password from a signed-in device.
    */
   claimable: boolean;
   /** How it is claimed, while it is claimable. */

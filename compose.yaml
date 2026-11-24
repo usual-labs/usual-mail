@@ -60,6 +60,9 @@ services:
     #   # Only signing in with Google as this address sets the server up (docs/deploy.md, "Claiming your server").
     #   # Without it, whoever first opens the address and sets a password owns the server.
     #   USUAL_MAIL_OWNER_EMAIL: "you@example.org"
+    #   # Behind a reverse proxy on this machine (the port above stays on 127.0.0.1): believe the client address it
+    #   # writes in X-Forwarded-For, so wrong passwords count per client (docs/deploy.md, "Behind a proxy").
+    #   USUAL_MAIL_TRUSTED_PROXIES: "private"
 
 volumes:
   # Everything the server keeps: the database, with mailbox passwords and the AI key stored sealed, and the key that

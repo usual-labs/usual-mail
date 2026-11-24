@@ -73,7 +73,13 @@ and the two header names), `address.ts`, `google.ts`, `pairing.ts`, `settings.ts
   answer is a failure; an attempt in flight holds a place, so a burst can't pass the limit; after five in ten minutes
   the host answers 429 `rate_limited` with `Retry-After` (REST: "Too many wrong pairing codes or passwords from this
   address. Try again in N seconds."; the dashboard: a small page) without passing the request on. At most 10,000 addresses are
-  remembered, in memory; an eviction forgets them, as it forgets the service's own count.
+  remembered, in memory; an eviction forgets them, as it forgets the service's own count. Behind the door the service
+  counts per address too (since the owner password's security review, 2026-11-24): ten per address and a hundred
+  from everyone (`service/attempts.ts`), keyed the same way (`client-address.ts`). The door keeps the client's
+  address in its request place (`address.ts`, `requestClient`), which is the object's `Host.clientAddress`, so the
+  service's counts and the Google claim's cap per address (three waiting) read `CF-Connecting-IP` as the front Worker
+  passed it on. Before, the service's ten were global: five from an IPv4 address and five from an IPv6 /64 passed the
+  door and locked pairing and signing in for everyone.
 - **Settings** (`settings.ts`): `USUAL_MAIL_SYNC_DAYS` (1 to 36,500) wins; else a person's window kept in KV as
   `usual-mail-sync-days` (`saveSyncWindowDays`); else 30; the start logs which. **The time zone:** `Host.timeZone` is a
   getter, so a pairing sets it at once. The request that pairs a person's device while none is paired (checked in the
@@ -105,8 +111,15 @@ fixed in the test the same day ([server-cloudflare-limits.md](server-cloudflare-
   dashboard failures from one address, then 429 for REST, the dashboard and a good code, whatever
   `x-usual-mail-client-address`, `X-Forwarded-For`, `True-Client-IP` or `X-Real-IP` the client sends, while another
   address pairs; that pairing's `cf.timezone` kept and logged, a later pairing's ignored, kept across a reset; five
-  failures from one /64 (written three ways) then 429, another /64 passed on to the service until its own global lock
-  answers in its own words; a person's first-sync window kept across a reset.
+  failures from one /64 (written three ways) then 429, another /64's five passed on to the service, and a third address
+  still answered 401, not locked (it asserted the global lock before the review's fix); a person's first-sync window
+  kept across a reset.
+- `owner.test.ts` (2026-11-24, the review's fixes): a server whose only device row is revoked isn't claimable (409); a
+  claim removes the owner's code's row and the code no longer pairs; pair, then `DELETE` the device itself: not
+  claimable, 409, a new owner's code; five wrong passwords from an IPv4 address and five from a /64, then the owner
+  signs in from a third; with an owner email and a Google client, the claim's start holds no `login_hint` or email,
+  the fourth start from one `CF-Connecting-IP` answers 429 "from your address" whatever forwarding headers the client
+  sends, and another address still starts.
 - `front.test.ts`: `USUAL_MAIL_TIME_ZONE` and `USUAL_MAIL_SYNC_DAYS` win and are logged, the pairing's zone still
   kept; an object that throws answers 500, and so does a reset one (Miniflare marks `ctx.abort`'s error neither
   `retryable` nor `overloaded`), core's shape, no internals; the headers on REST,

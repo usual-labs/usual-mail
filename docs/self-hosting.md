@@ -104,7 +104,9 @@ To use it from your phone or another computer, never open the port to every netw
 - use a private network between your own devices, such as Tailscale or WireGuard, and make the server reachable on
   that network's address only; or
 - put a reverse proxy that serves HTTPS (Caddy, nginx or Traefik) in front of it, and keep the server itself on
-  `127.0.0.1` for the proxy to reach.
+  `127.0.0.1` for the proxy to reach. Set `USUAL_MAIL_TRUSTED_PROXIES=private` too, so the server counts wrong
+  passwords per client from the proxy's `X-Forwarded-For` rather than all as the proxy's
+  ([deploy.md](deploy.md#behind-a-proxy)).
 
 Pairing codes and tokens must never travel without HTTPS outside a private network. `usual-mail doctor` warns when
 other devices can reach the port. Only Caddy has been tried, on one Mac ([deploy.md](deploy.md)).
@@ -158,8 +160,11 @@ code**, and press **Connect**. With a password set, enter it as **Password** ins
 **A server set up without `init`** (with Compose, or on a host in [deploy.md](deploy.md)) has no owner at first:
 whoever opens its address and sets its password first owns it, in a browser or in the app (**Connect** with a new
 password offers **Set up your server**: type it twice, and an email if you like). On a server others can reach, do
-it at once, or set `USUAL_MAIL_OWNER_EMAIL` to your email before it first starts: then only signing in with Google
-as that address sets it up ([deploy.md](deploy.md#claiming-your-server)).
+it at once, or set `USUAL_MAIL_OWNER_EMAIL` to your email before it first starts (the exact address your Google account
+shows: dots and a `+` part count): then only signing in with Google as that address sets it up
+([deploy.md](deploy.md#claiming-your-server)). Once used (a password set, a device paired, even one since signed out,
+or an inbox), a server can never be claimed again; claiming ends the owner's code, so pair the `usual-mail` command
+afterwards with a code from the dashboard's **Devices and agents** page.
 
 **Forgot the password?** On a device that is still signed in, set a new one: the dashboard's **Account** page, or
 Settings, Accounts, in the app. With none at hand, open the address in a browser and choose **Forgot your
@@ -304,7 +309,7 @@ says why.
 | `USUAL_MAIL_TIME_ZONE` | variable | The server's time zone, a name like `Europe/Berlin`, instead of the one it takes when you pair (below) |
 | `USUAL_MAIL_SYNC_DAYS` | variable | How many days of mail a new inbox's first sync takes, 1 to 36,500. It wins over the number chosen in the app; with neither, 30 |
 | `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET` | secrets | Your Google client, both or neither, instead of giving it from the app. While they're set, no app can give another |
-| `USUAL_MAIL_OWNER_EMAIL` | variable or secret | Your email: the server is then set up only by signing in with Google as this address (it needs the Google client). Strongly suggested; set it before you first open the address. One that isn't an email address keeps the server from being set up at all (the owner's code still pairs) |
+| `USUAL_MAIL_OWNER_EMAIL` | variable or secret | Your email, exactly as your Google account shows it: the server is then set up only by signing in with Google as this address (it needs the Google client). Strongly suggested; until it is set, whoever opens the address first can claim the server, so set it right after deploying. One that isn't an email address keeps the server from being set up at all (the owner's code still pairs) |
 
 **The secret key.** Without `USUAL_MAIL_SECRET_KEY`, the server makes a key when it first starts and keeps it in its
 own storage, beside what it seals. **Set the secret before you first open the server's address** (that first request
@@ -329,11 +334,13 @@ keeps working.
 
 ### The first pairing code
 
-**The easier way:** set `USUAL_MAIL_OWNER_EMAIL` (below) to your email in the Worker's settings first, then open the
-server's address and set its password, and sign in to the apps with it. Without that variable, whoever opens the
-address first and sets a password owns the server, and new addresses are found within minutes
-([deploy.md](deploy.md#claiming-your-server)). The Deploy form can't ask for it: Cloudflare makes every value it asks
-for required. A recovery code ("Forgot your password?") waits in the same table as the owner's code, and is never
+**The easier way:** set `USUAL_MAIL_OWNER_EMAIL` (below) to your email in the Worker's settings right after deploying,
+then open the server's address and set its password, and sign in to the apps with it. **From the deploy until that
+variable is set, whoever opens the address first, not only you, can claim the server**: the first request starts it,
+whoever sends it, and the default address, the Worker `usual-mail` on your `workers.dev` subdomain, is easy to guess,
+while new custom domains are found within minutes ([deploy.md](deploy.md#claiming-your-server)). The Deploy form can't
+ask for it: Cloudflare makes every value it asks for required. A fresh deploy has no Google client, so with the
+variable set claiming is closed and the owner's code below gets you in. A recovery code ("Forgot your password?") waits in the same table as the owner's code, and is never
 written to the log.
 
 The owner's code still works:
@@ -353,9 +360,9 @@ with the old one is refused in words, not counted as a wrong code).
 
 **Another device** needs a code from one already paired: the dashboard's **Devices and agents** page (sign in at the
 server's address with a code), or the command, paired with `usual-mail init --server <the address> --code <code>`,
-then `usual-mail pair`. The Mac app can't make a code yet. After five wrong codes from one network address in ten
-minutes, the server refuses pairing from it for a while; ten in ten minutes from anywhere stop all pairing for a while
-(paired devices keep working).
+then `usual-mail pair`. The Mac app can't make a code yet. After five wrong codes or passwords from one network address
+(an IPv6 address by its /64) in ten minutes, the server refuses pairing and signing in from it for a while; after a
+hundred from everyone together, it refuses them for everyone for a while (paired devices keep working).
 
 **The time zone.** The pairing of your first device gives the server its time zone, from where Cloudflare sees that
 request come from (behind a VPN, the VPN's); later pairings don't change it. Until then the server works in UTC.

@@ -138,6 +138,12 @@ export interface Host {
   timeZone?: string;
   /** Lower limits on memory and stored size (`HostLimits`). Absent: Node's. */
   limits?: HostLimits;
+  /**
+   * The client address of the request being answered, as the host knows it (Node: the connection's, or what its trusted
+   * proxies wrote in X-Forwarded-For; Cloudflare: CF-Connecting-IP). Wrong codes and passwords, and Google claim
+   * sign-ins, are counted per address (service/attempts.ts). Absent, or null outside a request: all share one count.
+   */
+  clientAddress?: () => string | null;
 }
 
 // --- Implementations that run on any host ----------------------------------------------------------------

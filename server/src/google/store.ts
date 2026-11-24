@@ -20,9 +20,10 @@ export interface Entry {
   outcome?: Omit<GoogleSignIn, "id" | "expiresAt">;
   /**
    * A sign-in that proves the host's owner email before the server is claimed (`owner-claim.ts`), not one that
-   * connects Gmail: no caller, no device. Once Google's verified email matched, the proof's hash and how long it works.
+   * connects Gmail: no caller, no device. `client`: the address key it was started from, for the cap per address. Once
+   * Google's verified email matched, the proof's hash and how long it works.
    */
-  claim?: { proofHash?: string; email?: string; proofExpiresAt?: number; redirect?: string };
+  claim?: { client?: string; proofHash?: string; email?: string; proofExpiresAt?: number; redirect?: string };
 }
 
 /** What the page Google sends the person to says. */

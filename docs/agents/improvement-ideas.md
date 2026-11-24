@@ -48,6 +48,16 @@ and the notes:
 
 ## Ideas
 
+- **Ask for the current password before a new one replaces it** (`PUT /v1/owner/password`, from the owner password's
+  security review, 2026-11-24): today any person's device sets a new password without the old one, by design (a
+  person's device already has the owner's whole access, and it is how a forgotten one is replaced). Asking for the
+  current one once a password is set would keep a stolen browser session from locking the owner out of their
+  password; a forgotten one would then go through a recovery code. Not changed yet: the Mac and iPhone apps call the
+  route as it is, so it needs a contract change and the apps together.
+- **Cap recovery-code requests per address** (`POST /v1/owner/recovery-code`, no token): one waits at a time and
+  asking again returns it, so it costs a write and a log line on Node at most every 30 minutes; a per-address cap like
+  the Google claim's would make even that bounded per client.
+
 - **Let a pause cut the batch being fetched short** (2026-11-23, after the review's pause fix): a pause answers at
   once, but the batch in hand is still fetched in the background, up to about two and a half minutes of Gmail on Node,
   with the old provider open and its quota spent (known-issues.md). An `AbortSignal` in `SyncOptions` that the engine

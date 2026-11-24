@@ -8,26 +8,40 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   of 2026-11-24; [server-owner.md](server-owner.md)). Scanners read Certificate Transparency logs and reach new
   hostnames (a custom domain, `onrender.com`, Coolify's `sslip.io`, `workers.dev`) within minutes. The deploy files ask
   for the email (Render, Coolify, Caddy); Cloudflare's Deploy form can't ask for an optional value, so there it is set
-  by hand; the docs say to set it first or claim at once. Recovery: "Forgot your password?" writes a recovery code
-  where only the host can read it; sign in with it, remove the other devices, set a password. The server logs each
-  claim with the claiming device's name.
+  by hand, and the window runs from the deploy until it is set, whoever opens the address (the default `usual-mail`
+  name on the account's `workers.dev` subdomain is easy to guess); the docs say to set it first or claim at once. A
+  hostile claimer can leave its own AI key, Google client, agents or rules behind, so the docs' safe default is to wipe
+  the data and deploy again; otherwise "Forgot your password?" writes a recovery code where only the host can read it:
+  sign in with it, remove the other devices, check the AI settings and the Google client, set a password. The server
+  logs each claim with the claiming device's name (quoted). Only a server nobody has used can be claimed: since the
+  review's fix (2026-11-24) a server with any device row (revoked ones count), an inbox or a password never can be
+  again ([server-owner.md](server-owner.md)).
 - **The owner's password is PBKDF2-SHA256 at 100,000 iterations** (2026-11-24), below OWASP's 600,000, because Workers
-  refuse more. Online guessing is capped by the pairing limit (ten wrong passwords or codes in ten minutes for
-  everyone; five per address on Cloudflare); a stolen database could be attacked offline faster than with a stronger
-  hash. The stored form names the count, so a later build can raise it on Node and re-hash at sign-in.
+  refuse more. Online guessing is capped by the pairing limit (ten wrong passwords or codes in ten minutes per client
+  address, five at Cloudflare's door, and a hundred from everyone: at most 14,400 tries a day); a stolen database
+  could be attacked offline faster than with a stronger hash. The stored form names the count, so a later build can raise it on Node and re-hash at sign-in.
 - **An owner email set without a Google client closes claiming** (2026-11-24, by design): the server can't prove the
   email, so the claim page says Google sign-in isn't set up and the owner's code is the way in. A fresh Cloudflare
   deploy has no Google client, so an owner email there means Data Studio once, then a password.
-- **Ten wrong passwords lock signing in for everyone for ten minutes** (2026-11-24, by design, shared with pairing's
-  lock): anyone can lock the owner out of new sign-ins for a while; devices already signed in keep working. On
-  Cloudflare the per-address limit (five) keeps one address from reaching it.
+- **A hundred wrong passwords or codes from many addresses lock signing in for everyone for ten minutes**
+  (2026-11-24; [server-owner.md](server-owner.md), `service/attempts.ts`). Since the security review's fix, failures
+  count per client address (an IPv6 address by its /64): ten from one address lock only that address; the global
+  ceiling of a hundred keeps guessing slow. So locking the owner out of new sign-ins now takes ten or more IPv4
+  addresses or /64s (a /48 holds 65,536 /64s, so it is still possible for someone with a block of IPv6); devices
+  already signed in keep working. Before the fix ten from anyone locked everyone (one IPv4 address and one /64 beat
+  Cloudflare's five per address). On Node behind a proxy every connection is the proxy's address, so one address
+  could still lock everyone out unless `USUAL_MAIL_TRUSTED_PROXIES` names the proxy (the deploy files set `private`;
+  Railway by hand); how Render's proxy connects and fills `X-Forwarded-For` is unverified. In memory: a restart
+  forgets the counts.
 - **A restart forgets where a recovery code waits** (2026-11-24): the host hears null and removes the file or the row,
   while the code itself stays valid in the store until its 30 minutes end. Ask for another.
 - **The claim proof travels in the address once** (`/claim?proof=`, 2026-11-24): it can sit in the browser's history.
-  It works once, for ten minutes, only while the server is unclaimed, and the redirect and the page send no referrer.
-- **`server/src/service/server.ts` is at 615 lines** (2026-11-24: from 574, six thin owner methods and `start`'s
-  checks of a stop asked for during start-up) and `dashboard/test/fake-service.ts` at 593 (the owner's fake is its own
-  file, `fake-owner.ts`). Split both by responsibility when they are next changed.
+  It works once, for ten minutes, only while the server is unclaimed. The callback's redirect sends no referrer; the
+  claim page sends a `same-origin` referrer (the dashboard's `securityHeaders` in `dashboard/src/http/headers.ts`
+  overwrites the route's `no-referrer`), so its address reaches only the server itself, with its own assets.
+- **`server/src/service/server.ts` is at 624 lines** (2026-11-24: from 574, six thin owner methods, `start`'s
+  checks of a stop asked for during start-up, and the per-address client key) and `dashboard/test/fake-service.ts` at
+  593 (the owner's fake is its own file, `fake-owner.ts`). Split both by responsibility when they are next changed.
 - **A stop in the first moment of a container's life is still lost** (server image, found 2026-11-24 while checking the
   fix for SIGTERM during start-up; open). Node is PID 1 and ignores SIGTERM until `stop-signal.ts` runs, which is after
   the entry point's shell (also PID 1, no trap) has `exec`ed Node and Node has parsed the 7.6 MB bundle: about 0.1 s

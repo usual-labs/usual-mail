@@ -1,7 +1,7 @@
 // What the object does with each request before the server's handler sees it. The front Worker (worker.ts) has already
 // refused plain http and put its own copies of the client's address and time zone into the headers below, dropping any
 // the client sent, so these can be trusted here.
-// - The server's public address, for this request only (address.ts).
+// - The server's public address and the client's address, for this request only (address.ts).
 // - Pairing attempts (`POST /v1/pair`, `/v1/owner/sign-in` and `/v1/owner/claim`, the dashboard's `POST /sign-in`
 //   and `/claim`): the per-address count (pairing.ts), answered
 //   429 without passing the request on; an owner's code that expired while the object was evicted, refused in plain
@@ -12,7 +12,8 @@ import { getPath } from "hono/utils/url";
 import { PAIR_MAX_BYTES } from "../rest/app.ts";
 import { ownOrigin, withRequest, type OwnHosts } from "./address.ts";
 import { spentCodeWords, type SpentOwnerCodes } from "./owner-code.ts";
-import { addressKey, type AddressCounter } from "./pairing.ts";
+import { addressKey } from "../client-address.ts";
+import type { AddressCounter } from "./pairing.ts";
 import type { ServerTimeZone } from "./settings.ts";
 
 /** Headers only the front Worker sets: any the client sent with this prefix are dropped there. */
@@ -72,7 +73,8 @@ export class RequestDoor {
   serve(request: Request, handle: Handler): Promise<Response> {
     const origin = ownOrigin(request.url, this.#options.publicOrigin);
     this.#options.ownHosts.note(origin);
-    return withRequest({ origin, host: new URL(request.url).hostname }, () => this.#serve(request, handle));
+    const client = request.headers.get(CLIENT_ADDRESS_HEADER);
+    return withRequest({ origin, host: new URL(request.url).hostname, client }, () => this.#serve(request, handle));
   }
 
   async #serve(request: Request, handle: Handler): Promise<Response> {

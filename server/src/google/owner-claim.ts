@@ -18,8 +18,12 @@ import { notAvailable } from "./words.ts";
 
 /** How long a person has to come back from Google, and then to claim with the proof. */
 const LIFETIME_MS = 10 * 60_000;
-/** Sign-ins to prove the owner's email waiting at once: anyone may start one, so they are capped. */
-const MAX_WAITING = 20;
+/**
+ * Sign-ins to prove the owner's email waiting at once, from one client address (an IPv6 address by its /64) and from
+ * everyone: anyone may start one, so both are capped, and one address can't use up everyone's.
+ */
+export const MAX_WAITING_PER_ADDRESS = 3;
+export const MAX_WAITING = 100;
 /** The dashboard's page that takes the proof (the dashboard is mounted at the server's root). */
 export const CLAIM_PAGE = DASHBOARD_PATHS.claim;
 
@@ -32,24 +36,31 @@ export const claimWords = {
   refused: "Google refused the sign-in. Try again.",
 };
 
-/** Starts Sign in with Google to prove the owner's email. No caller: the server has no owner yet. Under the lock. */
-export async function startOwnerClaim(ctx: Ctx): Promise<OwnerClaimStart> {
+/**
+ * Starts Sign in with Google to prove the owner's email. No caller: the server has no owner yet. `client` is the
+ * caller's address key (service/client.ts). Under the lock.
+ */
+export async function startOwnerClaim(ctx: Ctx, client: string): Promise<OwnerClaimStart> {
   const info = await ownerInfo(ctx);
   if (!info.claimable) throw new ServiceError("conflict", claimWords.claimed);
   if (info.claim !== "google") {
     throw new ServiceError("conflict", "This server's host named no owner email, so it is claimed with a password alone");
   }
-  const client = await ctx.google?.client() ?? null;
+  const google = await ctx.google?.client() ?? null;
   const redirectUri = ctx.google?.redirectUri() ?? null;
-  if (!client || !redirectUri) {
+  if (!google || !redirectUri) {
     const missing = (await googleSignInInfo(ctx)).missing ?? [];
     throw new ServiceError("conflict", `${notAvailable(missing)} Until then, pair with the owner's code instead.`);
   }
   const now = ctx.now();
   ctx.signIns.prune(now);
   const waiting = [...ctx.signIns.all()].filter((entry) => entry.claim && entry.phase === "waiting" && entry.expiresAt > now);
-  if (waiting.length >= MAX_WAITING) {
-    throw new ServiceError("rate_limited", "Too many sign-ins with Google are waiting. Try again in ten minutes.", { retryAfter: 600 });
+  const fromHere = waiting.filter((entry) => entry.claim!.client === client);
+  if (fromHere.length >= MAX_WAITING_PER_ADDRESS || waiting.length >= MAX_WAITING) {
+    const oldest = Math.min(...(fromHere.length >= MAX_WAITING_PER_ADDRESS ? fromHere : waiting).map((entry) => entry.expiresAt));
+    const retryAfter = Math.max(1, Math.ceil((oldest - now) / 1000));
+    const who = fromHere.length >= MAX_WAITING_PER_ADDRESS ? "from your address" : "on this server";
+    throw new ServiceError("rate_limited", `Too many sign-ins with Google are waiting ${who}. Try again in ${retryAfter} seconds.`, { retryAfter });
   }
   const state = base64url(ctx.host.random.bytes(32));
   const { verifier, challenge } = await pkce((length) => ctx.host.random.bytes(length));
@@ -63,16 +74,16 @@ export async function startOwnerClaim(ctx: Ctx): Promise<OwnerClaimStart> {
     startedAt: now,
     expiresAt: now + LIFETIME_MS,
     phase: "waiting",
-    claim: {},
+    claim: { client },
   };
   ctx.signIns.add(entry);
+  // No login hint: this answer goes to anyone who asks, and the owner's email must not travel in it.
   const url = authorizationUrl({
     ...(ctx.google?.authorizationUrl !== undefined && { base: ctx.google.authorizationUrl }),
-    clientId: client.clientId,
+    clientId: google.clientId,
     redirectUri,
     state,
     challenge,
-    loginHint: ctx.options.ownerEmail ?? undefined,
     purpose: "identity",
   });
   return { url, expiresAt: iso(entry.expiresAt) };

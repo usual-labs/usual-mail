@@ -8,6 +8,7 @@ import type { Ctx } from "./context.ts";
 import { normalizeListId, ruleMatches, subjectFor } from "./match.ts";
 import { toTeach } from "./rows.ts";
 import { createRule, firstIncoming, inboxRules, taughtByPerson } from "./rules.ts";
+import { CONTROL_CHARACTERS } from "./schemas.ts";
 import { CATEGORY_WORDS } from "./state.ts";
 
 const DAY = 24 * 60 * 60_000;
@@ -26,19 +27,23 @@ export async function offerTeach(
 ): Promise<TeachPrompt | undefined> {
   const first = await firstIncoming(ctx, thread.id);
   if (first && await alreadyTaught(ctx, inbox.id, first, category)) return undefined;
-  const listId = normalizeListId(first?.listId);
+  // A rule's text and match are single lines (schemas.ts): a list id that isn't one is no match to offer, and a
+  // sender's name has its control characters turned into spaces.
+  const rawListId = normalizeListId(first?.listId);
+  const listId = rawListId && !CONTROL_CHARACTERS.test(rawListId) ? rawListId : null;
   const sender = first?.from.email.toLowerCase() ?? thread.sender;
   if (!listId && !sender) return undefined;
 
   const words = CATEGORY_WORDS[category];
+  const name = first?.from.name?.replace(new RegExp(CONTROL_CHARACTERS.source, "g"), " ").replace(/\s+/g, " ").trim();
   let match: RuleMatch;
   let who: string;
   if (listId) {
     match = { listId };
-    who = first?.from.name || listId;
+    who = name || listId;
   } else {
     match = { from: sender! };
-    who = first?.from.name ? `${first.from.name} (${sender})` : sender!;
+    who = name ? `${name} (${sender})` : sender!;
   }
   const row: TeachRow = {
     id: ctx.id("tch"),

@@ -36,6 +36,9 @@ services:
       # Your email (strongly suggested): only Google's proof of it sets the server up. Empty: whoever opens the address
       # first owns the server (docs/deploy.md, "Claiming your server"). Needs the Google client below.
       USUAL_MAIL_OWNER_EMAIL: ${USUAL_MAIL_OWNER_EMAIL:-}
+      # Caddy, on this file's private network, is the only way in: believe the client address it writes in
+      # X-Forwarded-For, so wrong passwords count per client (docs/deploy.md, "Behind a proxy").
+      USUAL_MAIL_TRUSTED_PROXIES: private
       # Your Google client for Gmail (docs/google-setup.md), both or neither; or give it from the Mac app instead.
       USUAL_MAIL_GOOGLE_CLIENT_ID: ${USUAL_MAIL_GOOGLE_CLIENT_ID:-}
       USUAL_MAIL_GOOGLE_CLIENT_SECRET: ${USUAL_MAIL_GOOGLE_CLIENT_SECRET:-}

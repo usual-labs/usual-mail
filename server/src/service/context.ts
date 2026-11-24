@@ -11,6 +11,7 @@ import { NODE_LIMITS, type Host, type HostLimits } from "../host.ts";
 import { PicturePlans, servedPlans } from "../pictures/present.ts";
 import type { ProviderRegistry } from "../providers.ts";
 import { Mutex, orderedId } from "../util.ts";
+import { FailedAttempts } from "./attempts.ts";
 import type { OwnerCodeKeeper } from "./devices.ts";
 import type { Before } from "./state.ts";
 
@@ -138,8 +139,8 @@ export class Ctx {
   readonly agentAccess = new Map<string, boolean>();
   /** Which inboxes each recent brief covers, for filtering `brief.ready`. */
   readonly briefInboxes = new Map<string, string[]>();
-  /** When recent wrong pairing codes were tried, oldest first. Kept in memory, so a restart clears it. */
-  readonly pairingFailures: number[] = [];
+  /** Recent wrong pairing codes and passwords, per client address. Kept in memory, so a restart clears it. */
+  readonly pairingFailures = new FailedAttempts();
   /** The owner's code the host asked the service to keep (see `keepOwnerCode`). */
   ownerCode: OwnerCodeKeeper | null = null;
   /** Google sign-in, as the host set it up; null when it gave nothing. */

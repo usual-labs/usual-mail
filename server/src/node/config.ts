@@ -1,5 +1,6 @@
 // Settings from flags and environment variables. Flags win.
 
+import { parseRanges, type AddressRange } from "../client-address.ts";
 import { ownerEmailSetting } from "../service/owner.ts";
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
@@ -38,6 +39,11 @@ export interface Config {
   devFakeGoogle: string | null;
   /** USUAL_MAIL_OWNER_EMAIL: only Google's proof of this address claims an unclaimed server. Null: the first visitor does. */
   ownerEmail: string | null;
+  /**
+   * USUAL_MAIL_TRUSTED_PROXIES: the reverse proxies in front of the server, whose X-Forwarded-For says who the client
+   * is (node/client.ts). Empty: X-Forwarded-For is ignored and the connection's own address is the client's.
+   */
+  trustedProxies: AddressRange[];
   help: boolean;
 }
 
@@ -63,6 +69,10 @@ Environment only:
                              <data-dir>/settings.json, which \`usual-mail init\` and \`sync-days\` write (default 30)
   USUAL_MAIL_OWNER_EMAIL     The owner's email: an unclaimed server is then claimed only by signing in with Google as
                              that address (needs the Google client below). Without it, the first visitor claims it
+  USUAL_MAIL_TRUSTED_PROXIES The reverse proxies in front of the server, as addresses and ranges separated by commas
+                             (172.16.0.0/12, fd00::/8), or "private" for loopback and private networks. Only from them
+                             is X-Forwarded-For believed, to count wrong passwords per client. Set it only when every
+                             connection comes through those proxies (default: none, X-Forwarded-For ignored)
   USUAL_MAIL_GOOGLE_CLIENT_ID, USUAL_MAIL_GOOGLE_CLIENT_SECRET
                              The host's Google OAuth client (a web application client), both or neither. Without
                              them the server reads <data-dir>/google-client.json, as Google's console downloads it
@@ -112,6 +122,7 @@ export function readConfig(argv: string[], env: NodeJS.ProcessEnv): Config {
     googleClient: googleClient(env),
     devFakeGoogle: devFakeGoogle === null ? null : new URL(devFakeGoogle).origin,
     ownerEmail: ownerEmail(env.USUAL_MAIL_OWNER_EMAIL),
+    trustedProxies: parseRanges(env.USUAL_MAIL_TRUSTED_PROXIES),
     help: values.help ?? false,
   };
 }

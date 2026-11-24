@@ -70,6 +70,8 @@ which is why `npm run check` starts the bundle.
 | | `USUAL_MAIL_SECRET_KEY` | key file | 32 bytes in base64 or base64url that seal mailbox and AI credentials |
 | | `USUAL_MAIL_POLL_SECONDS` | `60` | Poll interval for every inbox. IMAP's IDLE watch brings INBOX changes sooner |
 | | `USUAL_MAIL_SYNC_DAYS` | `settings.json`, else `30` | How many days of mail a new inbox's first sync takes (`GET /v1/first-sync`, below). Wins over `<data-dir>/settings.json`, and a person can't change it while it is set; empty counts as unset |
+| | `USUAL_MAIL_OWNER_EMAIL` | none | Only Google's proof of this address claims an unclaimed server ([server-owner.md](server-owner.md)); refused at start when it isn't an address |
+| | `USUAL_MAIL_TRUSTED_PROXIES` | none | The reverse proxies in front of the server: addresses and CIDR ranges separated by commas, or `private` (loopback, RFC 1918, 100.64.0.0/10, link-local, `fc00::/7`, `fe80::/10`). A connection from one of them is counted under the right-most `X-Forwarded-For` address that isn't one of them (`client-address.ts`, `node/client.ts`); from anyone else, and without the setting, the header is ignored. Refused at start when an entry isn't an address or range. The Caddy, Coolify and Render files set `private` |
 
 `<data-dir>/google-client.json` is the host's Google client as Google's console downloads it for a web application
 client (`{ "web": { "client_id", "client_secret", "redirect_uris", … } }`), renamed. `usual-mail google set` writes it,
@@ -189,12 +191,14 @@ src/google/          Sign in with Google for Gmail
 src/secrets.ts       AES-GCM sealing with Web Crypto
 src/demo/seed.ts     demo mode: sample.json into the store, memory mailboxes, fake models with the sample's ids
 src/testing/         MemoryMailbox and MemoryProvider, ManualClock (clock and scheduler)
+src/client-address.ts  client addresses on both hosts: the key a client counts under (IPv6 by /64), trusted proxies'
+                     ranges and the right-most-untrusted X-Forwarded-For rule
 src/cloudflare/      Cloudflare only (server-cloudflare.md): worker.ts the front Worker, object.ts its Durable Object,
                      start.ts, database.ts (the durable-sqlite adapter and migrator), timers.ts, limits.ts, address.ts,
                      google.ts, owner-code.ts, pairing.ts, requests.ts, settings.ts, secret-key.ts, parts.ts (Gmail
                      only), env.ts; web/ (pictures and site icons); migrations.generated.ts (written, gitignored)
 src/node/            Node only: entry point, config, libSQL and migrations, key file, timers, the owner's code file and its
-                     log lines, parts.ts, google.ts (the client from the environment or the file, saving the file a
+                     log lines, client.ts (each request's client address, trusted proxies), parts.ts, google.ts (the client from the environment or the file, saving the file a
                      device gives, the redirect address, the redirect hint, the fake's rewriting), settings.ts (settings.json: the first sync's days),
                      pictures/ (address.ts: the public-address rule; fetch.ts: fetching one picture, pinned and
                      limited, also pages for sender pictures (`fetchWebBytes`, `cutAt`, `accept`); cache.ts:
@@ -653,7 +657,15 @@ What each pass ran and saw, newest first: [server-checks.md](server-checks.md).
 - Earlier decisions that still hold: archiving and moving at the provider told apart by the label; a stack added at
   the provider wins; rule hits one event per batch; paused write-backs held in memory; new mail older than a thread's
   newest message brings nothing back; proposals deduplicated; `includeSilent` and `attentionOnly` take only true or
-  false; pairing failures counted in memory.
+  false; pairing failures counted in memory, per client address (below).
+- **Wrong codes and passwords are counted per client address** (the owner password's security review, 2026-11-24;
+  `service/attempts.ts`): ten from one address in ten minutes (an IPv6 address by its /64, an IPv4-mapped address as
+  IPv4; `client-address.ts`), a hundred from everyone. The host says who the client is through `Host.clientAddress`,
+  read by `MailServer` before it waits for the lock: Node keeps it per request in an AsyncLocalStorage
+  (`node/client.ts`, `withRequestClient` around the app's fetch, so the dashboard and MCP get it too); Cloudflare in
+  its request place (`cloudflare/address.ts`, from the front Worker's copy of `CF-Connecting-IP`). The host-neutral
+  service imports no Node API, so the storage lives in each host. Outside a request, and in tests that set none, every
+  attempt shares the key `unknown`.
 
 ## Other decisions
 

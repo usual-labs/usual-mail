@@ -68,6 +68,8 @@ export interface RequestPlace {
   origin: string | null;
   /** The request's own host name, lower case, whatever it is: for the fetcher, which never fetches from the server itself. */
   host: string;
+  /** The client's address, CF-Connecting-IP as the front Worker passed it on (`Host.clientAddress`); null without one. */
+  client: string | null;
 }
 
 const current = new AsyncLocalStorage<RequestPlace>();
@@ -81,6 +83,11 @@ export function withRequest<T>(place: RequestPlace, handle: () => T): T {
 export function requestRedirectUri(): string | null {
   const origin = current.getStore()?.origin ?? null;
   return origin === null ? null : `${origin}${CALLBACK_PATH}`;
+}
+
+/** The client address of the request being answered, or null outside a request: `Host.clientAddress` on Cloudflare. */
+export function requestClient(): string | null {
+  return current.getStore()?.client ?? null;
 }
 
 /** The host name the request being answered came to, or null outside a request (start-up, an alarm). */

@@ -1,9 +1,9 @@
 // Pairing on Cloudflare, in workerd: the owner's code waits in its table (the dashboard's sign-in page says where); one
 // that expired while the object was evicted is removed at start and refused in plain words, counted by nobody; wrong
 // codes are counted per client address (CF-Connecting-IP as the front Worker passes it on, an IPv6 address by its /64)
-// and the host answers 429 after five, while other addresses still pair and the service keeps its own global lock (a
-// percent-encoded path to pairing counted as Hono routes it); and the request that pairs the first person's device
-// gives the server its time zone.
+// and the host answers 429 after five, while other addresses still pair, and the service counts per address too, so two
+// addresses can't lock everyone out between them (a percent-encoded path to pairing counted as Hono routes it); and the
+// request that pairs the first person's device gives the server its time zone.
 
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
@@ -140,7 +140,7 @@ test("the request that paired the first person's device gave the server its time
   await until("the start's time zone line", () => server.logged(/^The server's time zone is Europe\/Berlin, taken from where the first person's device paired/, from).length === 1);
 });
 
-test("an IPv6 address is counted by its /64; another /64 reaches the service, which keeps its own global lock", async () => {
+test("an IPv6 address is counted by its /64; it and another /64 can't lock everyone out between them", async () => {
   // The reset above forgot both counts.
   for (const address of ["2001:db8:1:2::1", "2001:db8:1:2::1", "2001:db8:1:2::1", "2001:db8:1:2:ffff::9", "2001:db8:0001:0002:0:0:0:abc"]) {
     assert.equal((await pair(address, WRONG)).status, 401, address);
@@ -148,11 +148,12 @@ test("an IPv6 address is counted by its /64; another /64 reaches the service, wh
   const sameRange = await pair("2001:db8:1:2:aaaa:bbbb:cccc:dddd", WRONG);
   assert.equal(sameRange.status, 429);
   assert.match(sameRange.body.error.message, /from this address/);
-  // Another /64 is passed on: its wrong codes are the service's, up to its global ten.
+  // Another /64 is passed on: its wrong codes are the service's, which counts them per address too.
   for (let i = 0; i < 5; i++) assert.equal((await pair("2001:db8:1:3::1", WRONG)).status, 401);
-  const locked = await pair("192.0.2.50", WRONG);
-  assert.equal(locked.status, 429);
-  assert.match(locked.body.error.message, /^Too many wrong pairing codes\. Try again in \d+ seconds\.$/, "the service's own lock, unchanged");
+  // Ten wrong codes from two addresses locked pairing for everyone before (the review's finding); now a third address
+  // still gets its own answer.
+  const third = await pair("192.0.2.50", WRONG);
+  assert.equal(third.status, 401, JSON.stringify(third.body));
 });
 
 test("pairing at a percent-encoded path is counted per address too, so one address can't reach the service's global lock", async () => {
