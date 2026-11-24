@@ -1,6 +1,6 @@
 {
   "name": "@usualmail/dashboard",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Usual Mail's web dashboard: server-rendered setup pages for inboxes, rules, devices and agents, and Handled.",
