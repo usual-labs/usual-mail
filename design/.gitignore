@@ -1,0 +1,2 @@
+# The root .gitignore ignores every dist/ folder. design/dist holds generated files that are checked in on purpose.
+!dist/

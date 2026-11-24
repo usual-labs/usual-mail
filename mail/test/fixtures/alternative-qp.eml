@@ -1,0 +1,23 @@
+Return-Path: <ann@people.example>
+From: =?UTF-8?Q?Ann_M=C3=BCller?= <Ann@People.Example>
+To: "Me" <me@mail.example>, bo@people.example
+Cc: Undisclosed recipients:;
+Subject: =?UTF-8?B?R3LDvMOfZSBhdXMgS8O2bG4=?=
+Date: Tue, 10 Nov 2026 08:15:00 +0100
+Message-ID: <alt-1@people.example>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="ALT"
+
+--ALT
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+Hallo,=20
+sch=C3=B6ne Gr=C3=BC=C3=9Fe aus K=C3=B6ln, mit einer sehr langen Zeile, die=
+ weich umbrochen wurde.
+--ALT
+Content-Type: text/html; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+<p>Hallo,<br>sch=C3=B6ne <b>Gr=C3=BC=C3=9Fe</b> aus K=C3=B6ln</p>
+--ALT--

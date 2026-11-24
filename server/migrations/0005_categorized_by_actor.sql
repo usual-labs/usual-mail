@@ -1,0 +1,1 @@
+ALTER TABLE `threads` ADD `categorized_by_actor` text;

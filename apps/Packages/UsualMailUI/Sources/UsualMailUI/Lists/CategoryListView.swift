@@ -1,0 +1,54 @@
+import SwiftUI
+import UsualMailKit
+
+/// A tab of categories as a list (Receipts: invoices and receipts, owner's request of 2026-11-18; Feed shows its
+/// newsletters as posts instead, `FeedView`, and Notifications its notifications in sections, `NotificationsView`): its
+/// mail as one list, newest first, with Home's row and Home's look; Receipts' rows say how much, to or from whom and
+/// what for (`PaymentWords`). The Figma frames for these tabs ("MacBook Pro 14" - 2 and - 4) show only the tab chosen over Home's
+/// card, so Home's layout stands. Clicking a row opens the mail page.
+struct CategoryListView: View {
+    let tab: Tab
+    /// The inbox the profile switch picked, or nil for every inbox.
+    let inboxId: String?
+    let open: (String) -> Void
+    @Environment(MailStore.self) private var store
+
+    var body: some View {
+        // At the store's now: a snoozed thread comes back when the store re-reads the copy at its time.
+        let list = CategoryList(store.lists, tab: tab, inbox: inboxId, now: store.now)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                ForEach(Array(list.threads.enumerated()), id: \.element.id) { index, thread in
+                    HomeItem(
+                        thread: thread, inbox: store.lists.inbox(id: thread.inboxId),
+                        words: CategoryList.words(for: thread, on: tab)
+                    ) { open(thread.id) }
+                    .revealOnAppear(delay: Motion.delay(at: index))
+                    .transition(.blurReveal)
+                }
+                if list.threads.isEmpty && store.hasLoadedFromDisk {
+                    Text(verbatim: CategoryList.emptyWords(for: tab))
+                        .font(Theme.sans(12))
+                        .foregroundStyle(Theme.sectionTitle)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+                        .revealOnAppear()
+                }
+                if let note = AIWords.note(status: store.aiStatus, threads: list.threads) {
+                    Text(verbatim: note)
+                        .font(Theme.sans(10))
+                        .foregroundStyle(Theme.time)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
+                        .revealOnAppear(delay: Motion.longestWait)
+                }
+            }
+            .padding(Theme.page)
+            .animation(Motion.move, value: list.threads.map(\.id))
+        }
+        .scrollIndicators(.never)
+        // Where it was, coming back to the mail stack or from a mail (`ScrollPlaces`).
+        .keepsScroll()
+    }
+}

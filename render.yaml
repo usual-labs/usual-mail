@@ -1,0 +1,40 @@
+# Usual Mail on Render (https://render.com), as a Blueprint: one web service built from this repository's Dockerfile,
+# with a disk for its data. docs/deploy.md says each step; this hasn't been deployed on Render yet.
+#
+# A disk needs a paid instance type: the free type sleeps and has no disk. A service with a disk runs as one instance
+# and is down for a moment at each deploy, which suits the server: it must never run as two copies at once.
+
+services:
+  - type: web
+    name: usual-mail
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # 0.5 CPU and 512 MB, enough for the server (about 100 MB measured); Render's newer name for it is 0.5c-512mb.
+    plan: starter
+    healthCheckPath: /healthz
+    # New versions are deployed when you choose (Manual Deploy), not at every change to the repository.
+    autoDeployTrigger: "off"
+    disk:
+      name: usual-mail-data
+      mountPath: /data
+      # It can grow later, never shrink.
+      sizeGB: 5
+    envVars:
+      # Render sends requests to this port.
+      - key: PORT
+        value: "8484"
+      # The address people reach the server at: https://<the service's name>.onrender.com, or a domain of your own.
+      # Render asks for it when the Blueprint is created; change it under Environment if Render gives another address.
+      - key: USUAL_MAIL_PUBLIC_URL
+        sync: false
+      # Made once by Render (256 random bits in base64); it seals the mailbox passwords and the AI key. Keep a copy,
+      # and never change it: the data can't be read without it.
+      - key: USUAL_MAIL_SECRET_KEY
+        generateValue: true
+      # Your Google client for Gmail (docs/google-setup.md), both or neither; or leave them empty and give it from
+      # the Mac app.
+      - key: USUAL_MAIL_GOOGLE_CLIENT_ID
+        sync: false
+      - key: USUAL_MAIL_GOOGLE_CLIENT_SECRET
+        sync: false

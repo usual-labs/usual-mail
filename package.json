@@ -1,0 +1,25 @@
+{
+  "name": "usual-mail-cloudflare",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Deploys Usual Mail's server to Cloudflare (wrangler.jsonc) and tests it in workerd. Each part keeps its own package in its folder.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "postinstall": "node server/scripts/cloudflare-prepare.mjs",
+    "build": "node server/scripts/cloudflare-prepare.mjs",
+    "deploy": "wrangler deploy",
+    "check:cloudflare": "node server/scripts/cloudflare-prepare.mjs && tsc --noEmit -p server/tsconfig.cloudflare.json && tsc --noEmit -p server/test/cloudflare/tsconfig.json && node --test --test-concurrency=1 server/test/cloudflare/*.test.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261104.1",
+    "@types/node": "22.20.5",
+    "@types/sanitize-html": "2.16.2",
+    "miniflare": "5.20261104.0-beta",
+    "typescript": "7.0.2",
+    "wrangler": "4.158.0"
+  }
+}

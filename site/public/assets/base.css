@@ -1,0 +1,481 @@
+/* Usual Mail's site: what every page shares. The wallpaper, glass, type, header, footer and the legal pages.
+   Colours are tokens on :root, redefined for dark mode below; add a new one to both. The landing page adds home.css. */
+
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Prociono';
+  src: url('/fonts/Prociono-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  color-scheme: light dark;
+  --ink: #0b0c0e;
+  --ink-2: rgba(11, 12, 14, 0.76);
+  --ink-3: rgba(11, 12, 14, 0.58);
+  --rule: rgba(11, 12, 14, 0.22);
+  --suffix: #868c94;
+  --panel: rgba(250, 250, 250, 0.76);
+  --panel-strong: rgba(250, 250, 250, 0.88);
+  --clear: rgba(255, 255, 255, 0.16);
+  --tint: rgba(255, 255, 255, 0.38);
+  --rim: rgba(255, 255, 255, 0.78);
+  --rim-low: rgba(255, 255, 255, 0.22);
+  --shade: rgba(18, 44, 26, 0.14);
+  --sky: #c6d8e3;
+  --veil-top: rgba(255, 255, 255, 0.34);
+  --veil-mid: rgba(255, 255, 255, 0);
+  --veil-low: rgba(6, 22, 8, 0.16);
+  --mist: rgba(255, 255, 255, 0.42);
+  --hills-y: 13%;
+  --live: #2f9a5b;
+  --glow: rgba(255, 255, 255, 0.3);
+  --halo: rgba(255, 255, 255, 0.8);
+  --sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --mark: 'Prociono', Georgia, serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --gutter: clamp(16px, 5vw, 56px);
+  --out: cubic-bezier(0.22, 1, 0.36, 1);
+  --pop: cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f3f5f7;
+    --ink-2: rgba(243, 245, 247, 0.8);
+    --ink-3: rgba(243, 245, 247, 0.62);
+    --rule: rgba(243, 245, 247, 0.3);
+    --suffix: #8d959f;
+    --panel: rgba(18, 22, 26, 0.68);
+    --panel-strong: rgba(20, 24, 28, 0.82);
+    --clear: rgba(255, 255, 255, 0.07);
+    --tint: rgba(255, 255, 255, 0.17);
+    --rim: rgba(255, 255, 255, 0.32);
+    --rim-low: rgba(255, 255, 255, 0.08);
+    --shade: rgba(0, 0, 0, 0.32);
+    --sky: #17202a;
+    --veil-top: rgba(8, 13, 22, 0.66);
+    --veil-mid: rgba(8, 13, 22, 0.52);
+    --veil-low: rgba(2, 7, 4, 0.7);
+    --mist: rgba(8, 13, 22, 0.12);
+    --live: #5fd08c;
+    --glow: rgba(0, 0, 0, 0.25);
+    --halo: rgba(0, 0, 0, 0.3);
+  }
+}
+
+/* Less see-through glass for people who ask for it. */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --panel: rgba(250, 250, 250, 0.96);
+    --panel-strong: rgba(250, 250, 250, 0.98);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) and (prefers-color-scheme: dark) {
+  :root {
+    --panel: rgba(20, 24, 28, 0.96);
+    --panel-strong: rgba(20, 24, 28, 0.98);
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--sky);
+  color: var(--ink);
+  font: 400 16px/1.55 var(--sans);
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  overflow-x: clip;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+a {
+  color: var(--ink);
+  text-decoration: underline 1px var(--rule);
+  text-underline-offset: 4px;
+}
+
+a:hover {
+  text-decoration-color: currentColor;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--panel-strong);
+  transform: translateY(-160%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* The wallpaper: the sky (the hill and tree taken out) behind the hills (cut out), so each can move on its own. */
+
+.scene {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.layer img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 36%;
+}
+
+.sky {
+  transform: scale(1.14);
+}
+
+/* The hills sit lower than in the app, so the page's words have sky behind them. */
+.hills {
+  transform: translate3d(0, var(--hills-y), 0) scale(1.04);
+  transform-origin: 50% 100%;
+}
+
+@media (max-aspect-ratio: 1/1) {
+  :root {
+    --hills-y: 20%;
+  }
+}
+
+@media (max-aspect-ratio: 3/4) {
+  :root {
+    --hills-y: 30%;
+  }
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 28%, var(--mist) 50%, transparent 76%),
+    linear-gradient(to bottom, var(--veil-top), var(--veil-mid) 48%, var(--veil-low));
+}
+
+/* Glass: see-through, blurred and brightened behind, with a rim that catches the light. Animate only the glass
+   itself, never an ancestor's opacity or filter: that would stop the blur from reaching the wallpaper. */
+
+.glass {
+  position: relative;
+  background: var(--clear);
+  -webkit-backdrop-filter: blur(10px) saturate(1.7) brightness(1.04);
+  backdrop-filter: blur(10px) saturate(1.7) brightness(1.04);
+  box-shadow:
+    inset 0 1px 1px var(--rim),
+    inset 0 -1px 1px var(--rim-low),
+    inset 0 0 12px var(--rim-low),
+    0 2px 12px var(--shade);
+}
+
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(140deg, var(--rim), transparent 34%, transparent 66%, var(--rim-low));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.panel {
+  background: var(--panel);
+  -webkit-backdrop-filter: blur(26px) saturate(1.4);
+  backdrop-filter: blur(26px) saturate(1.4);
+}
+
+.wordmark {
+  font-family: var(--mark);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+.wordmark span {
+  color: var(--suffix);
+}
+
+/* Header */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 18px var(--gutter);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: none;
+  font-size: 30px;
+}
+
+.top nav {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.pill:hover {
+  background: var(--tint);
+}
+
+.pill[aria-current='page'] {
+  background: var(--tint);
+}
+
+/* Footer */
+
+.foot {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) 28px;
+}
+
+.foot-inner {
+  display: grid;
+  gap: 14px;
+  padding: 24px clamp(20px, 4vw, 32px);
+  border-radius: 24px;
+  color: var(--ink-2);
+  font-size: 14px;
+}
+
+.foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+}
+
+.foot .wordmark {
+  font-size: 22px;
+}
+
+.foot nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+}
+
+.foot nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+
+.foot .limited {
+  color: var(--ink);
+}
+
+.foot .quiet {
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+/* The privacy policy and the terms: one frosted page, like the app's card. */
+
+.doc {
+  max-width: 800px;
+  margin: 4px auto 32px;
+  padding: 0 var(--gutter);
+}
+
+.doc article {
+  padding: clamp(24px, 6vw, 60px);
+  border-radius: 28px;
+  background: var(--panel-strong);
+}
+
+.doc h1 {
+  font-size: clamp(32px, 6vw, 46px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+.doc .effective {
+  margin-top: 10px;
+  color: var(--ink-3);
+  font-size: 14px;
+}
+
+.doc h2 {
+  margin: 40px 0 10px;
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.018em;
+}
+
+.doc h3 {
+  margin: 22px 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.doc p,
+.doc li {
+  color: var(--ink-2);
+}
+
+.doc p + p,
+.doc p + ul,
+.doc ul + p {
+  margin-top: 12px;
+}
+
+.doc ul {
+  padding-left: 22px;
+}
+
+.doc li + li {
+  margin-top: 6px;
+}
+
+.doc strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.doc code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(127, 127, 127, 0.15);
+  font: 500 0.86em/1.4 var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.doc .intro {
+  margin-top: 22px;
+  font-size: 17px;
+}
+
+.doc .short {
+  margin-top: 26px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: rgba(127, 127, 127, 0.1);
+}
+
+.doc .short h2 {
+  margin-top: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .scene {
+    animation: fade-in 1.4s ease-out both;
+  }
+
+  .hills {
+    animation: hills-in 2.6s var(--out) both;
+  }
+
+  .doc article {
+    animation: rise-in 0.9s var(--out) 0.15s both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes hills-in {
+  from {
+    transform: translate3d(0, calc(var(--hills-y) + 5%), 0) scale(1.04);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 28px, 0);
+  }
+}
+
+a.wordmark {
+  text-decoration: none;
+}

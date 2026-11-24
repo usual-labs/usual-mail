@@ -1,0 +1,20 @@
+// Build settings of the UsualMailPhone target (the iPhone app), over the project's (Shared.xcconfig, which the Mac app
+// uses as it is). Both configurations of the target use this file.
+
+SDKROOT = iphoneos
+SUPPORTED_PLATFORMS = iphoneos iphonesimulator
+IPHONEOS_DEPLOYMENT_TARGET = 26.0
+// iPhone only, upright: the design is a phone's.
+TARGETED_DEVICE_FAMILY = 1
+SUPPORTS_MACCATALYST = NO
+SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO
+INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait
+INFOPLIST_KEY_UILaunchScreen_Generation = YES
+// The tree on its hill (AppPhone/Assets.xcassets, made by scripts/make-app-icon.sh).
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES
+
+// The Mac app's sandbox entitlements and hardened runtime don't apply.
+CODE_SIGN_ENTITLEMENTS =
+ENABLE_HARDENED_RUNTIME = NO
+LD_RUNPATH_SEARCH_PATHS = @executable_path/Frameworks

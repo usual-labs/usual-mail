@@ -1,0 +1,60 @@
+# Usual Mail's server with Docker Compose: the published image, or the image built from this repository.
+#
+#   docker compose up -d          start the server in the background (pulls the image, or builds it from a checkout
+#                                 of this repository when it can't be pulled)
+#   docker compose up -d --build  build the image from this checkout and start it, after changing the code
+#   docker compose pull && docker compose up -d
+#                                 update to the newest published image (the data volume stays)
+#   docker compose logs           the server's log (it prints an owner's pairing code once, when it makes it)
+#   docker compose down           stop it (the data volume stays)
+#
+# On a server of your own with a domain and HTTPS, use compose.caddy.yaml instead; with Coolify, compose.coolify.yaml.
+# docs/deploy.md covers both and other hosts.
+#
+# Pair the usual-mail command with it. Whenever no person's device is paired, the server writes the owner's pairing
+# code to the volume, and a new one when the old one expires; it removes the file once the code is used. Read the
+# code from the file, not the log: a restart keeps a waiting code without printing it again.
+#   docker compose exec usual-mail cat /data/owner-pairing-code
+#   usual-mail init --server http://127.0.0.1:8484 --code <that code>
+#
+# Reaching it from your other devices, safely:
+# - As written, the port is published on 127.0.0.1, so only this machine can reach the server.
+# - The safest way to reach it from a phone or another computer is a private network between your devices,
+#   such as Tailscale or WireGuard: publish the port on that network's address only, for example
+#   "100.64.0.5:8484:8484", instead of on every address.
+# - On the open internet, put it behind a reverse proxy that serves HTTPS (Caddy, nginx or Traefik), and keep
+#   this port on 127.0.0.1 for the proxy to reach. Pairing codes and tokens must never travel without HTTPS
+#   outside a private network.
+# - Publishing "8484:8484" without an address opens it to every network this machine is on. Don't, unless you
+#   trust every device on them.
+
+services:
+  usual-mail:
+    # The published image. `build: .` makes the same image from a checkout of this repository instead (with
+    # --build, or when the image can't be pulled); without a checkout only the pulled image works.
+    image: ghcr.io/usual-labs/usual-mail:latest
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8484:8484"
+    volumes:
+      - usual-mail-data:/data
+    # A hardened container without capabilities must run as the image's node user from the start, since the image
+    # can't change owners or users then (docs/deploy.md); the named volume below is node's from its first start:
+    # cap_drop: [ALL]
+    # user: "1000:1000"
+    # Optional settings; see docs/agents/server.md.
+    # environment:
+    #   USUAL_MAIL_POLL_SECONDS: "60"
+    #   # How many days of mail a new inbox's first sync takes (default 30). With Compose, set it here: it wins over
+    #   # /data/settings.json, which `usual-mail init` and `usual-mail sync-days` write for a server they run.
+    #   USUAL_MAIL_SYNC_DAYS: "30"
+    #   # Sign in with Google for Gmail (docs/google-setup.md): the address your browser reaches the server at, which
+    #   # Google sends people back to. Register it at Google followed by /v1/google/callback. The Google client goes
+    #   # into the volume as /data/google-client.json, readable only by the server's user.
+    #   USUAL_MAIL_PUBLIC_URL: "http://127.0.0.1:8484"
+
+volumes:
+  # Everything the server keeps: the database, with mailbox passwords and the AI key stored sealed, and the key that
+  # seals them. Back it up; losing that key means connecting every inbox and setting the AI key again.
+  usual-mail-data:

@@ -1,0 +1,200 @@
+# Usual Mail's server image for amd64 and arm64, published to GitHub's container registry as
+# ghcr.io/usual-labs/usual-mail when a release is published: tagged with the version (1.2.3), and with its minor line
+# (1.2) and latest when it is the newest release of each; only the version for a pre-release. Making a pre-release a
+# full release publishes it again with those tags. Run by hand, it builds both platforms and publishes nothing.
+#
+# The release's tag is checked first, so a bad tag pushes nothing. Each platform builds on its own runner, without
+# emulation, and is pushed by digest; the publish job joins the two under the tags and attests where the image came
+# from. Only GitHub-owned actions, pinned to full commit SHAs, as the other usual-labs repositories allow; the image
+# is built with the runners' own `docker buildx`, its builder and SBOM scanner pinned by digest (below).
+
+name: Image
+
+on:
+  release:
+    # `released`: a full release published, or a pre-release made one. `published`: any release published, used here
+    # for pre-releases only. A full release fires both; the `if` below runs the jobs once.
+    types: [published, released]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/usual-labs/usual-mail
+  # buildx-stable-1 on 2026-11-23: BuildKit v0.35.1.
+  BUILDKIT_IMAGE: moby/buildkit:v0.35.1@sha256:baf6138eb8c37644800c7c913fba051e840ebb9ba13eaf92d92ef9a1712d0b4c
+  # buildx's default SBOM scanner (stable-1) on 2026-11-23: 1.12.1.
+  SBOM_SCANNER: docker/buildkit-syft-scanner:1.12.1@sha256:873a7458c3c8ac8e32c7b796c10e1600b07b963d2aa000a72a2d97aaaa2d6315
+
+jobs:
+  tags:
+    name: Tags
+    if: github.event_name == 'release' && (github.event.action == 'released' || github.event.release.prerelease)
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read # list the repository's releases, to see whether this one is the newest
+    outputs:
+      version: ${{ steps.tags.outputs.version }}
+      tags: ${{ steps.tags.outputs.tags }}
+    steps:
+      - name: Check the release's tag and choose the image's tags
+        id: tags
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::The release's tag is $TAG; it must be vMAJOR.MINOR.PATCH, with an optional -suffix"
+            exit 1
+          fi
+          version="${TAG#v}"
+          line="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+          tags="$version"
+          if [ "$PRERELEASE" != true ] && [ -z "${BASH_REMATCH[4]}" ]; then
+            # The versions of every full release, this one included, so an older line's fix (1.1.5 after 1.2.0)
+            # moves its own line's tag but not latest. The list is fetched on a line of its own, so a failed call
+            # stops the job: inside $(…) bash turns -e off, and a failure in { gh …; echo …; } would be lost.
+            listed="$(gh api "repos/$REPOSITORY/releases?per_page=100" --paginate \
+              --jq '.[] | select((.draft or .prerelease) | not) | .tag_name')"
+            releases="$(printf '%s\n%s\n' "$listed" "$TAG" | sed -n 's/^v\([0-9]*\.[0-9]*\.[0-9]*\)$/\1/p' | sort -V)"
+            if [ "$(grep "^${line//./\\.}\." <<<"$releases" | tail -n 1)" = "$version" ]; then tags="$tags $line"; fi
+            if [ "$(tail -n 1 <<<"$releases")" = "$version" ]; then tags="$tags latest"; fi
+          fi
+          echo "The image's tags: $tags"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tags=$tags" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.arch }}
+    needs: tags
+    strategy: &platforms
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read # check out the repository
+      packages: write # push each platform's image by digest
+    steps:
+      - &checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - &build
+        name: Build, and push by digest for a release
+        env:
+          ARCH: ${{ matrix.arch }}
+          PUBLISH: ${{ github.event_name == 'release' }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
+          REVISION: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          docker buildx create --use --driver docker-container --driver-opt "image=$BUILDKIT_IMAGE" --name image-builder
+          if [ "$PUBLISH" = true ]; then
+            printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+            output="type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true"
+          else
+            output="type=cacheonly"
+          fi
+          docker buildx build \
+            --platform "linux/$ARCH" \
+            --label "org.opencontainers.image.title=Usual Mail server" \
+            --label "org.opencontainers.image.source=$SOURCE" \
+            --label "org.opencontainers.image.revision=$REVISION" \
+            --label "org.opencontainers.image.licenses=AGPL-3.0-only" \
+            --provenance=mode=max \
+            --sbom="generator=$SBOM_SCANNER" \
+            --output "$output" \
+            --metadata-file metadata.json \
+            .
+          mkdir -p digests
+          if [ "$PUBLISH" = true ]; then
+            digest="$(jq -r '."containerimage.digest"' metadata.json)"
+            [[ "$digest" == sha256:* ]] || { echo "::error::No image digest in the build's metadata"; exit 1; }
+            touch "digests/${digest#sha256:}"
+          fi
+
+      - name: Keep the digest for the publish job
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # A run by hand: the same build on both platforms, with no permission to publish.
+  check:
+    name: Check ${{ matrix.arch }}
+    if: github.event_name == 'workflow_dispatch'
+    strategy: *platforms
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read # check out the repository
+    steps:
+      - *checkout
+      - *build
+
+  publish:
+    name: Publish
+    needs: [tags, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      packages: write # tag the image and push its attestation
+      id-token: write # sign the attestation
+      attestations: write # record the attestation in the repository
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+
+      - name: Tag both platforms' images
+        id: index
+        env:
+          VERSION: ${{ needs.tags.outputs.version }}
+          TAGS: ${{ needs.tags.outputs.tags }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tags=()
+          read -r -a names <<<"$TAGS"
+          for name in "${names[@]}"; do tags+=(--tag "$IMAGE:$name"); done
+          sources=()
+          for file in digests/*; do sources+=("$IMAGE@sha256:$(basename "$file")"); done
+          [ "${#sources[@]}" -eq 2 ] || { echo "::error::Expected two platforms' digests, found ${#sources[@]}"; exit 1; }
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$REGISTRY_USER" --password-stdin
+          docker buildx imagetools create "${tags[@]}" \
+            --annotation "index:org.opencontainers.image.source=$SOURCE" \
+            --annotation "index:org.opencontainers.image.description=Usual Mail's server: a self-hosted mail app for many inboxes" \
+            --annotation "index:org.opencontainers.image.licenses=AGPL-3.0-only" \
+            --annotation "index:org.opencontainers.image.version=$VERSION" \
+            "${sources[@]}"
+          digest="$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{json .Manifest}}' | jq -r '.digest')"
+          [[ "$digest" == sha256:* ]] || { echo "::error::Couldn't read the published image's digest"; exit 1; }
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Attest where the image came from
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.index.outputs.digest }}
+          push-to-registry: true
+          # No artifact storage record (it would need artifact-metadata: write, and only feeds the organisation's
+          # Linked Artifacts page); the attestation is pushed to the registry and recorded in the repository as before.
+          create-storage-record: false

@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Usual Mail</title>
+    <meta name="description" content="Usual Mail is a mail app for people with many inboxes. Your own server keeps a synced copy of each mailbox, sorts every mail with your own AI key and writes what it works out back to your mailbox. Gmail first. Early and in development.">
+    <link rel="canonical" href="https://mail.usual.dev/">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#c6d8e3" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#17202a" media="(prefers-color-scheme: dark)">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://mail.usual.dev/">
+    <meta property="og:title" content="Usual Mail">
+    <meta property="og:description" content="One app for all your inboxes, each sorted the way that inbox needs, on a server you run yourself. Early and in development.">
+    <meta property="og:image" content="https://mail.usual.dev/apple-touch-icon.png">
+    <meta name="twitter:card" content="summary">
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/Prociono-Regular.ttf" as="font" type="font/ttf" crossorigin>
+    <link rel="stylesheet" href="/assets/base.css">
+    <link rel="stylesheet" href="/assets/home.css">
+    <link rel="stylesheet" href="/assets/app.css">
+    <link rel="stylesheet" href="/assets/motion.css">
+  </head>
+  <body class="drift">
+    <svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false">
+      <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11.9896V14.5C3 17.7998 3 19.4497 4.02513 20.4749C5.05025 21.5 6.70017 21.5 10 21.5H14C17.2998 21.5 18.9497 21.5 19.9749 20.4749C21 19.4497 21 17.7998 21 14.5V11.9896C21 10.3083 21 9.46773 20.6441 8.74005C20.2882 8.01237 19.6247 7.49628 18.2976 6.46411L16.2976 4.90855C14.2331 3.30285 13.2009 2.5 12 2.5C10.7991 2.5 9.76689 3.30285 7.70242 4.90855L5.70241 6.46411C4.37533 7.49628 3.71179 8.01237 3.3559 8.74005C3 9.46773 3 10.3083 3 11.9896Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 17.5V13.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-feed" viewBox="0 0 24 24"><path d="M16 7C18.357 7 19.5355 7 20.2678 7.73223C21 8.46447 21 9.64298 21 12C21 14.357 21 15.5355 20.2678 16.2678C19.5355 17 18.357 17 16 17H8C5.64298 17 4.46447 17 3.73223 16.2678C3 15.5355 3 14.357 3 12C3 9.64298 3 8.46447 3.73223 7.73223C4.46447 7 5.64298 7 8 7L16 7Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 2C16.8955 2.54697 16.7107 2.94952 16.3838 3.26777C15.6316 4 14.4211 4 12 4C9.5789 4 8.36835 4 7.61621 3.26777C7.28931 2.94952 7.10449 2.54697 7 2" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 22C16.8955 21.453 16.7107 21.0505 16.3838 20.7322C15.6316 20 14.4211 20 12 20C9.5789 20 8.36835 20 7.61621 20.7322C7.28931 21.0505 7.10449 21.453 7 22" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-receipts" viewBox="0 0 24 24"><path d="M4 18.6458V8.05426C4 5.20025 4 3.77325 4.87868 2.88663C5.75736 2 7.17157 2 10 2H14C16.8284 2 18.2426 2 19.1213 2.88663C20 3.77325 20 5.20025 20 8.05426V18.6458C20 20.1575 20 20.9133 19.538 21.2108C18.7831 21.6971 17.6161 20.6774 17.0291 20.3073C16.5441 20.0014 16.3017 19.8485 16.0325 19.8397C15.7417 19.8301 15.4949 19.9768 14.9709 20.3073L13.06 21.5124C12.5445 21.8374 12.2868 22 12 22C11.7132 22 11.4555 21.8374 10.94 21.5124L9.02913 20.3073C8.54415 20.0014 8.30166 19.8485 8.03253 19.8397C7.74172 19.8301 7.49493 19.9768 6.97087 20.3073C6.38395 20.6774 5.21687 21.6971 4.46195 21.2108C4 20.9133 4 20.1575 4 18.6458Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 11H8" stroke-linecap="round" stroke-linejoin="round"/><path d="M14 7L8 7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M20.5 13.5C20.5 16.7792 20.5 18.4188 19.6862 19.5811C19.3851 20.0111 19.0111 20.3851 18.5811 20.6862C17.4188 21.5 15.7792 21.5 12.5 21.5H11.5C7.25736 21.5 5.13604 21.5 3.81802 20.182C2.5 18.864 2.5 16.7426 2.5 12.5V11.5C2.5 8.22077 2.5 6.58116 3.31382 5.41891C3.6149 4.98891 3.98891 4.6149 4.41891 4.31382C5.58116 3.5 7.22077 3.5 10.5 3.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 6C21.5 7.933 19.933 9.5 18 9.5C16.067 9.5 14.5 7.933 14.5 6C14.5 4.067 16.067 2.5 18 2.5C19.933 2.5 21.5 4.067 21.5 6Z" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-screening" viewBox="0 0 24 24"><path d="M4 10C4 5.58172 7.58172 2 12 2C16.4183 2 20 5.58172 20 10V18.6667C20 19.9128 20 20.5359 19.7321 21C19.5565 21.304 19.304 21.5565 19 21.732C18.5359 22 17.9128 22 16.6667 22H7.33333C6.08718 22 5.4641 22 5 21.732C4.69596 21.5565 4.44349 21.304 4.26795 21C4 20.5359 4 19.9128 4 18.6667V10Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 18H9C8.05719 18 7.58579 18 7.29289 18.2929C7 18.5858 7 19.0572 7 20V22" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 14H13C12.0572 14 11.5858 14 11.2929 14.2929C11 14.5858 11 15.0572 11 16V18" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 10H17C16.0572 10 15.5858 10 15.2929 10.2929C15 10.5858 15 11.0572 15 12V14" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><path d="M17 17L21 21" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 11C19 6.58172 15.4183 3 11 3C6.58172 3 3 6.58172 3 11C3 15.4183 6.58172 19 11 19C15.4183 19 19 15.4183 19 11Z" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-all" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-person" viewBox="0 0 24 24"><path d="M14.5 16.5001L18.216 17.6178C19.6034 18.0424 20.6341 19.1553 20.9763 20.51C21.1115 21.0457 20.6489 21.5001 20.0936 21.5001H3.90639C3.35107 21.5001 2.88845 21.0457 3.02375 20.51C3.36593 19.1553 4.39659 18.0424 5.78401 17.6178L9.5 16.5001V14.5623C7.71916 13.1685 6.5 11.4999 6.5 7.91674C6.5 4.32689 8.45474 2.49993 11.4923 2.49993C13.6433 2.49993 14.5385 3.49993 14.5385 3.49993C17.0769 3.49993 17.5 5.59712 17.5 7.91674C17.5 11.4999 16.2808 13.1685 14.5 14.5623V16.5001Z" stroke-linejoin="round"/></symbol>
+      <symbol id="i-building" viewBox="0 0 24 24"><path d="M6.50153 4.88815L9.50153 3.67269C11.9917 2.66381 13.2368 2.15936 14.1184 2.75565C15 3.35194 15 4.6985 15 7.39161V21.5H4V8.60707C4 7.29651 4 6.64122 4.34192 6.13291C4.68384 5.62459 5.28973 5.37911 6.50153 4.88815Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8.5H16C17.8856 8.5 18.8284 8.5 19.4142 9.08579C20 9.67157 20 10.6144 20 12.5V21.5H15" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 21.5H22" stroke-linecap="round"/><path d="M8 8.5H11" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 12.5H11" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 16.5H11" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-briefcase" viewBox="0 0 24 24"><path d="M1.99934 12.4999H21.9993" stroke-linecap="round" stroke-linejoin="round"/><path d="M7.49934 10.9999V13.9999M16.4993 13.9999V10.9999" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.99935 13.4999L1.99934 14C1.99934 17.2998 1.99933 18.9497 3.02443 19.9748C4.04953 20.9999 5.69941 21 8.99919 21L15.0005 21.0002C18.3009 21.0002 19.9511 21.0003 20.9763 19.9749C22.0015 18.9496 22.0012 17.2994 22.0006 13.999L22.0005 13.4987C22 10.1994 21.9997 8.54971 20.9746 7.5248C19.9495 6.49988 18.2999 6.49988 15.0005 6.49988H8.99935C5.69952 6.49988 4.04961 6.49988 3.02448 7.525C1.99936 8.55012 1.99935 10.2 1.99935 13.4999Z" stroke-linecap="round" stroke-linejoin="round"/><path d="M8.49934 6.49988C8.49934 5.09542 8.49934 4.39318 8.8364 3.88874C8.98232 3.67036 9.16982 3.48286 9.3882 3.33694C9.89265 2.99988 10.5949 2.99988 11.9993 2.99988C13.4038 2.99988 14.106 2.99988 14.6105 3.33694C14.8289 3.48286 15.0164 3.67036 15.1623 3.88874C15.4993 4.39318 15.4993 5.09542 15.4993 6.49988" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 4V20M20 12H4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-reply" viewBox="0 0 24 24"><path d="M10 14C10 14 7.50007 12.1588 7.50006 11.5C7.50006 10.8412 10.0001 9 10.0001 9M8.50004 11.5H13.5C15.1569 11.5 16.5 12.8432 16.5 14.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 12C21.5 17.2467 17.2467 21.5 12 21.5C10.3719 21.5 8.8394 21.0904 7.5 20.3687C5.63177 19.362 4.37462 20.2979 3.26592 20.4658C3.09774 20.4913 2.93024 20.4302 2.80997 20.31C2.62741 20.1274 2.59266 19.8451 2.6935 19.6074C3.12865 18.5818 3.5282 16.6382 2.98341 15C2.6698 14.057 2.5 13.0483 2.5 12C2.5 6.75329 6.75329 2.5 12 2.5C17.2467 2.5 21.5 6.75329 21.5 12Z" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-pin" viewBox="0 0 24 24"><path d="M3 21L8 16" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.2585 18.8714C9.51516 18.0215 5.97844 14.4848 5.12853 10.7415C4.99399 10.1489 4.92672 9.85266 5.12161 9.37197C5.3165 8.89129 5.55457 8.74255 6.03071 8.44509C7.10705 7.77265 8.27254 7.55888 9.48209 7.66586C11.1793 7.81598 12.0279 7.89104 12.4512 7.67048C12.8746 7.44991 13.1622 6.93417 13.7376 5.90269L14.4664 4.59604C14.9465 3.73528 15.1866 3.3049 15.7513 3.10202C16.316 2.89913 16.6558 3.02199 17.3355 3.26771C18.9249 3.84236 20.1576 5.07505 20.7323 6.66449C20.978 7.34417 21.1009 7.68401 20.898 8.2487C20.6951 8.8134 20.2647 9.05346 19.4039 9.53358L18.0672 10.2792C17.0376 10.8534 16.5229 11.1406 16.3024 11.568C16.0819 11.9955 16.162 12.8256 16.3221 14.4859C16.4399 15.7068 16.2369 16.88 15.5555 17.9697C15.2577 18.4458 15.1088 18.6839 14.6283 18.8786C14.1477 19.0733 13.8513 19.006 13.2585 18.8714Z" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-snooze" viewBox="0 0 24 24"><path d="M15.5 18.5C15.5 20.433 13.933 22 12 22C10.067 22 8.5 20.433 8.5 18.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 11V12.7558C19 13.5514 19.3161 14.3145 19.8787 14.8771L20.4819 15.4803C20.8136 15.8121 21 16.262 21 16.7311C21 17.708 20.208 18.5 19.2311 18.5H4.76887C3.79195 18.5 3 17.708 3 16.7311C3 16.262 3.18636 15.8121 3.51809 15.4803L4.12132 14.8771C4.68393 14.3145 5 13.5514 5 12.7558V10C5 6.13401 8.13401 3 12 3" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.016 2H18.6884C19.4611 2 19.8474 2 19.9503 2.24011C20.0532 2.48023 19.7903 2.76827 19.2646 3.34436L15.8469 6.65564C15.3211 7.23173 14.9131 7.51977 15.016 7.75989C15.1189 8 15.6504 8 16.423 8H20" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M13.9378 3H10.0622C8.09477 3 7.11106 3 6.34921 3.5158C5.58736 4.0316 5.22202 4.94495 4.49134 6.77166L2.42914 11.9272C2.21522 12.4619 2.10826 12.7293 2.05413 13.0104C2 13.2915 2 13.5795 2 14.1555V15C2 17.8284 2 19.2426 2.87868 20.1213C3.75736 21 5.17157 21 8 21H16C18.8284 21 20.2426 21 21.1213 20.1213C22 19.2426 22 17.8284 22 15V14.1555C22 13.5795 22 13.2915 21.9459 13.0104C21.8917 12.7294 21.7848 12.4619 21.5709 11.9271L19.5087 6.77166C18.778 4.94495 18.4126 4.0316 17.6508 3.5158C16.8889 3 15.9052 3 13.9378 3Z"/><path d="M2.5 13H5.58579C6.16263 13 6.45105 13 6.71982 13.0766C6.86747 13.1187 7.00978 13.1776 7.14394 13.2523C7.38816 13.3882 7.59211 13.5921 8 14C8.40789 14.4079 8.61184 14.6118 8.85606 14.7477C8.99022 14.8224 9.13253 14.8813 9.28018 14.9234C9.54895 15 9.83737 15 10.4142 15H13.5858C14.1626 15 14.4511 15 14.7198 14.9234C14.8675 14.8813 15.0098 14.8224 15.1439 14.7477C15.3882 14.6118 15.5921 14.4079 16 14C16.4079 13.5921 16.6118 13.3882 16.8561 13.2523C16.9902 13.1776 17.1325 13.1187 17.2802 13.0766C17.5489 13 17.8374 13 18.4142 13H21.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><path d="M3.95631 10.5829L3.03254 9.07084C2.74505 8.60024 2.7389 8.00978 3.01652 7.5333L3.63533 6.47124C3.90953 6.00064 4.41721 5.71571 4.96162 5.7269L6.69131 5.76245C6.92616 5.76728 7.15379 5.68727 7.34333 5.54846C7.79531 5.21745 8.28334 4.93276 8.80042 4.70139C9.01191 4.60675 9.19222 4.45165 9.30469 4.24903L10.1203 2.77965C10.3847 2.30328 10.8865 2.00781 11.4312 2.00781H12.6937C13.2384 2.00781 13.7403 2.30329 14.0047 2.77966L14.8202 4.24902C14.9327 4.45165 15.113 4.60675 15.3245 4.70139C15.8416 4.93274 16.3296 5.2174 16.7815 5.54838C16.9711 5.68718 17.1987 5.76718 17.4336 5.76235L19.1634 5.72676C19.7078 5.71557 20.2155 6.00049 20.4897 6.47111L21.1085 7.53314C21.3862 8.00963 21.38 8.60009 21.0925 9.07068L20.1687 10.5828C20.0481 10.7803 20.002 11.0134 20.0235 11.2439C20.0707 11.7486 20.0707 12.267 20.0235 12.7717C20.002 13.0022 20.0481 13.2353 20.1687 13.4329L21.0924 14.9448C21.3799 15.4154 21.3861 16.0058 21.1084 16.4823L20.4896 17.5444C20.2154 18.015 19.7077 18.2999 19.1633 18.2887L17.4338 18.2531C17.1989 18.2483 16.9713 18.3283 16.7817 18.4671C16.3297 18.7982 15.8416 19.0829 15.3245 19.3142C15.113 19.4089 14.9327 19.564 14.8202 19.7666L14.0047 21.236C13.7403 21.7123 13.2384 22.0078 12.6937 22.0078H11.4312C10.8866 22.0078 10.3847 21.7123 10.1203 21.236L9.30468 19.7665C9.19222 19.5639 9.01191 19.4088 8.80042 19.3142C8.28329 19.0828 7.79519 18.798 7.34316 18.467C7.15362 18.3282 6.92597 18.2482 6.69111 18.253L4.96175 18.2886C4.41733 18.2998 3.90963 18.0148 3.63543 17.5442L3.01663 16.4822C2.739 16.0057 2.74515 15.4152 3.03264 14.9446L3.95631 13.4327C4.07699 13.2351 4.12309 13.002 4.10154 12.7715C4.05437 12.267 4.05438 11.7486 4.10154 11.244C4.12308 11.0135 4.07699 10.7805 3.95631 10.5829Z"/><circle cx="12.0625" cy="12.0078" r="3.5"/></symbol>
+      <symbol id="i-letin" viewBox="0 0 24 24"><path d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z"/><path d="M8 12.5L10.5 15L16 9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-block" viewBox="0 0 24 24"><path d="M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z" stroke-linejoin="round"/><path d="M16 8L12 12M12 12L8 16M12 12L16 16M12 12L8 8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    </svg>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <div class="scene" aria-hidden="true">
+      <picture class="layer sky">
+        <source type="image/avif" media="(max-aspect-ratio: 1/1)" srcset="/img/sky-p1080.avif 1080w, /img/sky-p1620.avif 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/webp" media="(max-aspect-ratio: 1/1)" srcset="/img/sky-p1080.webp 1080w, /img/sky-p1620.webp 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/avif" srcset="/img/sky-1280.avif 1280w, /img/sky-1920.avif 1920w, /img/sky-2560.avif 2560w" sizes="max(100vw, 178vh)">
+        <img src="/img/sky-1920.webp" srcset="/img/sky-1280.webp 1280w, /img/sky-1920.webp 1920w, /img/sky-2560.webp 2560w" sizes="max(100vw, 178vh)" alt="" decoding="async">
+      </picture>
+      <picture class="layer hills">
+        <source type="image/avif" media="(max-aspect-ratio: 1/1)" srcset="/img/hills-p1080.avif 1080w, /img/hills-p1620.avif 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/webp" media="(max-aspect-ratio: 1/1)" srcset="/img/hills-p1080.webp 1080w, /img/hills-p1620.webp 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/avif" srcset="/img/hills-1280.avif 1280w, /img/hills-1920.avif 1920w, /img/hills-2560.avif 2560w" sizes="max(100vw, 178vh)">
+        <img src="/img/hills-1920.webp" srcset="/img/hills-1280.webp 1280w, /img/hills-1920.webp 1920w, /img/hills-2560.webp 2560w" sizes="max(100vw, 178vh)" alt="" fetchpriority="high">
+      </picture>
+      <div class="veil"></div>
+    </div>
+
+    <header class="top">
+      <nav aria-label="Policies">
+        <a class="pill glass" href="/privacy/">Privacy</a>
+        <a class="pill glass" href="/terms/">Terms</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" aria-labelledby="title">
+        <p class="pill glass status">Early and in development</p>
+        <h1 id="title" class="wordmark" aria-label="Usual Mail">Usual<span>mail</span></h1>
+        <p class="tagline">One app for all your inboxes, each sorted the way that inbox needs, on a server you run yourself.</p>
+        <p class="lede">Usual Mail is a mail app for people with many inboxes. Your own server keeps a synced copy of each mailbox, sorts every mail by what it is, sums it up in a line with your own AI key, and writes what it works out back to your mailbox. Gmail first, with a Mac app.</p>
+
+        <figure class="demo" aria-labelledby="demo-caption">
+          <div class="app">
+            <div class="rail" aria-hidden="true">
+              <span class="btn glass" style="--i:0"><svg class="icon"><use href="#i-search"/></svg></span>
+              <span class="profiles glass" style="--i:1">
+                <svg class="icon"><use href="#i-all"/></svg>
+                <svg class="icon"><use href="#i-person"/></svg>
+                <svg class="icon"><use href="#i-building"/></svg>
+                <svg class="icon"><use href="#i-briefcase"/></svg>
+                <svg class="icon"><use href="#i-plus"/></svg>
+              </span>
+              <span class="btn glass" style="--i:2"><svg class="icon"><use href="#i-reply"/></svg></span>
+              <span class="btn glass" style="--i:3"><svg class="icon"><use href="#i-pin"/></svg></span>
+              <span class="btn glass" style="--i:4"><svg class="icon"><use href="#i-snooze"/></svg></span>
+              <span class="btn glass" style="--i:5"><svg class="icon"><use href="#i-inbox"/></svg></span>
+              <span class="spacer"></span>
+              <span class="btn glass" style="--i:6"><svg class="icon"><use href="#i-settings"/></svg></span>
+            </div>
+
+            <div class="window" role="group" aria-label="Places in the app">
+              <input class="sr-only" type="radio" name="place" id="t-home" aria-label="Home" checked>
+              <input class="sr-only" type="radio" name="place" id="t-feed" aria-label="Feed">
+              <input class="sr-only" type="radio" name="place" id="t-receipts" aria-label="Receipts">
+              <input class="sr-only" type="radio" name="place" id="t-bell" aria-label="Notifications">
+              <input class="sr-only" type="radio" name="place" id="t-screening" aria-label="Screening, 2 waiting">
+              <div class="tabs">
+                <label class="tab glass" for="t-home" style="--i:0"><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg><span class="tab-name">Home</span></label>
+                <label class="tab glass" for="t-feed" style="--i:1"><svg class="icon" aria-hidden="true"><use href="#i-feed"/></svg><span class="tab-name">Feed</span></label>
+                <label class="tab glass" for="t-receipts" style="--i:2"><svg class="icon" aria-hidden="true"><use href="#i-receipts"/></svg><span class="tab-name">Receipts</span></label>
+                <label class="tab glass" for="t-bell" style="--i:3"><svg class="icon" aria-hidden="true"><use href="#i-bell"/></svg><span class="tab-name">Notifications</span></label>
+                <span class="gap"></span>
+                <label class="tab glass" for="t-screening" style="--i:4"><svg class="icon" aria-hidden="true"><use href="#i-screening"/></svg><span class="count">2</span></label>
+              </div>
+
+              <div class="card">
+                <div class="place p-home">
+                  <p class="part" style="--i:0">New</p>
+                  <ul>
+                    <li class="row" style="--i:1"><span class="av c1" aria-hidden="true">MK</span><span class="subject">Feedback on the homepage</span><span class="line">Maya Kim - Shared notes on the new homepage and asked for your thoughts before Friday.</span><span class="when">6m ago</span></li>
+                    <li class="row" style="--i:2"><span class="av c2" aria-hidden="true">JL</span><span class="subject">Coffee next week?</span><span class="line">Jamie Lee - Suggested Tuesday morning and sent a few places near the office.</span><span class="when">1h ago</span></li>
+                    <li class="row" style="--i:3"><span class="av c3" aria-hidden="true">DW</span><span class="subject">Contract renewal for 2027</span><span class="line">Dana Whitfield - Asked you to confirm the renewal terms by Friday; only the notice period changed.</span><span class="when">3h ago</span></li>
+                  </ul>
+                  <p class="part" style="--i:4">Seen</p>
+                  <ul>
+                    <li class="row" style="--i:5"><span class="av c4" aria-hidden="true">AS</span><span class="subject">Notes from today’s catch-up</span><span class="line">Alex Santos - Recapped the decisions and who does what next.</span><span class="when">Yesterday</span></li>
+                    <li class="row" style="--i:6"><span class="av c5" aria-hidden="true">JW</span><span class="subject">Dinner on Saturday?</span><span class="line">Jonas Weber - Thinking seven at theirs. Bring nothing, or bring wine.</span><span class="when">Mon</span></li>
+                  </ul>
+                </div>
+
+                <div class="place p-feed">
+                  <p class="part" style="--i:0">Newsletters</p>
+                  <ul>
+                    <li class="row" style="--i:1"><span class="av c2" aria-hidden="true">WW</span><span class="subject">Garlic goes in now</span><span class="line">Weekend Weeds - Why November is the month for garlic, and how deep to plant it.</span></li>
+                    <li class="row" style="--i:2"><span class="av c4" aria-hidden="true">KC</span><span class="subject">Five typefaces worth a look</span><span class="line">Kerning Club - New releases, a long read on spacing, and one free font.</span></li>
+                    <li class="row" style="--i:3"><span class="av c1" aria-hidden="true">MR</span><span class="subject">Saturday’s route</span><span class="line">Mill Lane Runners - A new 8 km loop from the old mill, starting at nine.</span></li>
+                  </ul>
+                </div>
+
+                <div class="place p-receipts">
+                  <p class="part" style="--i:0">Invoices and receipts</p>
+                  <ul>
+                    <li class="row" style="--i:1"><span class="av c3" aria-hidden="true">CS</span><span class="subject">To be paid: €1,240.00 to Copperleaf Studio</span><span class="line">October’s design work · due 30 Nov</span></li>
+                    <li class="row" style="--i:2"><span class="av c6" aria-hidden="true">NH</span><span class="subject">Will be charged: €12.50 by Nimbus Hosting</span><span class="line">Your server in December · on 2 Dec</span></li>
+                    <li class="row" style="--i:3"><span class="av c1" aria-hidden="true">FB</span><span class="subject">Paid: €38.90 to Fernhill Books</span><span class="line">Two paperbacks and a notebook</span></li>
+                    <li class="row" style="--i:4"><span class="av c5" aria-hidden="true">PO</span><span class="subject">Refunded: €24.00 by Pinecone Outfitters</span><span class="line">A returned head torch</span></li>
+                  </ul>
+                </div>
+
+                <div class="place p-bell">
+                  <p class="part" style="--i:0">Today</p>
+                  <ul>
+                    <li class="row" style="--i:1"><span class="av c4" aria-hidden="true">P</span><span class="subject">Out for delivery · today, 2–4 pm</span><span class="line">Parcelway - Parcel from Fernhill Books</span></li>
+                  </ul>
+                  <p class="part" style="--i:2">Coming up</p>
+                  <ul>
+                    <li class="row" style="--i:3"><span class="av c2" aria-hidden="true">RD</span><span class="subject">Appointment moved · Thursday, 9:30 am</span><span class="line">Riverside Dental - Your check-up</span></li>
+                  </ul>
+                  <p class="part" style="--i:4">Earlier</p>
+                  <ul>
+                    <li class="row" style="--i:5"><span class="av c4" aria-hidden="true">P</span><span class="subject">Delivered · yesterday</span><span class="line">Parcelway - Parcel from Pinecone Outfitters</span></li>
+                  </ul>
+                </div>
+
+                <div class="place p-screening">
+                  <p class="part list-title" style="--i:0">2 New Items</p>
+                  <ul>
+                    <li class="row" style="--i:1"><span class="av c5" aria-hidden="true">AR</span><span class="subject">Ana Ribeiro <span class="address">(ana@ribeiro-studio.example)</span></span><span class="line">Introduced herself from the studio next door and asked about sharing the garden.</span><span class="choices" aria-hidden="true"><svg class="icon"><use href="#i-letin"/></svg><svg class="icon"><use href="#i-block"/></svg></span></li>
+                    <li class="row" style="--i:2"><span class="av c3" aria-hidden="true">PD</span><span class="subject">Prize Desk <span class="address">(winner@prize-desk.example)</span></span><span class="line">Says you won a phone and asks for your card details to send it.</span><span class="choices" aria-hidden="true"><svg class="icon"><use href="#i-letin"/></svg><svg class="icon"><use href="#i-block"/></svg></span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption id="demo-caption">The Mac app, drawn here with made-up mail. Choose a tab to see where each kind of mail goes.</figcaption>
+        </figure>
+      </section>
+
+      <section class="section" aria-labelledby="what">
+        <h2 id="what" class="label glass reveal">What it does today</h2>
+        <div class="grid">
+          <div class="feature panel glass reveal">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-inbox"/></svg>Your inboxes, as they are</h3>
+            <p>Connect the mailboxes you already have, Gmail first. No new address. Your mailbox stays the main copy of your mail; your server keeps in step with it and writes what it works out back as labels.</p>
+          </div>
+          <div class="feature panel glass reveal">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-home"/></svg>Sorted by what it is</h3>
+            <p>Your server’s AI, using your own AI key, tells conversations from newsletters, invoices, receipts, notifications and one-time codes, and sums each up in a line. Home holds the conversations that need you.</p>
+          </div>
+          <div class="feature panel glass reveal">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-screening"/></svg>First-time senders wait</h3>
+            <p>Mail from someone you haven’t let in waits in Screening until you decide: let them in, or block them.</p>
+          </div>
+          <div class="feature panel glass reveal">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-reply"/></svg>Nothing behind your back</h3>
+            <p>Every action is recorded with who did it and can be undone. Correct a category and that inbox learns a rule.</p>
+          </div>
+          <div class="feature panel glass reveal">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg>Your server, your AI key</h3>
+            <p>You run the server, on your own computer, and you hold the AI key: Vercel’s AI Gateway, OpenAI or Anthropic. Before you save it, you see exactly what is sent and to whom.</p>
+          </div>
+          <div class="feature panel glass reveal">
+            <h3><svg class="icon" aria-hidden="true"><use href="#i-letin"/></svg>Pictures without trackers</h3>
+            <p>Pictures in mail load through your server, with known trackers and invisible pictures taken out first, and only from senders you’ve let in.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="gmail">
+        <div class="wide panel glass reveal">
+          <div>
+            <h2 id="gmail">How Usual Mail uses your Gmail</h2>
+            <p>You connect Gmail by signing in with Google. Usual Mail asks for one permission, <code>gmail.modify</code>, which lets it read, compose, send and label your mail. It can’t delete mail for good, and it asks for nothing else in your Google Account.</p>
+            <p>Your mail goes to your own Usual Mail server, never to us. If you add an AI key, parts of each mail go to the AI service you chose, so it can sort the mail and sum it up; you see exactly which parts before you save the key.</p>
+          </div>
+          <ul>
+            <li><strong>Reads</strong> your messages and labels, to show them in your apps and keep your server’s copy in step.</li>
+            <li><strong>Writes</strong> labels under “Usual Mail/” for each kind of mail, moves mail in and out of your inbox, marks it read or unread, and moves it to the trash when you ask.</li>
+            <li><strong>Sends</strong> only the mail you write and choose to send.</li>
+            <li><strong>Stops</strong> when you remove the inbox, which also asks Google to revoke its access, or when you remove Usual Mail’s access in your Google Account.</li>
+          </ul>
+          <p class="wide-foot">Read the details in the <a href="/privacy/">Privacy Policy</a> and the <a href="/terms/">Terms of Service</a>.</p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="stands">
+        <div class="wide panel glass reveal">
+          <div>
+            <h2 id="stands">Where it stands</h2>
+            <p>Usual Mail is early and in development. The first build is in progress and nothing is released, so there is nothing to download yet.</p>
+          </div>
+          <p>Today it runs on a server you set up on a computer of your own, with Gmail connected by signing in with Google and a Mac app paired to it. IMAP is built but not yet ready for real mail; Outlook and an iPhone app come later.</p>
+        </div>
+      </section>
+      <div class="after"></div>
+    </main>
+
+    <footer class="foot">
+      <div class="foot-inner panel glass">
+        <div class="foot-row">
+          <span class="wordmark" aria-hidden="true">Usual<span>mail</span></span>
+          <nav aria-label="Footer">
+            <a href="/privacy/">Privacy Policy</a>
+            <a href="/terms/">Terms of Service</a>
+            <a href="mailto:hello@usual.dev">hello@usual.dev</a>
+          </nav>
+        </div>
+        <p class="limited">Usual Mail’s use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+        <p class="quiet">Usual Mail is made by Nestor Code Crafters UG. Type: Geist (<a href="/fonts/Geist-OFL.txt">OFL</a>) and Prociono (<a href="/fonts/Prociono-OFL.txt">OFL</a>). Icons: Hugeicons (<a href="/icons-LICENSE.txt">MIT</a>). Wallpaper: Unsplash.</p>
+      </div>
+    </footer>
+  </body>
+</html>

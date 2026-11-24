@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- Talks to the person's Usual Mail server (REST and server-sent events). -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Reads a file the person picks or drops, once: the picture for the background in Settings' Appearance tab,
+	     copied into the app's container (UsualMailUI's Background), and the Google client file the guided set-up
+	     sends to the server (UsualMailUI's ClientFileDrop). -->
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
+</dict>
+</plist>

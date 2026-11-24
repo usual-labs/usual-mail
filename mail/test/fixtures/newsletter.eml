@@ -1,0 +1,23 @@
+From: Weekly Reads <news@letters.example>
+Reply-To: hello@letters.example
+To: me@mail.example
+Subject: This week: five good things
+Date: Fri, 13 Nov 2026 07:00:00 +0000
+Message-ID: <issue-88@letters.example>
+List-Id: "Weekly Reads" <weekly.letters.example>
+List-Unsubscribe: <https://letters.example/unsub?u=1>,
+ <mailto:unsub@letters.example>
+List-Unsubscribe-Post: List-Unsubscribe=One-Click
+Precedence: bulk
+MIME-Version: 1.0
+Content-Type: text/html; charset="iso-8859-1"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head><title>Issue 88</title><style>@import url(https://letters.example/x.css); .a{color:red}</style>
+<script>track()</script></head>
+<body onload=3D"track()"><h1>Five good things</h1><p>Caf=E9 culture, na=EFve art &amp; more.</p>
+<ul><li>One</li><li>Two</li></ul>
+<a href=3D"javascript:alert(1)">bad</a> <a href=3D"https://letters.example/read">Read online</a>
+<img src=3D"https://letters.example/pixel.gif" width=3D"1" height=3D"1">
+<form action=3D"https://letters.example/vote"><input name=3D"v"><button>Vote</button></form>
+</body></html>

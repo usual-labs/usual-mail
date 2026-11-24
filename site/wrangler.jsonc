@@ -1,0 +1,6 @@
+{
+  "name": "usual-mail-site",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./public" },
+  "routes": [{ "pattern": "mail.usual.dev", "custom_domain": true }]
+}

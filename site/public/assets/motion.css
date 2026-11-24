@@ -1,0 +1,155 @@
+/* The landing page's motion, after the app's own: things come into focus as they fade in, glass pops from small to
+   full size, a list's items follow one another, and the sky drifts slowly behind the hills. CSS only. Everything here
+   is off for people who ask for less motion: the page then shows its final state at once. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .top .brand,
+  .top .pill {
+    animation: drop-in 0.8s var(--out) 0.1s backwards;
+  }
+
+  .hero .status {
+    animation: drop-in 0.8s var(--out) 0.05s backwards;
+  }
+
+  .status::after {
+    animation: pulse 2.8s ease-in-out 1.5s infinite;
+  }
+
+  .hero h1,
+  .tagline,
+  .lede {
+    animation: focus-in 1s var(--out) backwards;
+  }
+
+  .hero h1 {
+    animation-delay: 0.15s;
+  }
+
+  .tagline {
+    animation-delay: 0.3s;
+  }
+
+  .lede {
+    animation-delay: 0.45s;
+  }
+
+  .rail > .glass,
+  .tab {
+    animation: pop-in 0.6s var(--pop) backwards;
+    animation-delay: calc(0.75s + var(--i, 0) * 55ms);
+  }
+
+  .card {
+    animation: card-in 1.1s var(--out) 0.6s backwards;
+  }
+
+  .card::after {
+    animation: sheen 12s ease-in-out 3.2s infinite;
+  }
+
+  /* Home's items arrive after the card; switching places later uses the transitions in home.css instead. */
+  .p-home :is(.part, .row) {
+    animation: focus-in 0.7s var(--out) backwards;
+    animation-delay: calc(1.15s + var(--i, 0) * 60ms);
+  }
+
+  .demo figcaption {
+    animation: fade-in 1s ease-out 1.8s backwards;
+  }
+}
+
+/* The sky drifts and the hills sway the other way, on screens wide enough to show it. */
+@media (prefers-reduced-motion: no-preference) and (min-width: 700px) {
+  .drift .sky {
+    animation: sky-drift 150s ease-in-out infinite alternate;
+  }
+
+  .drift .hills {
+    animation:
+      hills-in 2.6s var(--out) both,
+      hills-sway 150s ease-in-out 2.6s infinite alternate;
+  }
+}
+
+/* Sections rise into place as they scroll into view, where the browser can tie motion to scrolling. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: rise-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 60%;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .part,
+  .row {
+    filter: none;
+    transform: none;
+    transition: none !important;
+  }
+
+  .tab-name {
+    transition: none;
+  }
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -10px, 0);
+  }
+}
+
+@keyframes focus-in {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translate3d(0, 10px, 0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 64px, 0) scale(0.98);
+  }
+}
+
+@keyframes sheen {
+  0% {
+    transform: translate3d(-70%, 0, 0);
+  }
+
+  16%,
+  100% {
+    transform: translate3d(70%, 0, 0);
+  }
+}
+
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(95, 208, 140, 0);
+  }
+}
+
+@keyframes sky-drift {
+  to {
+    transform: translate3d(-4%, -0.8%, 0) scale(1.19);
+  }
+}
+
+@keyframes hills-sway {
+  to {
+    transform: translate3d(1.2%, var(--hills-y), 0) scale(1.04);
+  }
+}

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Keys Xcode can't generate from INFOPLIST_KEY_* build settings. -->
+	<!-- Its only encryption is Apple's own (HTTPS, the Keychain), so App Store Connect needn't ask
+	     about export compliance on each upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- A self-hosted server is often plain http on a home network or a tailnet (for example
+		     http://192.168.1.20:8787). ATS has no exception for Tailscale's addresses, so the app enforces
+		     the rule itself: ServerAddress refuses plain http to any public host before a request is made.
+		     Don't add NSAllowsLocalNetworking here: alongside it, ATS ignores this key. -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	<!-- What a mail row carries while it is dragged onto the rail (UsualMailUI's MailDrag): the app's own type, so
+	     nothing from another app is taken for it. -->
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>labs.usual.UsualMail.threads</string>
+			<key>UTTypeDescription</key>
+			<string>Usual Mail threads</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

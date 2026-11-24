@@ -1,0 +1,4 @@
+# Per-developer signing (copy Config/Local.xcconfig.example). The repository's own .gitignore names
+# Config/Local.xcconfig at its root only, so this covers apps/Config/.
+Config/Local.xcconfig
+build/

@@ -1,0 +1,43 @@
+{
+  "name": "@usualmail/mail",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Usual Mail's mail providers: IMAP with SMTP, and Gmail, behind core's MailProvider interface.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./gmail": "./src/gmail/index.ts",
+    "./pictures": "./src/message/pictures.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "types": "./src/index.ts",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.ts\"",
+    "test:unit": "node --test \"test/unit/*.test.ts\"",
+    "test:gmail": "node --test \"test/gmail/*.test.ts\"",
+    "test:imap": "node --test --test-concurrency=1 \"test/imap/*.test.ts\"",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@usualmail/core": "file:../core",
+    "htmlparser2": "12.0.0",
+    "imapflow": "2.12.1",
+    "nodemailer": "10.6.0",
+    "postal-mime": "4.2.1",
+    "postcss": "8.5.33",
+    "sanitize-html": "2.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/sanitize-html": "2.16.2",
+    "@types/smtp-server": "3.5.13",
+    "hoodiecrow-imap": "3.3.1",
+    "smtp-server": "3.21.6",
+    "typescript": "7.0.2"
+  }
+}

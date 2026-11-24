@@ -1,0 +1,360 @@
+/* The landing page's drawing of the Mac app: the rail, the tabs, and the card with each place's sample mail.
+   Light like the app itself; only the controls' ink changes when the page is dark. Switching places is CSS only:
+   radio inputs before the tabs and the card. */
+
+.demo {
+  margin: clamp(36px, 7vh, 72px) auto 0;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 700px);
+  justify-content: center;
+  column-gap: 60px;
+  text-align: left;
+  color: #000;
+}
+
+.icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sprite {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+/* The controls' ink on the wallpaper: the app's icon colour, lighter when the page is dark. */
+.app {
+  --ctl: #141b34;
+  --ctl-text: #000;
+  --ctl-on: rgba(255, 255, 255, 0.34);
+}
+
+@media (prefers-color-scheme: dark) {
+  .app {
+    --ctl: #e8ecf3;
+    --ctl-text: #fff;
+    --ctl-on: rgba(255, 255, 255, 0.18);
+  }
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--ctl);
+}
+
+.rail .btn,
+.profiles {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  width: 34px;
+  border-radius: 999px;
+}
+
+.rail .btn {
+  height: 34px;
+}
+
+.profiles {
+  gap: 8px;
+  padding: 10px 0;
+  background: var(--ctl-on);
+}
+
+.profiles .icon {
+  opacity: 0.45;
+}
+
+.profiles .icon:first-child {
+  opacity: 1;
+}
+
+.rail .spacer {
+  height: 48px;
+}
+
+.window {
+  position: relative;
+  min-width: 0;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tabs .gap {
+  flex: 1;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 13px;
+  border-radius: 999px;
+  color: var(--ctl);
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.25s ease;
+}
+
+.tab:hover {
+  background-color: rgba(255, 255, 255, 0.24);
+}
+
+.tab-name {
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--ctl-text);
+  opacity: 0;
+  transition: max-width 0.45s var(--out), opacity 0.3s ease, margin 0.45s var(--out);
+}
+
+.count {
+  margin-left: 6px;
+  color: var(--ctl-text);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+#t-home:checked ~ .tabs [for='t-home'],
+#t-feed:checked ~ .tabs [for='t-feed'],
+#t-receipts:checked ~ .tabs [for='t-receipts'],
+#t-bell:checked ~ .tabs [for='t-bell'],
+#t-screening:checked ~ .tabs [for='t-screening'] {
+  background-color: var(--ctl-on);
+}
+
+#t-home:checked ~ .tabs [for='t-home'] .tab-name,
+#t-feed:checked ~ .tabs [for='t-feed'] .tab-name,
+#t-receipts:checked ~ .tabs [for='t-receipts'] .tab-name,
+#t-bell:checked ~ .tabs [for='t-bell'] .tab-name {
+  max-width: 110px;
+  margin-left: 6px;
+  opacity: 1;
+}
+
+#t-home:focus-visible ~ .tabs [for='t-home'],
+#t-feed:focus-visible ~ .tabs [for='t-feed'],
+#t-receipts:focus-visible ~ .tabs [for='t-receipts'],
+#t-bell:focus-visible ~ .tabs [for='t-bell'],
+#t-screening:focus-visible ~ .tabs [for='t-screening'] {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+/* The card: the app's 700-wide frosted page; it fades into the hills at the bottom, as the app's runs to the edge. */
+
+.card {
+  position: relative;
+  display: grid;
+  min-height: 470px;
+  padding: 22px 16px 60px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(247, 247, 247, 0.85);
+  -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  backdrop-filter: blur(30px) saturate(1.5);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05), 0 40px 80px -30px rgba(10, 40, 18, 0.35);
+  -webkit-mask-image: linear-gradient(#000 82%, transparent);
+  mask-image: linear-gradient(#000 82%, transparent);
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  inset: -20% -60%;
+  background: linear-gradient(105deg, transparent 42%, rgba(255, 255, 255, 0.55) 50%, transparent 58%);
+  transform: translate3d(-70%, 0, 0);
+  pointer-events: none;
+}
+
+.place {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  transition: visibility 0s linear 0.2s;
+}
+
+#t-home:checked ~ .card .p-home,
+#t-feed:checked ~ .card .p-feed,
+#t-receipts:checked ~ .card .p-receipts,
+#t-bell:checked ~ .card .p-bell,
+#t-screening:checked ~ .card .p-screening {
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.part,
+.row {
+  opacity: 0;
+  filter: blur(6px);
+  transform: translate3d(0, 6px, 0);
+  transition: opacity 0.16s ease, filter 0.16s ease, transform 0.16s ease;
+}
+
+#t-home:checked ~ .card .p-home :is(.part, .row),
+#t-feed:checked ~ .card .p-feed :is(.part, .row),
+#t-receipts:checked ~ .card .p-receipts :is(.part, .row),
+#t-bell:checked ~ .card .p-bell :is(.part, .row),
+#t-screening:checked ~ .card .p-screening :is(.part, .row) {
+  opacity: 1;
+  filter: none;
+  transform: none;
+  transition: opacity 0.45s ease, filter 0.45s ease, transform 0.6s var(--out);
+  transition-delay: calc(0.12s + var(--i, 0) * 45ms);
+}
+
+.part {
+  margin: 4px 0 8px;
+  color: rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.part.list-title {
+  color: #c7c7cc;
+}
+
+.place ul {
+  padding: 0;
+  list-style: none;
+}
+
+.place ul + .part {
+  margin-top: 16px;
+}
+
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  column-gap: 8px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.row:hover {
+  background-color: rgba(0, 0, 0, 0.035);
+}
+
+.av {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  border-radius: 50%;
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.c1 { background: #dde9e2; color: #365c49; }
+.c2 { background: #e9dff0; color: #694a7c; }
+.c3 { background: #f1e4d0; color: #785a2e; }
+.c4 { background: #dce7f3; color: #3c597d; }
+.c5 { background: #f0ddda; color: #874f48; }
+.c6 { background: #e3e3ef; color: #57577d; }
+
+.subject {
+  padding-right: 64px;
+  color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line {
+  grid-column: 2;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.when {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  color: #a1a1a1;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.row:hover .when {
+  opacity: 1;
+}
+
+.address {
+  color: rgba(0, 0, 0, 0.5);
+}
+
+.choices {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  color: #8e8e93;
+}
+
+.demo figcaption {
+  max-width: 560px;
+  margin: 18px auto 0;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: minmax(0, 700px);
+  }
+
+  .rail {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .tabs {
+    gap: 6px;
+  }
+
+  .tab {
+    padding: 0 11px;
+  }
+
+  .card {
+    min-height: 0;
+    padding: 18px 6px 48px;
+  }
+
+  .row {
+    padding: 9px 10px;
+  }
+}
+
+@media (max-width: 359px) {
+  .tab-name {
+    display: none;
+  }
+}

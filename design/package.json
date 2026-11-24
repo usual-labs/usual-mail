@@ -1,0 +1,18 @@
+{
+  "name": "@usualmail/design",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Usual Mail's design tokens, and the CSS, Swift values, fonts and icons generated from them.",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "node scripts/build.mjs --check && node --test \"test/*.test.mjs\"",
+    "check:swift": "cd swift && swift build && swift test",
+    "check:ios": "cd swift && xcodebuild -quiet -scheme UsualMailDesign -destination 'generic/platform=iOS' -derivedDataPath .build/xcode CODE_SIGNING_ALLOWED=NO build"
+  },
+  "devDependencies": {
+    "@hugeicons/core-free-icons": "4.4.0",
+    "geist": "1.9.2"
+  }
+}

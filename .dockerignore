@@ -1,0 +1,34 @@
+# The build context is the repository root. The image is built from the server and the packages its bundle holds:
+# core, the mail providers, the dashboard and the connector. The dashboard and the connector carry the design
+# system's output in their own generated sources (src/generated/assets.ts, src/ui/design.generated.ts), so design/
+# isn't needed. Everything else stays out: the apps, the design package, the command-line tool, the docs, tests,
+# the scripts that regenerate those sources, local data and secrets. docker-entrypoint.sh is the image's entry point;
+# LICENSE and THIRD_PARTY_NOTICES.md go into the image beside the server.
+*
+!core/
+!server/
+!mail/
+!dashboard/
+!mcp/
+!docker-entrypoint.sh
+
+**/node_modules
+*/dist
+*/test
+core/scripts
+dashboard/scripts
+dashboard/assets
+mcp/scripts
+**/*.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+**/.DS_Store
+**/data
+**/.env
+**/.env.*
+**/*.db
+**/*.db-*
+**/*.sqlite
+**/*.sqlite-*
+**/*.key
+**/*.tsbuildinfo

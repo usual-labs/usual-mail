@@ -1,0 +1,2875 @@
+{
+  "now": "2026-11-16T09:30:00Z",
+  "inboxes": [
+    {
+      "id": "inb_northwind",
+      "name": "Northwind Studio",
+      "address": "hello@northwind.example",
+      "color": "#2F6FED",
+      "icon": "building",
+      "position": 0,
+      "provider": "gmail",
+      "connection": {
+        "kind": "gmail",
+        "clientId": "000000000000-sample.apps.googleusercontent.example"
+      },
+      "trust": "act_with_undo",
+      "guide": "Clients come first. Anything about contracts, invoices we owe, or hiring needs me.\n\nReceipts from tools we pay for can be marked done.",
+      "agentAccess": true,
+      "status": "ok",
+      "lastSyncedAt": "2026-11-16T09:28:10Z",
+      "createdAt": "2026-10-02T08:00:00Z",
+      "version": 14
+    },
+    {
+      "id": "inb_harbor",
+      "name": "Harbor & Pine",
+      "address": "founder@harborpine.example",
+      "color": "#1F8A5B",
+      "icon": "shop",
+      "position": 1,
+      "provider": "imap",
+      "connection": {
+        "kind": "imap",
+        "imap": {
+          "host": "mail.harborpine.example",
+          "port": 993,
+          "secure": true,
+          "user": "founder@harborpine.example"
+        },
+        "smtp": {
+          "host": "mail.harborpine.example",
+          "port": 587,
+          "secure": false,
+          "user": "founder@harborpine.example"
+        },
+        "saveSent": true
+      },
+      "trust": "suggest",
+      "guide": "A small coffee shop. Suppliers and the landlord matter. Ask before moving anything.",
+      "agentAccess": true,
+      "status": "ok",
+      "lastSyncedAt": "2026-11-16T09:27:41Z",
+      "createdAt": "2026-11-10T14:20:00Z",
+      "version": 6
+    },
+    {
+      "id": "inb_personal",
+      "name": "Personal",
+      "address": "me@home.example",
+      "color": "#C2541D",
+      "icon": "person",
+      "position": 2,
+      "provider": "imap",
+      "connection": {
+        "kind": "imap",
+        "imap": {
+          "host": "imap.home.example",
+          "port": 993,
+          "secure": true,
+          "user": "me@home.example"
+        },
+        "smtp": {
+          "host": "smtp.home.example",
+          "port": 465,
+          "secure": true,
+          "user": "me@home.example"
+        },
+        "saveSent": true
+      },
+      "trust": "act_silently",
+      "guide": "",
+      "agentAccess": true,
+      "status": "needs_attention",
+      "statusDetail": "The mail server refused the password. Sign in again.",
+      "firstSync": {
+        "fetched": 1840,
+        "total": 2600
+      },
+      "lastSyncedAt": "2026-11-15T22:03:00Z",
+      "createdAt": "2026-09-20T18:45:00Z",
+      "version": 9
+    }
+  ],
+  "threads": [
+    {
+      "id": "thr_1",
+      "inboxId": "inb_northwind",
+      "subject": "Contract renewal for 2027",
+      "snippet": "Could you confirm the renewal terms by Friday? The only change is the notice period.",
+      "participants": [
+        {
+          "name": "Dana Whitfield",
+          "email": "dana@lumen.example"
+        },
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T08:52:00Z",
+      "messageCount": 2,
+      "unread": true,
+      "hasAttachments": true,
+      "category": "conversation",
+      "categorizedBy": "agent",
+      "categorizedByActor": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "sender": "dana@lumen.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 6,
+      "need": "reply",
+      "reason": "A client asks you to confirm renewal terms by Friday",
+      "summary": "Asks you to confirm the 2027 renewal by Friday, with 60 days' notice instead of 30."
+    },
+    {
+      "id": "thr_2",
+      "inboxId": "inb_northwind",
+      "subject": "Two candidates for the design role",
+      "snippet": "Both did well. I lean towards Priya, but want your call before we make an offer.",
+      "participants": [
+        {
+          "name": "Marek Olsen",
+          "email": "marek@northwind.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T07:15:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "conversation",
+      "categorizedBy": "person",
+      "categorizedByActor": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "sender": "marek@northwind.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 6,
+      "summary": "Both candidates for the design role did well; leans towards Priya and wants your call before an offer."
+    },
+    {
+      "id": "thr_3",
+      "inboxId": "inb_northwind",
+      "subject": "Your receipt from Paperloop #4821",
+      "snippet": "Thanks for your payment of 49.00 EUR. Your plan renews on 16 December.",
+      "participants": [
+        {
+          "name": "Paperloop",
+          "email": "billing@paperloop.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T06:01:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": true,
+      "category": "receipt",
+      "categorizedBy": "rule",
+      "categorizedByActor": {
+        "kind": "rule",
+        "ruleId": "rul_1"
+      },
+      "sender": "billing@paperloop.example",
+      "screened": false,
+      "done": true,
+      "trashed": false,
+      "version": 3,
+      "reason": "Receipts from paperloop.example are receipts and done",
+      "payment": {
+        "party": "Paperloop",
+        "amount": {
+          "minor": 4900,
+          "currency": "EUR"
+        },
+        "refund": false,
+        "state": "paid",
+        "dueDate": null,
+        "what": "Your plan, renewing on 16 December"
+      },
+      "summary": "Your plan, renewing on 16 December"
+    },
+    {
+      "id": "thr_4",
+      "inboxId": "inb_northwind",
+      "subject": "The Weekly Build, issue 212",
+      "snippet": "This week: shipping small, a field guide to release notes, and three tools we liked.",
+      "participants": [
+        {
+          "name": "The Weekly Build",
+          "email": "issue@weeklybuild.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T16:00:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "newsletter",
+      "categorizedBy": "rule",
+      "categorizedByActor": {
+        "kind": "rule",
+        "ruleId": "rul_2"
+      },
+      "sender": "issue@weeklybuild.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 3,
+      "reason": "The Weekly Build is a newsletter",
+      "summary": "Shipping small, a field guide to release notes, and three recommended tools.",
+      "avatar": {
+        "picture": "/v1/avatars/5b0e7c1f3a9d4e2b8c6f1a0d9e7b3c21",
+        "fit": "fill",
+        "size": 180
+      }
+    },
+    {
+      "id": "thr_5",
+      "inboxId": "inb_northwind",
+      "subject": "Quick question about your API pricing",
+      "snippet": "Hi, we are evaluating vendors for next quarter. Do you offer volume pricing?",
+      "participants": [
+        {
+          "name": "Tomas Reyes",
+          "email": "tomas@brightfield.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T09:05:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "conversation",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "tomas@brightfield.example",
+      "screened": true,
+      "done": false,
+      "trashed": false,
+      "version": 3,
+      "summary": "Evaluating vendors for next quarter and asks whether you offer volume pricing above 500 seats."
+    },
+    {
+      "id": "thr_13",
+      "inboxId": "inb_northwind",
+      "subject": "Thanks for the workshop",
+      "snippet": "Just a note to say the team got a lot out of Thursday.",
+      "participants": [
+        {
+          "name": "Ines Carvalho",
+          "email": "ines@lumen.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-14T15:40:00Z",
+      "messageCount": 3,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "conversation",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "ines@lumen.example",
+      "screened": false,
+      "done": true,
+      "trashed": false,
+      "version": 6,
+      "summary": "Thanked you for Thursday's workshop, then found the slides you pointed to."
+    },
+    {
+      "id": "thr_14",
+      "inboxId": "inb_northwind",
+      "subject": "Can we move Thursday's call?",
+      "snippet": "Something came up on our side. Would Friday at the same time work for you?",
+      "participants": [
+        {
+          "name": "Ines Carvalho",
+          "email": "ines@lumen.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T09:29:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "unknown",
+      "sender": "ines@lumen.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 1
+    },
+    {
+      "id": "thr_15",
+      "inboxId": "inb_northwind",
+      "subject": "Your Quillpad sign-in code",
+      "snippet": "Your sign-in code is 482 913. It expires in 10 minutes.",
+      "participants": [
+        {
+          "name": "Quillpad",
+          "email": "no-reply@quillpad.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T09:12:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "otp",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "no-reply@quillpad.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 3
+    },
+    {
+      "id": "thr_16",
+      "inboxId": "inb_northwind",
+      "subject": "Brand refresh: next steps",
+      "snippet": "Attached are the three directions we discussed. Which one should we take forward?",
+      "participants": [
+        {
+          "name": "Sam Okafor",
+          "email": "sam@lumen.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-05T10:20:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": true,
+      "category": "unknown",
+      "sender": "sam@lumen.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2
+    },
+    {
+      "id": "thr_6",
+      "inboxId": "inb_harbor",
+      "subject": "Invoice 2026-118, due 30 November",
+      "snippet": "Please find attached the invoice for the October bean delivery, 1,240.00 EUR.",
+      "participants": [
+        {
+          "name": "Kestrel Roasters",
+          "email": "accounts@kestrel.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T11:30:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": true,
+      "category": "invoice",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "accounts@kestrel.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 3,
+      "summary": "October's bean delivery",
+      "payment": {
+        "party": "Kestrel Roasters",
+        "amount": {
+          "minor": 124000,
+          "currency": "EUR"
+        },
+        "refund": false,
+        "state": "due",
+        "dueDate": "2026-11-30",
+        "what": "October's bean delivery"
+      }
+    },
+    {
+      "id": "thr_7",
+      "inboxId": "inb_harbor",
+      "subject": "Photos from the harbour shoot",
+      "snippet": "Here is the full set. Tell me which ten you want for the menu and the site.",
+      "participants": [
+        {
+          "name": "Lotte Brandt",
+          "email": "lotte@brandtphoto.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-13T18:22:00Z",
+      "messageCount": 2,
+      "unread": false,
+      "hasAttachments": true,
+      "category": "conversation",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "lotte@brandtphoto.example",
+      "screened": false,
+      "done": false,
+      "stack": "reply_later",
+      "trashed": false,
+      "version": 4,
+      "summary": "Sent the full set from the harbour shoot and asks which ten you want for the menu and the site."
+    },
+    {
+      "id": "thr_8",
+      "inboxId": "inb_harbor",
+      "subject": "Coffee Roasters Monthly: the November cupping notes",
+      "snippet": "Washed Ethiopians are back, and a long read on water chemistry.",
+      "participants": [
+        {
+          "name": "Coffee Roasters Monthly",
+          "email": "news@roastersmonthly.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T05:00:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "newsletter",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "news@roastersmonthly.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 4,
+      "reason": "A monthly newsletter you read on the magazine's site",
+      "summary": "November's cupping notes: washed Ethiopians are back, plus a long read on water chemistry.",
+      "avatar": {
+        "picture": "/v1/avatars/c4d2a8e6f0b1937a5e8d2c4b6a0f1e93",
+        "fit": "inset",
+        "size": 64
+      }
+    },
+    {
+      "id": "thr_9",
+      "inboxId": "inb_harbor",
+      "subject": "Lease renewal",
+      "snippet": "We would like to renew for three years on the current terms. Could you confirm?",
+      "participants": [
+        {
+          "name": "Harbor & Pine",
+          "email": "founder@harborpine.example"
+        },
+        {
+          "name": "Quay Properties",
+          "email": "office@quayproperties.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-12T10:10:00Z",
+      "messageCount": 2,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "conversation",
+      "categorizedBy": "ai",
+      "categorizedByActor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "sender": "office@quayproperties.example",
+      "screened": false,
+      "done": false,
+      "comeBackAt": "2026-11-19T08:00:00Z",
+      "comeBackIfNoReply": true,
+      "trashed": false,
+      "version": 5,
+      "summary": "You asked to renew the lease for three years on the current terms and are waiting for an answer."
+    },
+    {
+      "id": "thr_10",
+      "inboxId": "inb_personal",
+      "subject": "Your train tickets to Hamburg",
+      "snippet": "Booking reference 7KQ2ZP. Departure Friday 20 November, 07:42, platform 4.",
+      "participants": [
+        {
+          "name": "Rail Booking",
+          "email": "tickets@railbooking.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-11T19:05:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": true,
+      "category": "receipt",
+      "categorizedBy": "mailbox",
+      "sender": "tickets@railbooking.example",
+      "screened": false,
+      "done": false,
+      "stack": "set_aside",
+      "trashed": false,
+      "version": 2,
+      "payment": {
+        "party": "Rail Booking",
+        "amount": null,
+        "refund": false,
+        "state": null,
+        "dueDate": null,
+        "what": "Train tickets to Hamburg, Friday 20 November"
+      },
+      "summary": "Train tickets to Hamburg, Friday 20 November"
+    },
+    {
+      "id": "thr_11",
+      "inboxId": "inb_personal",
+      "subject": "Your order has shipped",
+      "snippet": "Two items are on their way and should arrive on Wednesday.",
+      "participants": [
+        {
+          "name": "Fernhill Books",
+          "email": "orders@fernhill.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T13:12:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "agent",
+      "categorizedByActor": {
+        "kind": "agent",
+        "agentId": "dev_agent_2",
+        "name": "Hermes"
+      },
+      "sender": "orders@fernhill.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 3,
+      "reason": "A shipping notice for an order you placed",
+      "avatar": {
+        "picture": "/v1/avatars/8e3f6a1d0c9b2e7f4a5d8c1b3e6f9a02",
+        "fit": "fill",
+        "size": 192
+      }
+    },
+    {
+      "id": "thr_12",
+      "inboxId": "inb_personal",
+      "subject": "Dinner on Saturday?",
+      "snippet": "We are thinking seven at ours. Bring nothing, or bring wine.",
+      "participants": [
+        {
+          "name": "Jonas Weber",
+          "email": "jonas@weberhaus.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T21:48:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "unknown",
+      "sender": "jonas@weberhaus.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 1
+    },
+    {
+      "id": "thr_17",
+      "inboxId": "inb_personal",
+      "subject": "Your refund for order 5512",
+      "snippet": "We've refunded 12.00 EUR to your card for the returned rain jacket. It can take up to 5 days to show.",
+      "participants": [
+        {
+          "name": "Lumen Outdoor",
+          "email": "orders@lumenoutdoor.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-14T15:20:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "receipt",
+      "categorizedBy": "mailbox",
+      "sender": "orders@lumenoutdoor.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "The returned rain jacket",
+      "payment": {
+        "party": "Lumen Outdoor",
+        "amount": {
+          "minor": 1200,
+          "currency": "EUR"
+        },
+        "refund": true,
+        "state": "paid",
+        "dueDate": null,
+        "what": "The returned rain jacket"
+      }
+    },
+    {
+      "id": "thr_18",
+      "inboxId": "inb_personal",
+      "subject": "Your Cloudbase invoice for November",
+      "snippet": "Invoice CB-2211: 12.50 EUR for your server in November. The amount will be debited from your account on 2 December 2026.",
+      "participants": [
+        {
+          "name": "Cloudbase Hosting",
+          "email": "billing@cloudbase.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-13T08:00:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "invoice",
+      "categorizedBy": "mailbox",
+      "sender": "billing@cloudbase.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "Your server in November",
+      "payment": {
+        "party": "Cloudbase Hosting",
+        "amount": {
+          "minor": 1250,
+          "currency": "EUR"
+        },
+        "refund": false,
+        "state": "scheduled",
+        "dueDate": "2026-12-02",
+        "what": "Your server in November"
+      }
+    },
+    {
+      "id": "thr_19",
+      "inboxId": "inb_personal",
+      "subject": "Your parcel is out for delivery",
+      "snippet": "Your parcel from Fernhill Books is out for delivery today, 3:15–6:15 pm.",
+      "participants": [
+        {
+          "name": "Parcelway",
+          "email": "updates@parcelway.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-16T07:05:00Z",
+      "messageCount": 1,
+      "unread": true,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "updates@parcelway.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "Your Fernhill Books parcel arrives today in the afternoon",
+      "event": {
+        "status": "Out for delivery",
+        "about": "Parcel from Fernhill Books",
+        "when": {
+          "date": "2026-11-16",
+          "time": "15:15",
+          "endTime": "18:15"
+        }
+      }
+    },
+    {
+      "id": "thr_20",
+      "inboxId": "inb_personal",
+      "subject": "Your appointment is confirmed",
+      "snippet": "Your check-up with Dr. Moor is confirmed for Monday 23 November 2026 at 12:00.",
+      "participants": [
+        {
+          "name": "Moor Dental",
+          "email": "appointments@moordental.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-14T10:00:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "appointments@moordental.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "Your check-up is confirmed for next week",
+      "event": {
+        "status": "Appointment confirmed",
+        "about": "Check-up with Dr. Moor",
+        "when": {
+          "date": "2026-11-23",
+          "time": "12:00",
+          "endTime": null
+        },
+        "group": "a8f3d6b2e1c094a7d5e2b8c13"
+      }
+    },
+    {
+      "id": "thr_21",
+      "inboxId": "inb_personal",
+      "subject": "Your parcel was delivered",
+      "snippet": "Your parcel PW 4471 2093 with the walking boots was delivered yesterday and left with your neighbour.",
+      "participants": [
+        {
+          "name": "Parcelway",
+          "email": "updates@parcelway.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-14T09:00:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "updates@parcelway.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "The walking boots were left with your neighbour",
+      "event": {
+        "status": "Delivered",
+        "about": "Parcel with the walking boots",
+        "when": {
+          "date": "2026-11-13",
+          "time": null,
+          "endTime": null
+        },
+        "group": "r4c7e91a0d2b58f3e6a1c9d07"
+      }
+    },
+    {
+      "id": "thr_22",
+      "inboxId": "inb_personal",
+      "subject": "Your weekly digest",
+      "snippet": "See what the people you follow shared this week.",
+      "participants": [
+        {
+          "name": "Pinboard Social",
+          "email": "digest@pinboard.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T06:00:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "digest@pinboard.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "What the people you follow shared this week",
+      "event": {
+        "status": null,
+        "about": null,
+        "when": null
+      }
+    },
+    {
+      "id": "thr_23",
+      "inboxId": "inb_personal",
+      "subject": "Your parcel arrives tomorrow",
+      "snippet": "Your parcel PW 4471 2093 with the walking boots arrives tomorrow.",
+      "participants": [
+        {
+          "name": "Parcelway",
+          "email": "updates@parcelway.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-12T16:20:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "updates@parcelway.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "The walking boots arrive tomorrow",
+      "event": {
+        "status": "Arriving",
+        "about": "Parcel with the walking boots",
+        "when": {
+          "date": "2026-11-13",
+          "time": null,
+          "endTime": null
+        },
+        "group": "r4c7e91a0d2b58f3e6a1c9d07"
+      }
+    },
+    {
+      "id": "thr_24",
+      "inboxId": "inb_personal",
+      "subject": "Parcel PW 4471 2093 is out for delivery",
+      "snippet": "Your parcel PW 4471 2093 with the walking boots is out for delivery today, 9:00–12:00.",
+      "participants": [
+        {
+          "name": "Parcelway",
+          "email": "updates@parcelway.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-13T06:10:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "updates@parcelway.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "The walking boots arrive this morning",
+      "event": {
+        "status": "Out for delivery",
+        "about": "Parcel with the walking boots",
+        "when": {
+          "date": "2026-11-13",
+          "time": "09:00",
+          "endTime": "12:00"
+        },
+        "group": "r4c7e91a0d2b58f3e6a1c9d07"
+      }
+    },
+    {
+      "id": "thr_25",
+      "inboxId": "inb_personal",
+      "subject": "Your appointment was moved",
+      "snippet": "Your check-up with Dr. Moor on Monday 23 November 2026 has moved from 12:00 to 9:40.",
+      "participants": [
+        {
+          "name": "Moor Dental",
+          "email": "appointments@moordental.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T15:40:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "notification",
+      "categorizedBy": "mailbox",
+      "sender": "appointments@moordental.example",
+      "screened": false,
+      "done": false,
+      "trashed": false,
+      "version": 2,
+      "summary": "Your check-up moved to earlier the same day",
+      "event": {
+        "status": "Appointment moved",
+        "about": "Check-up with Dr. Moor",
+        "when": {
+          "date": "2026-11-23",
+          "time": "09:40",
+          "endTime": null
+        },
+        "group": "a8f3d6b2e1c094a7d5e2b8c13"
+      }
+    },
+    {
+      "id": "thr_26",
+      "inboxId": "inb_personal",
+      "subject": "Final hours: 40% off everything",
+      "snippet": "You missed the sale, so here is 15% off anyway.",
+      "participants": [
+        {
+          "name": "BrightBuy Deals",
+          "email": "deals@brightbuy.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T07:00:00Z",
+      "messageCount": 4,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "newsletter",
+      "categorizedBy": "mailbox",
+      "sender": "deals@brightbuy.example",
+      "screened": false,
+      "done": true,
+      "trashed": false,
+      "version": 3
+    },
+    {
+      "id": "thr_27",
+      "inboxId": "inb_northwind",
+      "subject": "Quick question about your pipeline",
+      "snippet": "Could we find 15 minutes this week to talk about your sales pipeline?",
+      "participants": [
+        {
+          "name": "Growthpipe",
+          "email": "sales@growthpipe.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-09T09:20:00Z",
+      "messageCount": 1,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "newsletter",
+      "categorizedBy": "mailbox",
+      "sender": "sales@growthpipe.example",
+      "screened": false,
+      "done": true,
+      "trashed": false,
+      "version": 3
+    },
+    {
+      "id": "thr_28",
+      "inboxId": "inb_harbor",
+      "subject": "Guest post for your blog?",
+      "snippet": "Following up on my note about a guest post.",
+      "participants": [
+        {
+          "name": "Linkboost",
+          "email": "outreach@linkboost.example"
+        }
+      ],
+      "lastMessageAt": "2026-11-15T06:10:00Z",
+      "messageCount": 2,
+      "unread": false,
+      "hasAttachments": false,
+      "category": "newsletter",
+      "categorizedBy": "mailbox",
+      "sender": "outreach@linkboost.example",
+      "screened": false,
+      "done": true,
+      "trashed": false,
+      "version": 3
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg_1a",
+      "threadId": "thr_1",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Northwind Studio",
+        "email": "hello@northwind.example"
+      },
+      "to": [
+        {
+          "name": "Dana Whitfield",
+          "email": "dana@lumen.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-13T14:20:00Z",
+      "subject": "Contract renewal for 2027",
+      "text": "Hi Dana,\n\nAttached is the renewal for 2027. Same scope and rate as this year.\n\nBest,\nNorthwind",
+      "attachments": [
+        {
+          "id": "att_1",
+          "filename": "Renewal-2027.pdf",
+          "mimeType": "application/pdf",
+          "size": 184320,
+          "inline": false
+        }
+      ],
+      "unread": false,
+      "outgoing": true
+    },
+    {
+      "id": "msg_1b",
+      "threadId": "thr_1",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Dana Whitfield",
+        "email": "dana@lumen.example"
+      },
+      "to": [
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T08:52:00Z",
+      "subject": "Re: Contract renewal for 2027",
+      "text": "Thanks. Could you confirm the renewal terms by Friday? The only change on our side is the notice period: we would like 60 days instead of 30.\n\nDana",
+      "html": "<p>Thanks. Could you confirm the renewal terms by Friday? The only change on our side is the notice period: we would like <strong>60 days</strong> instead of 30.</p><p>Dana</p>",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_2a",
+      "threadId": "thr_2",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Marek Olsen",
+        "email": "marek@northwind.example"
+      },
+      "to": [
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T07:15:00Z",
+      "subject": "Two candidates for the design role",
+      "text": "Both did well. I lean towards Priya, but want your call before we make an offer. Notes from both interviews are in the hiring folder.",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_3a",
+      "threadId": "thr_3",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Paperloop",
+        "email": "billing@paperloop.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T06:01:00Z",
+      "subject": "Your receipt from Paperloop #4821",
+      "text": "Thanks for your payment of 49.00 EUR. Your plan renews on 16 December.",
+      "attachments": [
+        {
+          "id": "att_3",
+          "filename": "Receipt-4821.pdf",
+          "mimeType": "application/pdf",
+          "size": 48211,
+          "inline": false
+        }
+      ],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_4a",
+      "threadId": "thr_4",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "The Weekly Build",
+        "email": "issue@weeklybuild.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T16:00:00Z",
+      "subject": "The Weekly Build, issue 212",
+      "text": "This week: shipping small, a field guide to release notes, and three tools we liked.",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false,
+      "html": "<h1>Issue 212</h1><p>This week: shipping small, a field guide to release notes, and three tools we liked.</p>",
+      "listId": "weekly-build.weeklybuild.example",
+      "avatar": {
+        "picture": "/v1/avatars/5b0e7c1f3a9d4e2b8c6f1a0d9e7b3c21",
+        "fit": "fill",
+        "size": 180
+      }
+    },
+    {
+      "id": "msg_5a",
+      "threadId": "thr_5",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Tomas Reyes",
+        "email": "tomas@brightfield.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T09:05:00Z",
+      "subject": "Quick question about your API pricing",
+      "text": "Hi, we are evaluating vendors for next quarter. Do you offer volume pricing above 500 seats?\n\nTomas",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_13a",
+      "threadId": "thr_13",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Ines Carvalho",
+        "email": "ines@lumen.example"
+      },
+      "to": [
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T09:12:00Z",
+      "subject": "Thanks for the workshop",
+      "text": "Just a note to say the team got a lot out of Thursday.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_13b",
+      "threadId": "thr_13",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Northwind Studio",
+        "email": "hello@northwind.example"
+      },
+      "to": [
+        {
+          "name": "Ines Carvalho",
+          "email": "ines@lumen.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T11:30:00Z",
+      "subject": "Re: Thanks for the workshop",
+      "text": "Glad to hear it. The slides are in the shared folder.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": true
+    },
+    {
+      "id": "msg_13c",
+      "threadId": "thr_13",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Ines Carvalho",
+        "email": "ines@lumen.example"
+      },
+      "to": [
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T15:40:00Z",
+      "subject": "Re: Thanks for the workshop",
+      "text": "Found them, thank you.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_14a",
+      "threadId": "thr_14",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Ines Carvalho",
+        "email": "ines@lumen.example"
+      },
+      "to": [
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T09:29:00Z",
+      "subject": "Can we move Thursday's call?",
+      "text": "Hi,\n\nSomething came up on our side. Would Friday at the same time work for you?\n\nInes",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_15a",
+      "threadId": "thr_15",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Quillpad",
+        "email": "no-reply@quillpad.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T09:12:00Z",
+      "subject": "Your Quillpad sign-in code",
+      "text": "Your sign-in code is 482 913. It expires in 10 minutes. If you didn't ask for it, ignore this mail.",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_16a",
+      "threadId": "thr_16",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Sam Okafor",
+        "email": "sam@lumen.example"
+      },
+      "to": [
+        {
+          "name": "Northwind Studio",
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-05T10:20:00Z",
+      "subject": "Brand refresh: next steps",
+      "text": "Hi,\n\nAttached are the three directions we discussed. Which one should we take forward?\n\nSam",
+      "attachments": [
+        {
+          "id": "att_16",
+          "filename": "Brand-directions.pdf",
+          "mimeType": "application/pdf",
+          "size": 3145728,
+          "inline": false
+        }
+      ],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_6a",
+      "threadId": "thr_6",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Kestrel Roasters",
+        "email": "accounts@kestrel.example"
+      },
+      "to": [
+        {
+          "email": "founder@harborpine.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T11:30:00Z",
+      "subject": "Invoice 2026-118, due 30 November",
+      "text": "Please find attached the invoice for the October bean delivery, 1,240.00 EUR, due 30 November.",
+      "attachments": [
+        {
+          "id": "att_6",
+          "filename": "Invoice-2026-118.pdf",
+          "mimeType": "application/pdf",
+          "size": 92160,
+          "inline": false
+        }
+      ],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_7a",
+      "threadId": "thr_7",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Harbor & Pine",
+        "email": "founder@harborpine.example"
+      },
+      "to": [
+        {
+          "name": "Lotte Brandt",
+          "email": "lotte@brandtphoto.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-12T08:45:00Z",
+      "subject": "Photos from the harbour shoot",
+      "text": "Hi Lotte, are the photos from last week ready?",
+      "attachments": [],
+      "unread": false,
+      "outgoing": true
+    },
+    {
+      "id": "msg_7b",
+      "threadId": "thr_7",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Lotte Brandt",
+        "email": "lotte@brandtphoto.example"
+      },
+      "to": [
+        {
+          "name": "Harbor & Pine",
+          "email": "founder@harborpine.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-13T18:22:00Z",
+      "subject": "Re: Photos from the harbour shoot",
+      "text": "Here is the full set. Tell me which ten you want for the menu and the site.",
+      "attachments": [
+        {
+          "id": "att_7",
+          "filename": "harbour-contact-sheet.pdf",
+          "mimeType": "application/pdf",
+          "size": 2411520,
+          "inline": false
+        }
+      ],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_8a",
+      "threadId": "thr_8",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Coffee Roasters Monthly",
+        "email": "news@roastersmonthly.example"
+      },
+      "to": [
+        {
+          "email": "founder@harborpine.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T05:00:00Z",
+      "subject": "Coffee Roasters Monthly: the November cupping notes",
+      "text": "Washed Ethiopians are back, and a long read on water chemistry.",
+      "html": "<h1>November cupping notes</h1><p>Washed Ethiopians are back, and a long read on water chemistry.</p>",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false,
+      "avatar": {
+        "picture": "/v1/avatars/c4d2a8e6f0b1937a5e8d2c4b6a0f1e93",
+        "fit": "inset",
+        "size": 64
+      }
+    },
+    {
+      "id": "msg_9a",
+      "threadId": "thr_9",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Quay Properties",
+        "email": "office@quayproperties.example"
+      },
+      "to": [
+        {
+          "email": "founder@harborpine.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-10T09:00:00Z",
+      "subject": "Lease renewal",
+      "text": "Your lease ends on 31 March. Let us know if you intend to renew.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_9b",
+      "threadId": "thr_9",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Harbor & Pine",
+        "email": "founder@harborpine.example"
+      },
+      "to": [
+        {
+          "name": "Quay Properties",
+          "email": "office@quayproperties.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-12T10:10:00Z",
+      "subject": "Re: Lease renewal",
+      "text": "We would like to renew for three years on the current terms. Could you confirm?",
+      "attachments": [],
+      "unread": false,
+      "outgoing": true
+    },
+    {
+      "id": "msg_10a",
+      "threadId": "thr_10",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Rail Booking",
+        "email": "tickets@railbooking.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-11T19:05:00Z",
+      "subject": "Your train tickets to Hamburg",
+      "text": "Booking reference 7KQ2ZP. Departure Friday 20 November, 07:42, platform 4.",
+      "attachments": [
+        {
+          "id": "att_10",
+          "filename": "Tickets-7KQ2ZP.pdf",
+          "mimeType": "application/pdf",
+          "size": 120832,
+          "inline": false
+        }
+      ],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_17a",
+      "threadId": "thr_17",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Lumen Outdoor",
+        "email": "orders@lumenoutdoor.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T15:20:00Z",
+      "subject": "Your refund for order 5512",
+      "text": "We've refunded 12.00 EUR to your card for the returned rain jacket. It can take up to 5 days to show.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_18a",
+      "threadId": "thr_18",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Cloudbase Hosting",
+        "email": "billing@cloudbase.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-13T08:00:00Z",
+      "subject": "Your Cloudbase invoice for November",
+      "text": "Invoice CB-2211: 12.50 EUR for your server in November. The amount will be debited from your account on 2 December 2026.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_11a",
+      "threadId": "thr_11",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Fernhill Books",
+        "email": "orders@fernhill.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T13:12:00Z",
+      "subject": "Your order has shipped",
+      "text": "Two items are on their way and should arrive on Wednesday.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false,
+      "avatar": {
+        "picture": "/v1/avatars/8e3f6a1d0c9b2e7f4a5d8c1b3e6f9a02",
+        "fit": "fill",
+        "size": 192
+      }
+    },
+    {
+      "id": "msg_12a",
+      "threadId": "thr_12",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Jonas Weber",
+        "email": "jonas@weberhaus.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T21:48:00Z",
+      "subject": "Dinner on Saturday?",
+      "text": "We are thinking seven at ours. Bring nothing, or bring wine.",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_19a",
+      "threadId": "thr_19",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Parcelway",
+        "email": "updates@parcelway.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-16T07:05:00Z",
+      "subject": "Your parcel is out for delivery",
+      "text": "Your parcel from Fernhill Books is out for delivery today, 3:15–6:15 pm.",
+      "attachments": [],
+      "unread": true,
+      "outgoing": false
+    },
+    {
+      "id": "msg_20a",
+      "threadId": "thr_20",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Moor Dental",
+        "email": "appointments@moordental.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T10:00:00Z",
+      "subject": "Your appointment is confirmed",
+      "text": "Your check-up with Dr. Moor is confirmed for Monday 23 November 2026 at 12:00.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_21a",
+      "threadId": "thr_21",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Parcelway",
+        "email": "updates@parcelway.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T09:00:00Z",
+      "subject": "Your parcel was delivered",
+      "text": "Your parcel PW 4471 2093 with the walking boots was delivered yesterday and left with your neighbour.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_22a",
+      "threadId": "thr_22",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Pinboard Social",
+        "email": "digest@pinboard.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T06:00:00Z",
+      "subject": "Your weekly digest",
+      "text": "See what the people you follow shared this week.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_23a",
+      "threadId": "thr_23",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Parcelway",
+        "email": "updates@parcelway.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-12T16:20:00Z",
+      "subject": "Your parcel arrives tomorrow",
+      "text": "Your parcel PW 4471 2093 with the walking boots arrives tomorrow.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_24a",
+      "threadId": "thr_24",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Parcelway",
+        "email": "updates@parcelway.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-13T06:10:00Z",
+      "subject": "Parcel PW 4471 2093 is out for delivery",
+      "text": "Your parcel PW 4471 2093 with the walking boots is out for delivery today, 9:00–12:00.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_25a",
+      "threadId": "thr_25",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "Moor Dental",
+        "email": "appointments@moordental.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T15:40:00Z",
+      "subject": "Your appointment was moved",
+      "text": "Your check-up with Dr. Moor on Monday 23 November 2026 has moved from 12:00 to 9:40.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_26a",
+      "threadId": "thr_26",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "BrightBuy Deals",
+        "email": "deals@brightbuy.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-11T07:00:00Z",
+      "subject": "Final hours: 40% off everything",
+      "text": "Everything is 40% off until midnight.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_26b",
+      "threadId": "thr_26",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "BrightBuy Deals",
+        "email": "deals@brightbuy.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-13T07:00:00Z",
+      "subject": "Final hours: 40% off everything",
+      "text": "We extended the sale: 40% off for two more days.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_26c",
+      "threadId": "thr_26",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "BrightBuy Deals",
+        "email": "deals@brightbuy.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-14T07:00:00Z",
+      "subject": "Final hours: 40% off everything",
+      "text": "Last chance: the sale ends tonight.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_26d",
+      "threadId": "thr_26",
+      "inboxId": "inb_personal",
+      "from": {
+        "name": "BrightBuy Deals",
+        "email": "deals@brightbuy.example"
+      },
+      "to": [
+        {
+          "email": "me@home.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T07:00:00Z",
+      "subject": "Final hours: 40% off everything",
+      "text": "You missed the sale, so here is 15% off anyway.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_27a",
+      "threadId": "thr_27",
+      "inboxId": "inb_northwind",
+      "from": {
+        "name": "Growthpipe",
+        "email": "sales@growthpipe.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-09T09:20:00Z",
+      "subject": "Quick question about your pipeline",
+      "text": "Could we find 15 minutes this week to talk about your sales pipeline?",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_28a",
+      "threadId": "thr_28",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Linkboost",
+        "email": "outreach@linkboost.example"
+      },
+      "to": [
+        {
+          "email": "founder@harborpine.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-13T06:00:00Z",
+      "subject": "Guest post for your blog?",
+      "text": "I write about harbours and would love to place a guest post on your blog.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    },
+    {
+      "id": "msg_28b",
+      "threadId": "thr_28",
+      "inboxId": "inb_harbor",
+      "from": {
+        "name": "Linkboost",
+        "email": "outreach@linkboost.example"
+      },
+      "to": [
+        {
+          "email": "founder@harborpine.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "date": "2026-11-15T06:10:00Z",
+      "subject": "Guest post for your blog?",
+      "text": "Following up on my note about a guest post.",
+      "attachments": [],
+      "unread": false,
+      "outgoing": false
+    }
+  ],
+  "drafts": [
+    {
+      "id": "drf_1",
+      "inboxId": "inb_northwind",
+      "threadId": "thr_1",
+      "inReplyToMessageId": "msg_1b",
+      "to": [
+        {
+          "name": "Dana Whitfield",
+          "email": "dana@lumen.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "subject": "Re: Contract renewal for 2027",
+      "body": "Hi Dana,\n\nA 60-day notice period works for us. I will send the updated contract today.\n\nBest,\nNorthwind",
+      "createdBy": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "state": "draft",
+      "updatedAt": "2026-11-16T09:01:00Z",
+      "version": 2
+    },
+    {
+      "id": "drf_2",
+      "inboxId": "inb_harbor",
+      "threadId": "thr_7",
+      "inReplyToMessageId": "msg_7b",
+      "to": [
+        {
+          "name": "Lotte Brandt",
+          "email": "lotte@brandtphoto.example"
+        }
+      ],
+      "cc": [],
+      "bcc": [],
+      "subject": "Re: Photos from the harbour shoot",
+      "body": "Hi Lotte,\n\nThese ten, please: 3, 7, 12, 18, 21, 25, 30, 33, 41 and 47.\n\nThank you!\nHarbor & Pine",
+      "createdBy": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "state": "sent",
+      "updatedAt": "2026-11-16T08:15:00Z",
+      "note": "Sent, but no copy was saved to the Sent folder: the mail server said the mailbox is full.",
+      "version": 3
+    }
+  ],
+  "actions": [
+    {
+      "id": "act_1",
+      "threadId": "thr_3",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "receipt"
+      },
+      "actor": {
+        "kind": "rule",
+        "ruleId": "rul_1"
+      },
+      "reason": "Receipts from paperloop.example are receipts and done",
+      "state": "applied",
+      "at": "2026-11-16T06:01:05Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_2",
+      "threadId": "thr_3",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "done"
+      },
+      "actor": {
+        "kind": "rule",
+        "ruleId": "rul_1"
+      },
+      "reason": "Receipts from paperloop.example are receipts and done",
+      "state": "applied",
+      "at": "2026-11-16T06:01:05Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_3",
+      "threadId": "thr_4",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "newsletter"
+      },
+      "actor": {
+        "kind": "rule",
+        "ruleId": "rul_2"
+      },
+      "reason": "The Weekly Build is a newsletter",
+      "state": "applied",
+      "at": "2026-11-15T16:00:04Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_4",
+      "threadId": "thr_8",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "done"
+      },
+      "actor": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "reason": "A monthly newsletter you read on the magazine's site",
+      "state": "proposed",
+      "at": "2026-11-16T05:02:30Z",
+      "undoable": false,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_5",
+      "threadId": "thr_2",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "notification"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-16T07:15:20Z",
+      "undoable": false,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_6",
+      "threadId": "thr_13",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "done"
+      },
+      "actor": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "state": "applied",
+      "at": "2026-11-14T16:02:00Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_7",
+      "threadId": "thr_7",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "stack",
+        "stack": "reply_later"
+      },
+      "actor": {
+        "kind": "person",
+        "deviceId": "dev_phone_1"
+      },
+      "state": "applied",
+      "at": "2026-11-13T19:00:00Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_8",
+      "threadId": "thr_11",
+      "inboxId": "inb_personal",
+      "action": {
+        "kind": "categorize",
+        "category": "notification"
+      },
+      "actor": {
+        "kind": "agent",
+        "agentId": "dev_agent_2",
+        "name": "Hermes"
+      },
+      "reason": "A shipping notice for an order you placed",
+      "state": "applied",
+      "at": "2026-11-15T13:12:40Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_9",
+      "threadId": "thr_1",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "conversation"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-16T08:52:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_10",
+      "threadId": "thr_6",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "categorize",
+        "category": "invoice"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-15T11:30:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_11",
+      "threadId": "thr_8",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "categorize",
+        "category": "newsletter"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-16T05:00:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_12",
+      "threadId": "thr_13",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "conversation"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-14T09:12:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_13",
+      "threadId": "thr_5",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "conversation"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-16T09:05:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_14",
+      "threadId": "thr_2",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "conversation"
+      },
+      "actor": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "state": "applied",
+      "at": "2026-11-16T07:40:00Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_15",
+      "threadId": "thr_1",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "stack",
+        "stack": "reply_later"
+      },
+      "actor": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "reason": "A client asks you to confirm renewal terms by Friday",
+      "state": "undone",
+      "at": "2026-11-16T08:55:00Z",
+      "undoneAt": "2026-11-16T09:10:00Z",
+      "undoable": false,
+      "silent": false,
+      "version": 2
+    },
+    {
+      "id": "act_16",
+      "threadId": "thr_15",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "categorize",
+        "category": "otp"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-16T09:12:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_17",
+      "threadId": "thr_7",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "categorize",
+        "category": "conversation"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-13T18:22:20Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_18",
+      "threadId": "thr_9",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "categorize",
+        "category": "conversation"
+      },
+      "actor": {
+        "kind": "ai",
+        "job": "categorize",
+        "model": "example/decision-1"
+      },
+      "state": "applied",
+      "at": "2026-11-10T14:25:00Z",
+      "undoable": true,
+      "silent": true,
+      "version": 1
+    },
+    {
+      "id": "act_19",
+      "threadId": "thr_26",
+      "inboxId": "inb_personal",
+      "action": {
+        "kind": "block_sender"
+      },
+      "actor": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "state": "applied",
+      "at": "2026-11-12T08:00:00Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_20",
+      "threadId": "thr_27",
+      "inboxId": "inb_northwind",
+      "action": {
+        "kind": "block_sender"
+      },
+      "actor": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "state": "applied",
+      "at": "2026-11-09T10:00:00Z",
+      "undoable": true,
+      "silent": false,
+      "version": 1
+    },
+    {
+      "id": "act_21",
+      "threadId": "thr_28",
+      "inboxId": "inb_harbor",
+      "action": {
+        "kind": "block_sender"
+      },
+      "actor": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "reason": "Cold outreach you never answer",
+      "state": "applied",
+      "at": "2026-11-13T12:00:00Z",
+      "undoable": true,
+      "silent": false,
+      "version": 2
+    }
+  ],
+  "rules": [
+    {
+      "id": "rul_1",
+      "inboxId": "inb_northwind",
+      "text": "Receipts from paperloop.example are receipts and done",
+      "match": {
+        "domain": "paperloop.example"
+      },
+      "then": [
+        {
+          "kind": "categorize",
+          "category": "receipt"
+        },
+        {
+          "kind": "done"
+        }
+      ],
+      "source": "person",
+      "enabled": true,
+      "hits": 14,
+      "createdBy": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "createdAt": "2026-10-03T09:12:00Z",
+      "version": 9
+    },
+    {
+      "id": "rul_2",
+      "inboxId": "inb_northwind",
+      "text": "The Weekly Build is a newsletter",
+      "match": {
+        "listId": "weekly-build.weeklybuild.example"
+      },
+      "then": [
+        {
+          "kind": "categorize",
+          "category": "newsletter"
+        }
+      ],
+      "source": "correction",
+      "enabled": true,
+      "hits": 6,
+      "createdBy": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "createdAt": "2026-10-11T17:30:00Z",
+      "version": 5
+    },
+    {
+      "id": "rul_3",
+      "inboxId": "inb_harbor",
+      "text": "Mail from Quay Properties is always a conversation",
+      "match": {
+        "domain": "quayproperties.example"
+      },
+      "then": [
+        {
+          "kind": "categorize",
+          "category": "conversation"
+        }
+      ],
+      "source": "correction",
+      "enabled": true,
+      "hits": 2,
+      "createdBy": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "createdAt": "2026-11-10T15:00:00Z",
+      "version": 3
+    },
+    {
+      "id": "rul_4",
+      "inboxId": "inb_personal",
+      "text": "Shipping notices are notifications",
+      "match": {
+        "automated": true,
+        "subjectContains": "shipped"
+      },
+      "then": [
+        {
+          "kind": "categorize",
+          "category": "notification"
+        }
+      ],
+      "source": "agent",
+      "enabled": false,
+      "hits": 0,
+      "createdBy": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "createdAt": "2026-11-15T13:15:00Z",
+      "version": 1
+    }
+  ],
+  "brief": {
+    "id": "brf_1",
+    "createdAt": "2026-11-16T09:00:00Z",
+    "from": "2026-11-15T15:00:00Z",
+    "to": "2026-11-16T09:00:00Z",
+    "sections": [
+      {
+        "inboxId": "inb_northwind",
+        "summary": "Two things need you: Dana wants the renewal confirmed by Friday with a longer notice period, and Marek is waiting for your call on the design hire. A receipt and a newsletter were filed.",
+        "counts": {
+          "newsletter": 1,
+          "receipt": 1,
+          "done": 1
+        },
+        "highlights": [
+          {
+            "threadId": "thr_1",
+            "subject": "Contract renewal for 2027",
+            "line": "Dana asks for 60 days' notice instead of 30 and an answer by Friday."
+          },
+          {
+            "threadId": "thr_2",
+            "subject": "Two candidates for the design role",
+            "line": "Marek leans towards Priya and wants your decision before an offer goes out."
+          }
+        ]
+      },
+      {
+        "inboxId": "inb_harbor",
+        "summary": "Kestrel's invoice for October is due on 30 November. Claude Code asks whether Coffee Roasters Monthly can be marked done.",
+        "counts": {},
+        "highlights": [
+          {
+            "threadId": "thr_6",
+            "subject": "Invoice 2026-118, due 30 November",
+            "line": "1,240.00 EUR to Kestrel Roasters, due 30 November."
+          }
+        ]
+      }
+    ],
+    "writtenBy": {
+      "kind": "agent",
+      "agentId": "dev_agent_1",
+      "name": "Claude Code"
+    }
+  },
+  "ai": {
+    "connection": {
+      "kind": "gateway",
+      "gateway": "vercel"
+    },
+    "credentialsSet": true,
+    "jobs": [
+      {
+        "job": "categorize",
+        "model": null,
+        "defaultModel": "example/decision-1"
+      },
+      {
+        "job": "summarize",
+        "model": "example/text-small-2",
+        "defaultModel": "example/text-small-1"
+      }
+    ],
+    "paused": false,
+    "version": 5
+  },
+  "aiStatus": {
+    "state": "working",
+    "lastRunAt": "2026-11-16T09:12:40Z",
+    "pending": 4,
+    "version": 58
+  },
+  "firstSync": {
+    "days": 30,
+    "setBy": "settings",
+    "changeable": true
+  },
+  "aiUsage": {
+    "since": "2026-10-20T07:12:00Z",
+    "timeZone": "Europe/Berlin",
+    "periods": {
+      "today": [
+        {
+          "job": "categorize",
+          "model": "example/decision-1",
+          "requests": 14,
+          "failed": 0,
+          "inputTokens": 6300,
+          "outputTokens": 42,
+          "tokensPartial": false,
+          "cost": null,
+          "costPartial": false
+        },
+        {
+          "job": "summarize",
+          "model": "example/text-small-2",
+          "requests": 11,
+          "failed": 1,
+          "inputTokens": 24800,
+          "outputTokens": 610,
+          "tokensPartial": true,
+          "cost": {
+            "amount": 0.0031,
+            "currency": "USD"
+          },
+          "costPartial": true
+        }
+      ],
+      "last7Days": [
+        {
+          "job": "categorize",
+          "model": "example/decision-1",
+          "requests": 96,
+          "failed": 2,
+          "inputTokens": 43200,
+          "outputTokens": 288,
+          "tokensPartial": true,
+          "cost": null,
+          "costPartial": false
+        },
+        {
+          "job": "summarize",
+          "model": "example/text-small-1",
+          "requests": 40,
+          "failed": 0,
+          "inputTokens": 88000,
+          "outputTokens": 2400,
+          "tokensPartial": false,
+          "cost": {
+            "amount": 0.0112,
+            "currency": "USD"
+          },
+          "costPartial": false
+        },
+        {
+          "job": "summarize",
+          "model": "example/text-small-2",
+          "requests": 52,
+          "failed": 1,
+          "inputTokens": 117000,
+          "outputTokens": 2900,
+          "tokensPartial": true,
+          "cost": {
+            "amount": 0.0151,
+            "currency": "USD"
+          },
+          "costPartial": true
+        }
+      ],
+      "last30Days": [
+        {
+          "job": "categorize",
+          "model": "example/decision-1",
+          "requests": 310,
+          "failed": 3,
+          "inputTokens": 139500,
+          "outputTokens": 930,
+          "tokensPartial": true,
+          "cost": null,
+          "costPartial": false
+        },
+        {
+          "job": "summarize",
+          "model": "example/text-small-1",
+          "requests": 190,
+          "failed": 2,
+          "inputTokens": 418000,
+          "outputTokens": 11400,
+          "tokensPartial": true,
+          "cost": {
+            "amount": 0.0531,
+            "currency": "USD"
+          },
+          "costPartial": true
+        },
+        {
+          "job": "summarize",
+          "model": "example/text-small-2",
+          "requests": 52,
+          "failed": 1,
+          "inputTokens": 117000,
+          "outputTokens": 2900,
+          "tokensPartial": true,
+          "cost": {
+            "amount": 0.0151,
+            "currency": "USD"
+          },
+          "costPartial": true
+        }
+      ]
+    }
+  },
+  "counts": {
+    "all": {
+      "home": 5,
+      "unread": 4,
+      "categories": {
+        "conversation": 3,
+        "newsletter": 2,
+        "invoice": 2,
+        "receipt": 2,
+        "notification": 8,
+        "otp": 1,
+        "unknown": 3
+      },
+      "stacks": {
+        "reply_later": 1,
+        "set_aside": 1
+      },
+      "waiting": 1,
+      "screened": 1
+    },
+    "inboxes": [
+      {
+        "inboxId": "inb_northwind",
+        "home": 4,
+        "unread": 3,
+        "categories": {
+          "conversation": 2,
+          "newsletter": 1,
+          "invoice": 0,
+          "receipt": 0,
+          "notification": 0,
+          "otp": 1,
+          "unknown": 2
+        },
+        "stacks": {
+          "reply_later": 0,
+          "set_aside": 0
+        },
+        "waiting": 0,
+        "screened": 1
+      },
+      {
+        "inboxId": "inb_harbor",
+        "home": 0,
+        "unread": 0,
+        "categories": {
+          "conversation": 1,
+          "newsletter": 1,
+          "invoice": 1,
+          "receipt": 0,
+          "notification": 0,
+          "otp": 0,
+          "unknown": 0
+        },
+        "stacks": {
+          "reply_later": 1,
+          "set_aside": 0
+        },
+        "waiting": 1,
+        "screened": 0
+      },
+      {
+        "inboxId": "inb_personal",
+        "home": 1,
+        "unread": 1,
+        "categories": {
+          "conversation": 0,
+          "newsletter": 0,
+          "invoice": 1,
+          "receipt": 2,
+          "notification": 8,
+          "otp": 0,
+          "unknown": 1
+        },
+        "stacks": {
+          "reply_later": 0,
+          "set_aside": 1
+        },
+        "waiting": 0,
+        "screened": 0
+      }
+    ],
+    "version": 213
+  },
+  "blockedSenders": [
+    {
+      "inboxId": "inb_harbor",
+      "address": "outreach@linkboost.example",
+      "name": "Linkboost",
+      "blockedAt": "2026-11-13T12:00:00Z",
+      "blockedBy": {
+        "kind": "agent",
+        "agentId": "dev_agent_1",
+        "name": "Claude Code"
+      },
+      "messagesSinceBlocked": 1,
+      "lastMessageAt": "2026-11-15T06:10:00Z"
+    },
+    {
+      "inboxId": "inb_personal",
+      "address": "deals@brightbuy.example",
+      "name": "BrightBuy Deals",
+      "blockedAt": "2026-11-12T08:00:00Z",
+      "blockedBy": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "messagesSinceBlocked": 3,
+      "lastMessageAt": "2026-11-15T07:00:00Z"
+    },
+    {
+      "inboxId": "inb_northwind",
+      "address": "sales@growthpipe.example",
+      "name": "Growthpipe",
+      "blockedAt": "2026-11-09T10:00:00Z",
+      "blockedBy": {
+        "kind": "person",
+        "deviceId": "dev_mac_1"
+      },
+      "messagesSinceBlocked": 0,
+      "lastMessageAt": "2026-11-09T09:20:00Z"
+    }
+  ],
+  "olderMail": [
+    {
+      "inboxId": "inb_northwind",
+      "threadKey": "older_contract",
+      "from": {
+        "name": "Dana Whitfield",
+        "email": "dana@lumen.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "subject": "Contract renewal for 2026",
+      "date": "2025-11-12T10:15:00Z",
+      "text": "Hi, attached is the signed contract renewal for 2026. Same terms as this year, 30 days' notice. Dana",
+      "archived": true,
+      "attachments": [
+        {
+          "id": "att_older_1",
+          "filename": "Lumen-Northwind-2026.pdf",
+          "mimeType": "application/pdf",
+          "size": 48211,
+          "inline": false
+        }
+      ]
+    },
+    {
+      "inboxId": "inb_northwind",
+      "threadKey": "older_contract",
+      "from": {
+        "name": "Marek Olsen",
+        "email": "marek@northwind.example"
+      },
+      "to": [
+        {
+          "name": "Dana Whitfield",
+          "email": "dana@lumen.example"
+        }
+      ],
+      "subject": "Re: Contract renewal for 2026",
+      "date": "2025-11-12T14:02:00Z",
+      "text": "Thanks Dana, countersigned and filed.",
+      "archived": true
+    },
+    {
+      "inboxId": "inb_northwind",
+      "threadKey": "older_invoice",
+      "from": {
+        "name": "Paperloop",
+        "email": "billing@paperloop.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "subject": "Your receipt from Paperloop #3907",
+      "date": "2026-07-14T06:00:00Z",
+      "text": "Thank you for your order. Notebooks, 3 pieces. Total paid: 36.00 EUR.",
+      "archived": true
+    },
+    {
+      "inboxId": "inb_northwind",
+      "threadKey": "older_portfolio",
+      "from": {
+        "name": "Priya Natarajan",
+        "email": "priya@studio-north.example"
+      },
+      "to": [
+        {
+          "email": "hello@northwind.example"
+        }
+      ],
+      "subject": "Portfolio for the design role",
+      "date": "2026-08-20T11:30:00Z",
+      "text": "Hello, here is my portfolio for the design role you posted. I'd be glad to talk.",
+      "archived": false
+    }
+  ],
+  "searchAsks": [
+    {
+      "question": "the mail where Dana sent the contract pdf",
+      "tz": "Europe/Berlin",
+      "answer": {
+        "understood": {
+          "from": "Dana",
+          "hasAttachment": true,
+          "text": "contract"
+        },
+        "text": "contract",
+        "found": true,
+        "ai": "working"
+      }
+    },
+    {
+      "question": "invoices from Kestrel this month",
+      "tz": "Europe/Berlin",
+      "answer": {
+        "understood": {
+          "kinds": [
+            "invoice"
+          ],
+          "from": "Kestrel",
+          "after": "2026-10-31T23:00:00Z",
+          "text": ""
+        },
+        "text": "",
+        "found": true,
+        "ai": "working"
+      }
+    },
+    {
+      "question": "unread newsletters this week",
+      "tz": "Europe/Berlin",
+      "answer": {
+        "understood": {
+          "kinds": [
+            "newsletter"
+          ],
+          "unread": true,
+          "after": "2026-11-15T23:00:00Z",
+          "text": ""
+        },
+        "text": "",
+        "found": true,
+        "ai": "working"
+      }
+    },
+    {
+      "question": "receipts over 100 euros since March",
+      "tz": "Europe/Berlin",
+      "answer": {
+        "understood": {
+          "kinds": [
+            "receipt"
+          ],
+          "after": "2026-02-28T23:00:00Z",
+          "text": "over 100 euros"
+        },
+        "text": "over 100 euros",
+        "found": true,
+        "ai": "working"
+      }
+    },
+    {
+      "question": "dinner on saturday",
+      "tz": "Europe/Berlin",
+      "answer": {
+        "understood": {
+          "text": "dinner on saturday"
+        },
+        "text": "dinner on saturday",
+        "found": false,
+        "ai": "working"
+      }
+    }
+  ]
+}

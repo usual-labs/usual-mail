@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Privacy Policy · Usual Mail</title>
+    <meta name="description" content="How Usual Mail, a self-hosted mail app, handles your information and the Google user data it accesses when you connect Gmail.">
+    <link rel="canonical" href="https://mail.usual.dev/privacy/">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#c6d8e3" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#17202a" media="(prefers-color-scheme: dark)">
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="stylesheet" href="/assets/base.css">
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="scene" aria-hidden="true">
+      <picture class="layer sky">
+        <source type="image/avif" media="(max-aspect-ratio: 1/1)" srcset="/img/sky-p1080.avif 1080w, /img/sky-p1620.avif 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/webp" media="(max-aspect-ratio: 1/1)" srcset="/img/sky-p1080.webp 1080w, /img/sky-p1620.webp 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/avif" srcset="/img/sky-1280.avif 1280w, /img/sky-1920.avif 1920w, /img/sky-2560.avif 2560w" sizes="max(100vw, 178vh)">
+        <img src="/img/sky-1920.webp" srcset="/img/sky-1280.webp 1280w, /img/sky-1920.webp 1920w, /img/sky-2560.webp 2560w" sizes="max(100vw, 178vh)" alt="" decoding="async">
+      </picture>
+      <picture class="layer hills">
+        <source type="image/avif" media="(max-aspect-ratio: 1/1)" srcset="/img/hills-p1080.avif 1080w, /img/hills-p1620.avif 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/webp" media="(max-aspect-ratio: 1/1)" srcset="/img/hills-p1080.webp 1080w, /img/hills-p1620.webp 1620w" sizes="max(100vw, 75vh)">
+        <source type="image/avif" srcset="/img/hills-1280.avif 1280w, /img/hills-1920.avif 1920w, /img/hills-2560.avif 2560w" sizes="max(100vw, 178vh)">
+        <img src="/img/hills-1920.webp" srcset="/img/hills-1280.webp 1280w, /img/hills-1920.webp 1920w, /img/hills-2560.webp 2560w" sizes="max(100vw, 178vh)" alt="" decoding="async">
+      </picture>
+      <div class="veil"></div>
+    </div>
+
+    <header class="top">
+      <a class="brand wordmark" href="/" aria-label="Usual Mail, home">Usual<span>mail</span></a>
+      <nav aria-label="Policies">
+        <a class="pill glass" href="/privacy/" aria-current="page">Privacy</a>
+        <a class="pill glass" href="/terms/">Terms</a>
+      </nav>
+    </header>
+
+    <main id="main" class="doc">
+      <article class="panel glass">
+        <h1>Privacy Policy</h1>
+        <p class="effective">Effective 19 November 2026</p>
+        <p class="intro">Usual Mail is a mail app for people with many inboxes. It is in early development and not released yet. This policy explains what Usual Mail does with your information, and in particular with the Google user data it accesses when you connect a Gmail account.</p>
+
+        <section class="short" aria-labelledby="short">
+          <h2 id="short">The short version</h2>
+          <ul>
+            <li>Usual Mail runs on a server you run yourself. Your mail is stored there, not with us.</li>
+            <li>With your permission, it reads and changes your Gmail to show, sync, sort, label and send your mail, and for nothing else.</li>
+            <li>If you add an AI key, parts of your mail go to the AI service you chose, so it can sort your mail and sum it up. You see exactly which parts before you save the key.</li>
+            <li>We don’t sell your data, use it for advertising or use it to train AI models, and nobody at Usual Mail reads your mail.</li>
+          </ul>
+        </section>
+
+        <h2>Who we are</h2>
+        <p>Usual Mail is made by Nestor Code Crafters UG (“we”, “us”). For questions about this policy, write to <a href="mailto:hello@usual.dev">hello@usual.dev</a>.</p>
+
+        <h2>How Usual Mail works</h2>
+        <p>Usual Mail is self-hosted. Each person runs their own Usual Mail server on a computer they control, such as their Mac, and the Usual Mail apps (a Mac app, and a web dashboard the server serves) talk to that server. The server keeps a synced copy of each connected mailbox, sorts it, and writes what it works out back to the mailbox.</p>
+        <p>We don’t run a Usual Mail server for you, and there is no hosted version. Your mail, and the access Google grants when you connect Gmail, go to your own server and never reach us. If someone else runs the server you use, such as a family member or your employer, they hold that copy and are responsible for it.</p>
+
+        <h2>The Google user data Usual Mail accesses</h2>
+        <p>To connect Gmail, you sign in with Google and allow one permission: <code>https://www.googleapis.com/auth/gmail.modify</code>, which Google describes as reading, composing and sending email from your Gmail account. Usual Mail asks for no other Google permission; it learns your address from Gmail itself. This permission can’t delete mail permanently, and Usual Mail never tries to.</p>
+        <p>When you connect a mailbox, your server copies the mail of the last 30 days (or the number of days set for your server), then checks for changes about once a minute. With the permission, your server:</p>
+        <ul>
+          <li><strong>reads</strong> your messages: who they are from and to, the subject and date, the text and HTML, the names, types and sizes of attachments, and message headers, including Gmail’s own check of who sent a message; and your labels;</li>
+          <li><strong>writes</strong> to your mailbox: labels it creates under “Usual Mail/” (Newsletters, Invoices, Receipts, Notifications, One-Time Codes, Screening, Reply Later, Set Aside), moving mail into or out of your inbox, marking mail read or unread, and moving mail to the trash when you ask;</li>
+          <li><strong>sends</strong> mail you write, from your Gmail account, when you choose to send it.</li>
+        </ul>
+
+        <h2>How Usual Mail uses it</h2>
+        <p>Only for features you see and use:</p>
+        <ul>
+          <li>showing your mail in the Usual Mail apps, and keeping your server’s copy in step with Gmail;</li>
+          <li>sorting each thread of mail into a category (conversation, newsletter, invoice, receipt, notification or one-time code), by your rules and, if you add an AI key, by your server’s AI, and writing that category back to Gmail as a label;</li>
+          <li>showing a one-line summary of a thread, the payment details of a receipt or invoice, and what happened and when for a notification such as a delivery or an appointment;</li>
+          <li>screening: holding first mail from senders you haven’t let in until you decide;</li>
+          <li>sending the mail you write;</li>
+          <li>showing an organisation’s own website icon beside its mail (below).</li>
+        </ul>
+        <p>Usual Mail does not use your Google user data for advertising, does not sell it, does not use it to build profiles of you, does not use it to decide creditworthiness or for lending, and does not use it to develop, improve or train generalized artificial intelligence or machine-learning models.</p>
+
+        <h2>Where it is stored</h2>
+        <p>On your Usual Mail server, in its data folder, which only your user account on that computer can read:</p>
+        <ul>
+          <li>the synced copy of your mail: each message’s text, HTML and details. Attachments stay in Gmail; your server fetches one when you open it;</li>
+          <li>what your server works out: categories, summaries and other details, your rules, a record of each action so it can be undone, and your drafts;</li>
+          <li>your Google access: the refresh token Google issues to your server, stored encrypted (AES-256-GCM) and never shown by the server’s API, events or logs;</li>
+          <li>copies of pictures from mail you opened (at most 256 MB; each is removed after 30 days unseen) and organisations’ website icons.</li>
+        </ul>
+        <p>The Mac app keeps a copy of what it shows on your Mac, and keeps its access to your server in your Mac’s Keychain.</p>
+
+        <h2>What leaves your server</h2>
+        <p>Your server sends your data only to the following.</p>
+        <h3>Google</h3>
+        <p>To read and change your Gmail as described above, and to sign you in or revoke Usual Mail’s access.</p>
+        <h3>The AI service you choose, only if you add an AI key</h3>
+        <p>You can give your server a key for Vercel’s AI Gateway (which passes each request on to the company that runs the model), OpenAI or Anthropic. Before you save a key, Usual Mail shows you what will be sent and to whom; saving it is your consent, for every inbox connected now and later. For each thread of mail it processes, your server sends:</p>
+        <ul>
+          <li>to sort it: the subject; the newest incoming message’s sender name and address, its List-Id and whether it looks machine-sent; and that message’s text, with each link cut to its site, at most 4,000 characters;</li>
+          <li>to sum it up: the subject and the text of the thread’s messages, newest first, at most 8,000 characters in all, each with its sender’s name and the day it was sent, and every email address replaced with “[address]”. For a receipt or invoice it also asks for the payment details, and for a notification what happened and when.</li>
+        </ul>
+        <p>It never sends attachments or their names, HTML, pictures, other recipients, passwords or keys, your rules, anything from a sender you blocked, spam, or threads that are done or in the trash. One-time codes are never summed up. Pausing the AI or removing the key stops all sending. The AI service handles what it receives under its own terms and your account with it; we receive none of it.</p>
+        <h3>Websites, for pictures in your mail</h3>
+        <p>When you open a message, your server fetches its pictures from the web for your app, after taking out known trackers and invisible pictures, and only for senders you have let in. The picture’s website sees your server’s internet address, not your device’s.</p>
+        <h3>Organisations’ websites, for their icons</h3>
+        <p>For mail from an organisation you have let in, whose sending domain Gmail verified, your server fetches that organisation’s own website icon, at a random moment within six hours, and again at most once in 30 days while its mail keeps coming. That website can tell that a server at your server’s address received mail from it. No other service is asked.</p>
+        <h3>Your own agent, if you connect one</h3>
+        <p>Usual Mail has an optional connector for your own AI agent. An agent you connect can read the inboxes you give it access to.</p>
+        <p>Usual Mail sends nothing to us: no analytics, tracking or usage data.</p>
+
+        <h2>Who can read your mail</h2>
+        <p>Nobody at Usual Mail: we never receive your mail. It can be read by you, by whoever runs your server, by an agent you connect (for the inboxes you allow) and, in the parts described above, by the AI service you chose. If you write to us for help and include mail, we read only what you send us, to help you.</p>
+
+        <h2>Keeping and deleting</h2>
+        <ul>
+          <li>Your server keeps its copy while a mailbox is connected.</li>
+          <li><strong>Removing an inbox</strong> in Usual Mail deletes the server’s copy of its mail, summaries, rules, history, drafts and kept pictures, and asks Google to revoke Usual Mail’s access. The labels it created in Gmail stay; you can delete them in Gmail.</li>
+          <li><strong>Removing the AI key</strong> stops all sending to the AI service.</li>
+          <li>You can revoke Usual Mail’s access at any time in your Google Account, under <a href="https://myaccount.google.com/connections">Third-party apps and services</a>. Usual Mail then stops reading your Gmail and asks you to sign in again.</li>
+          <li>Organisations’ icons are forgotten when no mail has needed them for 180 days. The server counts its AI requests by the hour for 90 days, with nothing of your mail in the counts.</li>
+          <li>To remove everything, stop the server and delete its data folder.</li>
+        </ul>
+
+        <h2>Security</h2>
+        <p>Your server listens only on your own computer unless you set it up otherwise, stores Google’s token and your AI key encrypted, and never shows them through its API, events or logs. Signing in with Google uses a one-time state and PKCE, and your server talks to Google and to AI services over HTTPS. Usual Mail is early software: keep your mailbox’s own app at hand.</p>
+
+        <h2>This website</h2>
+        <p>The pages of mail.usual.dev set no cookies and run no scripts or analytics. Cloudflare serves them, and processes the technical details of each request, such as your IP address, to deliver them.</p>
+
+        <h2>Children</h2>
+        <p>Usual Mail is not meant for children under 13.</p>
+
+        <h2>Changes</h2>
+        <p>If we change this policy, we’ll post the new version here with a new effective date and say what changed.</p>
+
+        <h2>Contact</h2>
+        <p><a href="mailto:hello@usual.dev">hello@usual.dev</a></p>
+      </article>
+    </main>
+
+    <footer class="foot">
+      <div class="foot-inner panel glass">
+        <div class="foot-row">
+          <a class="wordmark" href="/" aria-label="Usual Mail, home">Usual<span>mail</span></a>
+          <nav aria-label="Footer">
+            <a href="/privacy/" aria-current="page">Privacy Policy</a>
+            <a href="/terms/">Terms of Service</a>
+            <a href="mailto:hello@usual.dev">hello@usual.dev</a>
+          </nav>
+        </div>
+        <p class="limited">Usual Mail’s use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+        <p class="quiet">Usual Mail is made by Nestor Code Crafters UG. Type: Geist (<a href="/fonts/Geist-OFL.txt">OFL</a>) and Prociono (<a href="/fonts/Prociono-OFL.txt">OFL</a>). Icons: Hugeicons (<a href="/icons-LICENSE.txt">MIT</a>). Wallpaper: Unsplash.</p>
+      </div>
+    </footer>
+  </body>
+</html>

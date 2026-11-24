@@ -1,0 +1,323 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5E0B00000000000000000101 /* UsualMailKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0B00000000000000000201 /* UsualMailKit */; };
+		5E0B00000000000000000102 /* UsualMailUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0B00000000000000000202 /* UsualMailUI */; };
+		5E0B00000000000000000103 /* UsualMailKit in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0B00000000000000000203 /* UsualMailKit */; };
+		5E0B00000000000000000104 /* UsualMailUI in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0B00000000000000000204 /* UsualMailUI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		5E0B00000000000000000301 /* UsualMail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UsualMail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E0B00000000000000000302 /* Shared.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Shared.xcconfig; sourceTree = "<group>"; };
+		5E0B00000000000000000303 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		5E0B00000000000000000304 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		5E0B00000000000000000305 /* Local.xcconfig.example */ = {isa = PBXFileReference; lastKnownFileType = text; path = Local.xcconfig.example; sourceTree = "<group>"; };
+		5E0B00000000000000000306 /* UsualMail-macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "UsualMail-macOS.entitlements"; sourceTree = "<group>"; };
+		5E0B00000000000000000307 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5E0B00000000000000000308 /* UsualMail.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = UsualMail.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E0B00000000000000000309 /* Phone.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Phone.xcconfig; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		5E0B00000000000000000401 /* App */ = {isa = PBXFileSystemSynchronizedRootGroup; path = App; sourceTree = "<group>"; };
+		5E0B00000000000000000402 /* AppPhone */ = {isa = PBXFileSystemSynchronizedRootGroup; path = AppPhone; sourceTree = "<group>"; };
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5E0B00000000000000000802 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E0B00000000000000000101 /* UsualMailKit in Frameworks */,
+				5E0B00000000000000000102 /* UsualMailUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E0B00000000000000000812 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E0B00000000000000000103 /* UsualMailKit in Frameworks */,
+				5E0B00000000000000000104 /* UsualMailUI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5E0B00000000000000000601 = {
+			isa = PBXGroup;
+			children = (
+				5E0B00000000000000000401 /* App */,
+				5E0B00000000000000000402 /* AppPhone */,
+				5E0B00000000000000000603 /* Config */,
+				5E0B00000000000000000602 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		5E0B00000000000000000602 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5E0B00000000000000000301 /* UsualMail.app */,
+				5E0B00000000000000000308 /* UsualMail.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5E0B00000000000000000603 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				5E0B00000000000000000302 /* Shared.xcconfig */,
+				5E0B00000000000000000303 /* Debug.xcconfig */,
+				5E0B00000000000000000304 /* Release.xcconfig */,
+				5E0B00000000000000000309 /* Phone.xcconfig */,
+				5E0B00000000000000000305 /* Local.xcconfig.example */,
+				5E0B00000000000000000306 /* UsualMail-macOS.entitlements */,
+				5E0B00000000000000000307 /* Info.plist */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5E0B00000000000000000701 /* UsualMail */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E0B00000000000000000902 /* Build configuration list for PBXNativeTarget "UsualMail" */;
+			buildPhases = (
+				5E0B00000000000000000801 /* Sources */,
+				5E0B00000000000000000802 /* Frameworks */,
+				5E0B00000000000000000803 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5E0B00000000000000000401 /* App */,
+			);
+			name = UsualMail;
+			packageProductDependencies = (
+				5E0B00000000000000000201 /* UsualMailKit */,
+				5E0B00000000000000000202 /* UsualMailUI */,
+			);
+			productName = UsualMail;
+			productReference = 5E0B00000000000000000301 /* UsualMail.app */;
+			productType = "com.apple.product-type.application";
+		};
+		5E0B00000000000000000702 /* UsualMailPhone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5E0B00000000000000000903 /* Build configuration list for PBXNativeTarget "UsualMailPhone" */;
+			buildPhases = (
+				5E0B00000000000000000811 /* Sources */,
+				5E0B00000000000000000812 /* Frameworks */,
+				5E0B00000000000000000813 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				5E0B00000000000000000402 /* AppPhone */,
+			);
+			name = UsualMailPhone;
+			packageProductDependencies = (
+				5E0B00000000000000000203 /* UsualMailKit */,
+				5E0B00000000000000000204 /* UsualMailUI */,
+			);
+			productName = UsualMailPhone;
+			productReference = 5E0B00000000000000000308 /* UsualMail.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		5E0B00000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2700;
+				LastUpgradeCheck = 2700;
+				TargetAttributes = {
+					5E0B00000000000000000701 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					5E0B00000000000000000702 = {
+						CreatedOnToolsVersion = 27.1;
+					};
+				};
+			};
+			buildConfigurationList = 5E0B00000000000000000901 /* Build configuration list for PBXProject "UsualMail" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5E0B00000000000000000601;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5E0B00000000000000000501 /* XCLocalSwiftPackageReference "Packages/UsualMailKit" */,
+				5E0B00000000000000000502 /* XCLocalSwiftPackageReference "Packages/UsualMailUI" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5E0B00000000000000000602 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5E0B00000000000000000701 /* UsualMail */,
+				5E0B00000000000000000702 /* UsualMailPhone */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		5E0B00000000000000000803 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E0B00000000000000000813 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5E0B00000000000000000801 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E0B00000000000000000811 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5E0B00000000000000000911 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5E0B00000000000000000303 /* Debug.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		5E0B00000000000000000912 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5E0B00000000000000000304 /* Release.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		5E0B00000000000000000921 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		5E0B00000000000000000922 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+			};
+			name = Release;
+		};
+		5E0B00000000000000000931 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5E0B00000000000000000309 /* Phone.xcconfig */;
+			buildSettings = {
+			};
+			name = Debug;
+		};
+		5E0B00000000000000000932 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5E0B00000000000000000309 /* Phone.xcconfig */;
+			buildSettings = {
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		5E0B00000000000000000901 /* Build configuration list for PBXProject "UsualMail" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E0B00000000000000000911 /* Debug */,
+				5E0B00000000000000000912 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5E0B00000000000000000902 /* Build configuration list for PBXNativeTarget "UsualMail" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E0B00000000000000000921 /* Debug */,
+				5E0B00000000000000000922 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5E0B00000000000000000903 /* Build configuration list for PBXNativeTarget "UsualMailPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5E0B00000000000000000931 /* Debug */,
+				5E0B00000000000000000932 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		5E0B00000000000000000501 /* XCLocalSwiftPackageReference "Packages/UsualMailKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/UsualMailKit;
+		};
+		5E0B00000000000000000502 /* XCLocalSwiftPackageReference "Packages/UsualMailUI" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/UsualMailUI;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5E0B00000000000000000201 /* UsualMailKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5E0B00000000000000000501 /* XCLocalSwiftPackageReference "Packages/UsualMailKit" */;
+			productName = UsualMailKit;
+		};
+		5E0B00000000000000000202 /* UsualMailUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5E0B00000000000000000502 /* XCLocalSwiftPackageReference "Packages/UsualMailUI" */;
+			productName = UsualMailUI;
+		};
+		5E0B00000000000000000203 /* UsualMailKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5E0B00000000000000000501 /* XCLocalSwiftPackageReference "Packages/UsualMailKit" */;
+			productName = UsualMailKit;
+		};
+		5E0B00000000000000000204 /* UsualMailUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5E0B00000000000000000502 /* XCLocalSwiftPackageReference "Packages/UsualMailUI" */;
+			productName = UsualMailUI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 5E0B00000000000000000001 /* Project object */;
+}

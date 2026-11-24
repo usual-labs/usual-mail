@@ -1,0 +1,30 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Usual Mail's server on Cloudflare: one Worker in front of one SQLite-backed Durable Object, named "server", that
+  // holds the whole server (docs/agents/server-cloudflare.md). Deployed from this repository's root with
+  // `npm ci` and `npx wrangler deploy`; no secret is required.
+  "name": "usual-mail",
+  "main": "server/src/cloudflare/worker.ts",
+  "compatibility_date": "2026-11-04",
+  // global_fetch_strictly_public: the Worker's own fetches go out as any internet client's do, not straight to an origin
+  // behind its zone. One to a host routed to this Worker would come back in through its front door (unverified), so the
+  // fetcher refuses the server's own hosts itself (server/src/cloudflare/web/fetch.ts).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  // Version addresses would be more ways into the same server; branch previews would be separate, empty servers. With
+  // them off, the Worker's one workers.dev host is the server's own address (server/src/cloudflare/address.ts).
+  "preview_urls": false,
+  // The optional variables (USUAL_MAIL_PUBLIC_URL, USUAL_MAIL_TIME_ZONE, USUAL_MAIL_SYNC_DAYS) are set in the Worker's
+  // settings; without this every deploy (each push to the person's copy) would remove them. Secrets are always kept.
+  "keep_vars": true,
+  // Installs the part folders a fresh clone lacks and writes the migrations module, before every bundle.
+  "build": { "command": "node server/scripts/cloudflare-prepare.mjs" },
+  "durable_objects": { "bindings": [{ "name": "SERVER", "class_name": "UsualMailServer" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UsualMailServer"] }],
+  // The server's own log lines only: invocation logs would keep each request's URL and headers (Google's callback
+  // code, search words).
+  "observability": { "enabled": true, "logs": { "enabled": true, "invocation_logs": false } },
+  // A long-lived object's syncs make many fetches (10,000 per invocation by default). CPU stays at the default 30 s:
+  // cpu_ms would apply to the front Worker too, and the alarm tops the object up every minute.
+  "limits": { "subrequests": 1000000 }
+}

@@ -1,0 +1,39 @@
+# Usual Mail on Coolify (v4), as a Docker Compose resource. docs/deploy.md says each step; this file hasn't been tried
+# on Coolify itself yet.
+#
+# 1. In Coolify: New Resource, then Docker Compose Empty, and paste this file.
+# 2. Before the first deploy, give the usualmail service a domain of your own with HTTPS, its DNS pointing at the
+#    Coolify server, followed by the server's port:  https://mail.example.org:8484
+#    The address Coolify makes up otherwise is plain HTTP (sslip.io): the server refuses a plain HTTP address that
+#    isn't this machine, and doesn't start.
+# 3. Deploy. Read the owner's code in the usualmail container's terminal (cat /data/owner-pairing-code), then pair
+#    the usual-mail command on your own computer:
+#      usual-mail init --server https://mail.example.org --code <that code>
+#
+# Coolify fills the SERVICE_ variables. SERVICE_URL_USUALMAIL_8484 tells Coolify's proxy to send the domain to port
+# 8484, but its value carries that port (https://mail.example.org:8484), where nobody reaches the server, and Google
+# would refuse it as the sign-in's return address. SERVICE_URL_USUALMAIL is the same domain without the port, so the
+# server's address comes from that (checked in Coolify v4.7.6's source). The key (SERVICE_REALBASE64_32_SECRETKEY) is
+# made once for this resource and seals the mailbox passwords and the AI key. Keep a copy of it (Environment
+# Variables): a backup of the volume doesn't hold it, and the data can't be read without it. Never change it, except
+# to the old key when moving here with data from another host (docs/deploy.md).
+
+services:
+  usualmail:
+    image: ghcr.io/usual-labs/usual-mail:latest
+    restart: unless-stopped
+    environment:
+      - SERVICE_URL_USUALMAIL_8484
+      - USUAL_MAIL_PUBLIC_URL=${SERVICE_URL_USUALMAIL}
+      - USUAL_MAIL_SECRET_KEY=${SERVICE_REALBASE64_32_SECRETKEY}
+      # Your Google client for Gmail (docs/google-setup.md), both or neither; or give it from the Mac app instead.
+      - USUAL_MAIL_GOOGLE_CLIENT_ID=${USUAL_MAIL_GOOGLE_CLIENT_ID:-}
+      - USUAL_MAIL_GOOGLE_CLIENT_SECRET=${USUAL_MAIL_GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - usual-mail-data:/data
+    # No ports: Coolify's proxy reaches the server on 8484 and serves HTTPS. The image's own health check (GET /healthz)
+    # tells Coolify when it's up.
+
+volumes:
+  # The database and everything else the server keeps (the key comes from Coolify, above).
+  usual-mail-data:

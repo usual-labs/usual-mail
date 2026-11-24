@@ -1,0 +1,65 @@
+# Usual Mail on a server of your own, at a domain of your own, with HTTPS from Caddy. Caddy gets the certificate
+# from Let's Encrypt and renews it. This file stands alone: you don't need a copy of the repository.
+# docs/deploy.md says each step.
+#
+# 1. Point a DNS name at the server: an A record to its IPv4 address (and an AAAA record if it has IPv6). Let ports
+#    80 and 443 in through its firewall; Caddy needs both.
+# 2. Put this file on the server as compose.yaml, and beside it a file named .env with your domain:
+#      USUAL_MAIL_DOMAIN=mail.example.org
+# 3. docker compose up -d
+#    Caddy asks for the certificate on the first start; `docker compose logs caddy` shows how that went.
+# 4. Pair the usual-mail command (on your own computer) with the owner's code:
+#      docker compose exec usual-mail cat /data/owner-pairing-code
+#      usual-mail init --server https://mail.example.org --code <that code>
+#
+# Update:   docker compose pull && docker compose up -d
+# Back up:  stop the server, copy its volume, start it again (docs/deploy.md has the commands).
+#
+# Needs Docker Compose 2.23.1 or newer (`docker compose version`), for the Caddyfile written inline below.
+
+name: usual-mail
+
+services:
+  usual-mail:
+    image: ghcr.io/usual-labs/usual-mail:latest
+    restart: unless-stopped
+    environment:
+      # The address people reach the server at. Google sends people back to it followed by /v1/google/callback.
+      USUAL_MAIL_PUBLIC_URL: https://${USUAL_MAIL_DOMAIN:?Set USUAL_MAIL_DOMAIN in .env to the server's domain}
+      # Your Google client for Gmail (docs/google-setup.md), both or neither; or give it from the Mac app instead.
+      USUAL_MAIL_GOOGLE_CLIENT_ID: ${USUAL_MAIL_GOOGLE_CLIENT_ID:-}
+      USUAL_MAIL_GOOGLE_CLIENT_SECRET: ${USUAL_MAIL_GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - usual-mail-data:/data
+    # No ports: only Caddy reaches the server, over the network Compose makes for this file.
+
+  caddy:
+    image: caddy:2.11.9@sha256:4851e54a46b206517c574821bb5cc67f170d2156041e9fbc4c9193b45e84a75b
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      # Caddy's certificates and account. Keep them, or every start asks Let's Encrypt again.
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - usual-mail
+
+configs:
+  caddyfile:
+    content: |
+      ${USUAL_MAIL_DOMAIN} {
+        reverse_proxy usual-mail:8484
+      }
+
+volumes:
+  # Everything the server keeps: the database (mailbox passwords and the AI key stored sealed) and the key that seals
+  # them. Back it up; losing that key means connecting every inbox and setting the AI key again.
+  usual-mail-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,12 @@
+From: Bo <bo@people.example>
+To: me@mail.example
+Subject: Re: Re: Lunch?
+Date: Sat, 14 Nov 2026 13:00:00 +0000
+Message-ID: <reply-3@people.example>
+In-Reply-To: <reply-2@mail.example>
+References: <lunch-1@people.example>
+ <reply-2@mail.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Sounds good.

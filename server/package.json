@@ -1,0 +1,51 @@
+{
+  "name": "@usualmail/server",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Usual Mail's server: the store, the service, REST, sign-in, sync, rules, triage, undo and events.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/index.ts"
+  },
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && node --test --test-reporter=spec --import ./test/parameters.ts test/*.test.ts && npm run build && npm run smoke",
+    "test": "node --test --import ./test/parameters.ts test/*.test.ts",
+    "dev": "node --watch src/node/main.ts",
+    "demo": "node src/node/main.ts --demo",
+    "build": "node scripts/build.mjs",
+    "smoke": "node scripts/smoke-bundle.mjs",
+    "start": "node dist/server.mjs",
+    "db:generate": "drizzle-kit generate"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "4.0.105",
+    "@ai-sdk/gateway": "4.0.146",
+    "@ai-sdk/openai": "4.0.118",
+    "@hono/node-server": "2.1.8",
+    "@libsql/client": "0.18.0",
+    "@usualmail/core": "file:../core",
+    "@usualmail/dashboard": "file:../dashboard",
+    "@usualmail/mail": "file:../mail",
+    "@usualmail/mcp": "file:../mcp",
+    "ai": "7.0.173",
+    "drizzle-orm": "0.45.4",
+    "hono": "4.13.18",
+    "valibot": "1.5.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "@types/smtp-server": "3.5.13",
+    "drizzle-kit": "0.31.11",
+    "esbuild": "0.28.2",
+    "hoodiecrow-imap": "3.3.1",
+    "imapflow": "2.12.1",
+    "smtp-server": "3.21.6",
+    "typescript": "7.0.2"
+  }
+}

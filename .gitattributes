@@ -1,0 +1,2 @@
+# Shell scripts keep LF line endings on every checkout (a CRLF entry point breaks the Docker image).
+*.sh text eol=lf

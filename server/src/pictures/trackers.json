@@ -1,0 +1,2080 @@
+{
+ "source": {
+  "name": "MailTrackerBlocker",
+  "repository": "https://github.com/apparition47/MailTrackerBlocker",
+  "commit": "7463682a39af055a488539a3d0aa7898437b33f5",
+  "path": "Source/MTBBlockedMessage.m",
+  "license": "BSD-3-Clause",
+  "licenseText": "BSD 3-Clause License\n\n\nCopyright (c) 2020, Aaron Lee.\nAll rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n * Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\n * Neither the name MailTrackerBlocker nor the names of its contributors may be used to\n   endorse or promote products derived from this software without specific\n   prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE."
+ },
+ "trackers": [
+  {
+   "name": "1&1",
+   "patterns": [
+    "simg.1und1.de",
+    "oc.ionos.com/\\?utm_rid=",
+    "t.ionos.com/oms_p/"
+   ]
+  },
+  {
+   "name": "365offers.trade",
+   "patterns": [
+    "trk.365offers.trade"
+   ]
+  },
+  {
+   "name": "3hands",
+   "patterns": [
+    "mi.pbz.jp/"
+   ]
+  },
+  {
+   "name": "4Cite",
+   "patterns": [
+    "/\\?sv_cid="
+   ]
+  },
+  {
+   "name": "Acoustic",
+   "patterns": [
+    "/open/log/",
+    "mkt[0-9]+.com/open",
+    "/eos/v1/[a-z0-9_]+"
+   ]
+  },
+  {
+   "name": "Act-On",
+   "patterns": [
+    "actonsoftware.com"
+   ]
+  },
+  {
+   "name": "ActiveCampaign",
+   "patterns": [
+    "/lt.php\\?",
+    "/Prod/link-tracker\\?nl="
+   ]
+  },
+  {
+   "name": "activecore",
+   "patterns": [
+    "h-cast.jp/mail_open"
+   ]
+  },
+  {
+   "name": "ADAC",
+   "patterns": [
+    "mailing.adac.de/tr/"
+   ]
+  },
+  {
+   "name": "AdComplete",
+   "patterns": [
+    "/banman.asp\\?"
+   ]
+  },
+  {
+   "name": "Adobe",
+   "patterns": [
+    "/trk\\?t=1&mid=",
+    "/r/\\?id=[a-z0-9_]+,[a-z0-9_]+,1",
+    "demdex.net",
+    "t.info.adobesystems.com",
+    "toutapp.com",
+    "112.2o7.net",
+    "/ee/v1/open",
+    "postoffice.adobe.com/po-server/link/open"
+   ]
+  },
+  {
+   "name": "Adtriba",
+   "patterns": [
+    "d.adtriba.com"
+   ]
+  },
+  {
+   "name": "AgileCRM",
+   "patterns": [
+    "agle2.me/open"
+   ]
+  },
+  {
+   "name": "Agoda",
+   "patterns": [
+    "xml.agoda.com/EmailTracking/api/emailtracking/Open"
+   ]
+  },
+  {
+   "name": "Air Miles",
+   "patterns": [
+    "email.airmiles.ca/O"
+   ]
+  },
+  {
+   "name": "Aislelabs",
+   "patterns": [
+    "app.aislelabs.com/o/emailv3/emailv3onepixel.jsp"
+   ]
+  },
+  {
+   "name": "Alaska Airlines",
+   "patterns": [
+    "click.points-mail.com/open",
+    "sjv.io/i/",
+    "gqco.net/i/"
+   ]
+  },
+  {
+   "name": "Alibaba",
+   "patterns": [
+    "ae.mmstat.com/ae.edm.edm_open"
+   ]
+  },
+  {
+   "name": "Alida",
+   "patterns": [
+    ".png1"
+   ]
+  },
+  {
+   "name": "All Nippon Airways",
+   "patterns": [
+    "amc.ana.co.jp/bin/checker"
+   ]
+  },
+  {
+   "name": "Amazon",
+   "patterns": [
+    "sellercentral(-europe)?(-japan)?.amazon.+/nms/img/"
+   ]
+  },
+  {
+   "name": "Amazon SES",
+   "patterns": [
+    ".awstrack.me/I0/",
+    "aws-track-email-open",
+    "/gp/r.html",
+    "/gp/forum/email/tracking",
+    "amazonappservices.com/trk",
+    "amazonappservices.com/r/",
+    "awscloud.com/trk",
+    "/CI0/.+/.+=[0-9][0-9][0-9]"
+   ]
+  },
+  {
+   "name": "Amobee",
+   "patterns": [
+    "d.turn.com/r/"
+   ]
+  },
+  {
+   "name": "Apo.com",
+   "patterns": [
+    "info.apo.com/op/"
+   ]
+  },
+  {
+   "name": "Apple",
+   "patterns": [
+    "apple.com/report/2/its_mail_sf",
+    "apple_email_link/spacer"
+   ]
+  },
+  {
+   "name": "Appriver",
+   "patterns": [
+    "appriver.com/e1t/o/"
+   ]
+  },
+  {
+   "name": "Apptivo",
+   "patterns": [
+    "apptivo.com"
+   ]
+  },
+  {
+   "name": "Artegic",
+   "patterns": [
+    "elaine-asp.de"
+   ]
+  },
+  {
+   "name": "Asana",
+   "patterns": [
+    "app.asana.com/-/open"
+   ]
+  },
+  {
+   "name": "Ashby",
+   "patterns": [
+    "app.ashbyhq.com/api/beacon/email-read/"
+   ]
+  },
+  {
+   "name": "ASUSTeK",
+   "patterns": [
+    "emditpison.asus.com"
+   ]
+  },
+  {
+   "name": "AT&T",
+   "patterns": [
+    "clicks.att.com/OCT/eTrac\\?EMAIL_ID="
+   ]
+  },
+  {
+   "name": "Atlassian",
+   "patterns": [
+    "i.trellomail.com/e/eo",
+    "bitbucket.org/account/notifications/mark-read/"
+   ]
+  },
+  {
+   "name": "Aurea",
+   "patterns": [
+    "/1.gif"
+   ]
+  },
+  {
+   "name": "AutoAlert",
+   "patterns": [
+    "dealer.autoalert.com/email/tracking/open",
+    "fzlnk.com/AutoAlertEmailHandler.ashx"
+   ]
+  },
+  {
+   "name": "Autopilot",
+   "patterns": [
+    "autopilotmail[0-9]?.io"
+   ]
+  },
+  {
+   "name": "AWeber",
+   "patterns": [
+    "openrate.aweber.com"
+   ]
+  },
+  {
+   "name": "Backpack Internet",
+   "patterns": [
+    "app.bentonow.com/ahoy/messages/",
+    "track.bentonow.com/tracking/emails/"
+   ]
+  },
+  {
+   "name": "Bananatag",
+   "patterns": [
+    "bl-1.com"
+   ]
+  },
+  {
+   "name": "Bandsintown",
+   "patterns": [
+    "px1.bandsintown.com"
+   ]
+  },
+  {
+   "name": "Bazaarvoice",
+   "patterns": [
+    "bazaarvoice.com/a.gif"
+   ]
+  },
+  {
+   "name": "beehiiv",
+   "patterns": [
+    "/ss/o/[a-zA-Z0-9_.]+/[a-z0-9][a-z0-9][a-z0-9]/[a-zA-Z0-9_.-]+/ho.gif"
+   ]
+  },
+  {
+   "name": "Benchmark Email",
+   "patterns": [
+    "bmetrack.com/c/o"
+   ]
+  },
+  {
+   "name": "Betrend",
+   "patterns": [
+    "cl.am.md/\\?"
+   ]
+  },
+  {
+   "name": "Bison",
+   "patterns": [
+    "clicks.bisonapp.com"
+   ]
+  },
+  {
+   "name": "Blackbaud",
+   "patterns": [
+    "support.planetary.org/site/PixelServer",
+    "/smtp.mailopen\\?id="
+   ]
+  },
+  {
+   "name": "Bloomreach",
+   "patterns": [
+    "/e/[A-Za-z0-9_.-]+/open"
+   ]
+  },
+  {
+   "name": "Blueshift.com",
+   "patterns": [
+    "getblueshift.com/track"
+   ]
+  },
+  {
+   "name": "Bombcom",
+   "patterns": [
+    "bixel.io"
+   ]
+  },
+  {
+   "name": "Boomerang",
+   "patterns": [
+    "mailstat.us/tr"
+   ]
+  },
+  {
+   "name": "Boots",
+   "patterns": [
+    "boots.com/rts/open.aspx"
+   ]
+  },
+  {
+   "name": "Boxbe",
+   "patterns": [
+    "boxbe.com/stfopen"
+   ]
+  },
+  {
+   "name": "British Airways",
+   "patterns": [
+    "britishairways.com/cms/global/assets/images/global/email_images/structural/primary1px.gif"
+   ]
+  },
+  {
+   "name": "Browserstack",
+   "patterns": [
+    "browserstack.com/images/mail/track-open"
+   ]
+  },
+  {
+   "name": "BuzzStream",
+   "patterns": [
+    "tx.buzzstream.com"
+   ]
+  },
+  {
+   "name": "Campaign Monitor",
+   "patterns": [
+    "cmail[0-9][0-9]?.com/t/",
+    "createsend[0-9]+.com"
+   ]
+  },
+  {
+   "name": "Campaigner",
+   "patterns": [
+    "trk.cp20.com/open/"
+   ]
+  },
+  {
+   "name": "CanaryMail",
+   "patterns": [
+    "receipts.canarymail.io(:[0-9]+)?/track/"
+   ]
+  },
+  {
+   "name": "Cheetah Digital",
+   "patterns": [
+    "/rts/open.aspx\\?tp="
+   ]
+  },
+  {
+   "name": "ChurnZero",
+   "patterns": [
+    "t.churnzero.net/ss/o/"
+   ]
+  },
+  {
+   "name": "CircleCI",
+   "patterns": [
+    "email.circleci.com/o/"
+   ]
+  },
+  {
+   "name": "Cirrus Insight",
+   "patterns": [
+    "tracking.cirrusinsight.com"
+   ]
+  },
+  {
+   "name": "Clarivate",
+   "patterns": [
+    "/email/track\\?a="
+   ]
+  },
+  {
+   "name": "CLICKBOTPROTECTION",
+   "patterns": [
+    "inthemoon.com/r2.php"
+   ]
+  },
+  {
+   "name": "ClickMeter",
+   "patterns": [
+    "pixel.watch/"
+   ]
+  },
+  {
+   "name": "Clio",
+   "patterns": [
+    "app.clio.com/tracking_pixel"
+   ]
+  },
+  {
+   "name": "Close",
+   "patterns": [
+    "close.io/email_opened",
+    "close.com/email_opened",
+    "dripemail2"
+   ]
+  },
+  {
+   "name": "cloudHQ",
+   "patterns": [
+    "cloudhq.io/mail_track",
+    "cloudhq-mkt[0-9].net/mail_track"
+   ]
+  },
+  {
+   "name": "Coda",
+   "patterns": [
+    "coda.io/logging/ping"
+   ]
+  },
+  {
+   "name": "CommissionSoup",
+   "patterns": [
+    "cstrk.net/imp.aspx\\?l="
+   ]
+  },
+  {
+   "name": "ConneQuityMailer",
+   "patterns": [
+    "connequitymailer.com/open/"
+   ]
+  },
+  {
+   "name": "Conrad",
+   "patterns": [
+    "aktuell.conrad.de/g.html"
+   ]
+  },
+  {
+   "name": "Constant Contact",
+   "patterns": [
+    "rs6.net/on.jsp"
+   ]
+  },
+  {
+   "name": "ContactMonkey",
+   "patterns": [
+    "contactmonkey.com/api/v1/tracker"
+   ]
+  },
+  {
+   "name": "ConvertKit",
+   "patterns": [
+    "convertkit-mail.com/o/",
+    "open.convertkit-mail2.com/"
+   ]
+  },
+  {
+   "name": "Copernica",
+   "patterns": [
+    "/image/[0-9][0-9][0-9][0-9]/[a-z0-9_]+/image.gif\\?cdmiv=",
+    "/images/pixel2.gif\\?pomiv="
+   ]
+  },
+  {
+   "name": "Copper",
+   "patterns": [
+    "prosperworks.com/tp/t"
+   ]
+  },
+  {
+   "name": "Cordial",
+   "patterns": [
+    "/o/p/[0-9][0-9][0-9][0-9]:"
+   ]
+  },
+  {
+   "name": "Cprpt",
+   "patterns": [
+    "/o.aspx\\?t="
+   ]
+  },
+  {
+   "name": "Creditmantri.com",
+   "patterns": [
+    "mailer.creditmantri.com/t/"
+   ]
+  },
+  {
+   "name": "Critical Impact",
+   "patterns": [
+    "portal.criticalimpact.com/c2/"
+   ]
+  },
+  {
+   "name": "Cuenote",
+   "patterns": [
+    "cuenote.jp/c/"
+   ]
+  },
+  {
+   "name": "Curumeru",
+   "patterns": [
+    "crmf.jp"
+   ]
+  },
+  {
+   "name": "Customer.io",
+   "patterns": [
+    "customeriomail.com/e/o",
+    "track.customer.io/e/o",
+    "/e/o/.+"
+   ]
+  },
+  {
+   "name": "CustomerRings",
+   "patterns": [
+    "c-rings.net/Mail/Gif/"
+   ]
+  },
+  {
+   "name": "Cyberimpact",
+   "patterns": [
+    "app.cyberimpact.com/footer-image"
+   ]
+  },
+  {
+   "name": "Data Axle",
+   "patterns": [
+    "ympxl.com/log.gif"
+   ]
+  },
+  {
+   "name": "dataX",
+   "patterns": [
+    "openedlog.bdash-cloud.com/opened",
+    "openedlog.smart-bdash.com/opened"
+   ]
+  },
+  {
+   "name": "Dating Profits",
+   "patterns": [
+    "click.xnxxinc.com/campaign/track-email/"
+   ]
+  },
+  {
+   "name": "Deployteq",
+   "patterns": [
+    "click.centraalbeheer.nl",
+    "e.wehkamp.nl",
+    "e.bax-shop.nl"
+   ]
+  },
+  {
+   "name": "DidTheyReadIt",
+   "patterns": [
+    "xpostmail.com"
+   ]
+  },
+  {
+   "name": "Discord",
+   "patterns": [
+    "discord.com/api/science/"
+   ]
+  },
+  {
+   "name": "Disney",
+   "patterns": [
+    "clk.messaging.go.com/c/[0-9][0-9]/bcasts/[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]/view"
+   ]
+  },
+  {
+   "name": "DocuMatix",
+   "patterns": [
+    "enews.itcu.org/op\\?m="
+   ]
+  },
+  {
+   "name": "Doorkeeper",
+   "patterns": [
+    "r.doorkeeper.jp/.+.png"
+   ]
+  },
+  {
+   "name": "DotDigital",
+   "patterns": [
+    "trackedlink.net",
+    "dmtrk.net",
+    "email.syntricate.com.au"
+   ]
+  },
+  {
+   "name": "Driftem",
+   "patterns": [
+    "driftem.com/ltrack"
+   ]
+  },
+  {
+   "name": "Drop",
+   "patterns": [
+    "pixel.massdrop.com/open/pixel.gif"
+   ]
+  },
+  {
+   "name": "Dropbox",
+   "patterns": [
+    "dropbox.com/l/"
+   ]
+  },
+  {
+   "name": "Dyson",
+   "patterns": [
+    "tracking.dyson.com/t/"
+   ]
+  },
+  {
+   "name": "eBay",
+   "patterns": [
+    "ebayadservices.com/marketingtracking/v1/impression"
+   ]
+  },
+  {
+   "name": "Ebsta",
+   "patterns": [
+    "console.ebsta.com",
+    "ebsta.gif",
+    "ebsta.com/r/"
+   ]
+  },
+  {
+   "name": "EdgeSuite",
+   "patterns": [
+    "epidm.edgesuite.net"
+   ]
+  },
+  {
+   "name": "eGain",
+   "patterns": [
+    "notify.egain.cloud/egain/notify/"
+   ]
+  },
+  {
+   "name": "Email on Acid",
+   "patterns": [
+    "eoapxl.com"
+   ]
+  },
+  {
+   "name": "EmailTracker.website",
+   "patterns": [
+    "my-email-signature.link"
+   ]
+  },
+  {
+   "name": "Emarsys",
+   "patterns": [
+    "/mo/.+.gif",
+    "emarsys.com/e2t/o/"
+   ]
+  },
+  {
+   "name": "EmberPoint",
+   "patterns": [
+    "rec.mpse.jp",
+    "/open.html\\?cnid="
+   ]
+  },
+  {
+   "name": "Envoke",
+   "patterns": [
+    "envoke.com/o/"
+   ]
+  },
+  {
+   "name": "Epic Games",
+   "patterns": [
+    "accts.epicgames.com/O/"
+   ]
+  },
+  {
+   "name": "Epsilon",
+   "patterns": [
+    "login.dotomi.com/ucm/UCMController",
+    "/O/[a-z0-9_]+/[a-z0-9_]+",
+    "ind.dell.com"
+   ]
+  },
+  {
+   "name": "Escalent",
+   "patterns": [
+    "email-analytics.morpace.com"
+   ]
+  },
+  {
+   "name": "eSputnik",
+   "patterns": [
+    "esputnik.com/repository/applications/commons/hidden.png"
+   ]
+  },
+  {
+   "name": "Etransmail",
+   "patterns": [
+    "ftrans03.com/linktrack/"
+   ]
+  },
+  {
+   "name": "EventBrite",
+   "patterns": [
+    "eventbrite.com/emails/action"
+   ]
+  },
+  {
+   "name": "EventsInYourArea",
+   "patterns": [
+    "eventsinyourarea.com/track/"
+   ]
+  },
+  {
+   "name": "EveryAction",
+   "patterns": [
+    "click.everyaction.com/j/"
+   ]
+  },
+  {
+   "name": "Evite",
+   "patterns": [
+    "pippio.com/api/sync",
+    "nli.evite.com/imp"
+   ]
+  },
+  {
+   "name": "ezyVet",
+   "patterns": [
+    "ezyvet.com/email_open_log.php"
+   ]
+  },
+  {
+   "name": "Fastic",
+   "patterns": [
+    "/e/eo\\?_t="
+   ]
+  },
+  {
+   "name": "Flatastic",
+   "patterns": [
+    "api.flatastic-app.com/index.php/img"
+   ]
+  },
+  {
+   "name": "Flipkart",
+   "patterns": [
+    "flipkart.com/t/open"
+   ]
+  },
+  {
+   "name": "ForMirror",
+   "patterns": [
+    "formirror.com/open/"
+   ]
+  },
+  {
+   "name": "FreeLancer",
+   "patterns": [
+    "freelancer.com/1px.gif"
+   ]
+  },
+  {
+   "name": "FreshMail",
+   "patterns": [
+    "mail..+.pl/o/"
+   ]
+  },
+  {
+   "name": "FrontApp",
+   "patterns": [
+    "app.frontapp.com",
+    "web.frontapp.com/api"
+   ]
+  },
+  {
+   "name": "G-Lock Analytics",
+   "patterns": [
+    "fssdev.com/t/\\?[po]"
+   ]
+  },
+  {
+   "name": "GearBest",
+   "patterns": [
+    "appinthestore.com/marketing/mail-user-deal/open"
+   ]
+  },
+  {
+   "name": "Gem",
+   "patterns": [
+    "zen.sr/o"
+   ]
+  },
+  {
+   "name": "GetBase",
+   "patterns": [
+    "getbase.com/e1t/o/"
+   ]
+  },
+  {
+   "name": "GetNotify",
+   "patterns": [
+    "email81.com/case"
+   ]
+  },
+  {
+   "name": "GetResponse",
+   "patterns": [
+    "/open.html\\?x="
+   ]
+  },
+  {
+   "name": "GitHub",
+   "patterns": [
+    "github.com/notifications/beacon/"
+   ]
+  },
+  {
+   "name": "Gmass",
+   "patterns": [
+    "ec2-52-26-194-35.us-west-2.compute.amazonaws.com",
+    "link.gmreg[0-9].net",
+    "gmreg[0-9].net",
+    "gmtrack.net"
+   ]
+  },
+  {
+   "name": "Gmelius",
+   "patterns": [
+    "gml.email"
+   ]
+  },
+  {
+   "name": "GoDaddy",
+   "patterns": [
+    "email.cloud.secureclick.net/view\\?"
+   ]
+  },
+  {
+   "name": "gogcli",
+   "patterns": [
+    "gog-email-tracker-"
+   ]
+  },
+  {
+   "name": "Google",
+   "patterns": [
+    "ad.doubleclick.net/ddm/ad",
+    "google-analytics.com/collect",
+    "google.com/appserve/mkt/img/",
+    "notifications.google.com/g/img/",
+    "youtube.com/gen_204",
+    "notifications.googleapis.com/email/t",
+    "youtube.com/attribution_link"
+   ]
+  },
+  {
+   "name": "Grammarly",
+   "patterns": [
+    "grammarly.com/open"
+   ]
+  },
+  {
+   "name": "Granicus",
+   "patterns": [
+    "govdelivery.com(:[0-9]+)?/track",
+    "links.ssa.gov/track"
+   ]
+  },
+  {
+   "name": "GreenMail",
+   "patterns": [
+    "greenmail.co.in"
+   ]
+  },
+  {
+   "name": "Groupon",
+   "patterns": [
+    "groupon.com/analytic/track.gif\\?"
+   ]
+  },
+  {
+   "name": "GrowthDot",
+   "patterns": [
+    "growthdot.com/api/mail-tracking"
+   ]
+  },
+  {
+   "name": "Higher Logic",
+   "patterns": [
+    "informz.net/z/[a-z0-9_]+/image.gif"
+   ]
+  },
+  {
+   "name": "Hiretual",
+   "patterns": [
+    "api.hiretual.com/webhooks/tracking/open/"
+   ]
+  },
+  {
+   "name": "Homeaway",
+   "patterns": [
+    "trk.homeaway.com"
+   ]
+  },
+  {
+   "name": "HubSpot",
+   "patterns": [
+    "t.hubspotemail",
+    "t.hubspotfree",
+    "t.signaux",
+    "t.senal",
+    "t.signale",
+    "t.sidekickopen",
+    "t.sigopn",
+    "t.hsmsdd",
+    "t.strk[0-9][0-9].email",
+    "track.getsidekick.com",
+    "/e2t/o/",
+    "/e2t/c/",
+    "/e2t/to/",
+    "hubspotlinks.com/[bc]to/",
+    "/e3t/[bc]to/"
+   ]
+  },
+  {
+   "name": "Hunter.io",
+   "patterns": [
+    "mltrk.io/pixel"
+   ]
+  },
+  {
+   "name": "Hyper Hyper",
+   "patterns": [
+    "hyperhub.com.au/newhub/api/email/track"
+   ]
+  },
+  {
+   "name": "iContact",
+   "patterns": [
+    "click.icptrack.com/icp"
+   ]
+  },
+  {
+   "name": "Indeed",
+   "patterns": [
+    "subscriptions.indeed.com/imgping"
+   ]
+  },
+  {
+   "name": "Inflection",
+   "patterns": [
+    "tracking.inflection.io"
+   ]
+  },
+  {
+   "name": "Infobip",
+   "patterns": [
+    "/tracking/1/open/"
+   ]
+  },
+  {
+   "name": "Infusion Software",
+   "patterns": [
+    "infusionsoft.com/app/emailOpened",
+    "keap-link[0-9][0-9][0-9].com/v2/render/"
+   ]
+  },
+  {
+   "name": "Integral Ad Science",
+   "patterns": [
+    "pixel.adsafeprotected.com"
+   ]
+  },
+  {
+   "name": "Intercom",
+   "patterns": [
+    "via.intercom.io/o",
+    "intercom-mail.+.com/(via/)?[oq]"
+   ]
+  },
+  {
+   "name": "Intuit",
+   "patterns": [
+    "list-manage.com/track/open.php",
+    "us[0-9]+.mailchimp.com/mctx/opens",
+    "/track/open.php\\?u="
+   ]
+  },
+  {
+   "name": "Inxmail",
+   "patterns": [
+    "/d/d.gif\\?"
+   ]
+  },
+  {
+   "name": "Is-tracking-pixel-api-prod.appspot.com",
+   "patterns": [
+    "is-tracking-pixel-api-prod.appspot.com"
+   ]
+  },
+  {
+   "name": "Iterable",
+   "patterns": [
+    "/s/eo/[a-zA-Z0-9_-]+/[a-zA-Z0-9]+/[0-9][0-9]"
+   ]
+  },
+  {
+   "name": "Japan Railway",
+   "patterns": [
+    "expy.jp/c/"
+   ]
+  },
+  {
+   "name": "Jeeng",
+   "patterns": [
+    "/stripe/image\\?cs_"
+   ]
+  },
+  {
+   "name": "Keychron",
+   "patterns": [
+    "keychron.com/_t/open/"
+   ]
+  },
+  {
+   "name": "Klaviyo",
+   "patterns": [
+    "trk.klaviyomail.com",
+    "ctrk.klclick[123]?.com/o/"
+   ]
+  },
+  {
+   "name": "LaunchBit",
+   "patterns": [
+    "launchbit.com/taz-pixel"
+   ]
+  },
+  {
+   "name": "Lidl",
+   "patterns": [
+    "servicemails.lidl.de/d/d.gif"
+   ]
+  },
+  {
+   "name": "LinkedIn",
+   "patterns": [
+    "linkedin.com/emimp/",
+    "help.linkedin.com/rd/"
+   ]
+  },
+  {
+   "name": "Litmus",
+   "patterns": [
+    "emltrk.com"
+   ]
+  },
+  {
+   "name": "Liveclicker",
+   "patterns": [
+    "em.realtime.email/service/rte\\?kind=duration"
+   ]
+  },
+  {
+   "name": "LiveIntent",
+   "patterns": [
+    "/imp\\?s=[0-9][0-9][0-9][0-9][0-9][0-9]"
+   ]
+  },
+  {
+   "name": "Locaweb",
+   "patterns": [
+    ".br/accounts/[0-9][0-9][0-9][0-9]/messages/[0-9][0-9][0-9]/openings/[0-9][0-9][0-9][0-9][0-9]\\?envelope_id="
+   ]
+  },
+  {
+   "name": "LogDNA",
+   "patterns": [
+    "ping.answerbook.com"
+   ]
+  },
+  {
+   "name": "Magento",
+   "patterns": [
+    "magento.com/trk",
+    "go.rjmetrics.com"
+   ]
+  },
+  {
+   "name": "Mailbird",
+   "patterns": [
+    "tracking.getmailbird.com/OpenTrackingPixel/"
+   ]
+  },
+  {
+   "name": "Mailbutler",
+   "patterns": [
+    "bowtie.mailbutler.io/tracking/hit/"
+   ]
+  },
+  {
+   "name": "Mailcampaigns",
+   "patterns": [
+    "interface.mailcampaigns.nl/v[0-9]/t/"
+   ]
+  },
+  {
+   "name": "Mailcastr",
+   "patterns": [
+    "mailcastr.com/image/"
+   ]
+  },
+  {
+   "name": "MailCoral",
+   "patterns": [
+    "mailcoral.com/open"
+   ]
+  },
+  {
+   "name": "MailerLite",
+   "patterns": [
+    "/link/o/",
+    "clicks.mlsend.com"
+   ]
+  },
+  {
+   "name": "Mailgun",
+   "patterns": [
+    "/o/eJ"
+   ]
+  },
+  {
+   "name": "MailInifinity",
+   "patterns": [
+    "mailinifinity.com/ptrack"
+   ]
+  },
+  {
+   "name": "Mailjet",
+   "patterns": [
+    "/oo/[a-z0-9]+/[a-z0-9][a-z0-9][a-z0-9][a-z0-9][a-z0-9][a-z0-9][a-z0-9][a-z0-9]/e.gif"
+   ]
+  },
+  {
+   "name": "Mailshake",
+   "patterns": [
+    "w1.mslai.net/prod/open/",
+    "w1.msstnu.com/prod/open/"
+   ]
+  },
+  {
+   "name": "Mailspring",
+   "patterns": [
+    "getmailspring.com/open",
+    "img.secureserver.net/bbimage.aspx"
+   ]
+  },
+  {
+   "name": "MailTag",
+   "patterns": [
+    "mailtag.io/email-event"
+   ]
+  },
+  {
+   "name": "MailTrack",
+   "patterns": [
+    "mailtrack.io/trace",
+    "mltrk.io/pixel"
+   ]
+  },
+  {
+   "name": "Mailzter",
+   "patterns": [
+    "mailzter.in/ltrack"
+   ]
+  },
+  {
+   "name": "Mapp",
+   "patterns": [
+    "/tr/p.gif\\?",
+    "enews.zdnet.com/imagelibrary/"
+   ]
+  },
+  {
+   "name": "Maropost",
+   "patterns": [
+    "/a/[0-9][0-9][0-9][0-9]/open/[0-9][0-9][0-9][0-9]/[0-9][0-9][0-9][0-9][0-9][0-9][0-9]?/"
+   ]
+  },
+  {
+   "name": "MDirector",
+   "patterns": [
+    "track.mdrctr.com/track/open/key/"
+   ]
+  },
+  {
+   "name": "Medallia",
+   "patterns": [
+    "survey[0-9]?.medallia.+/\\?[a-z0-9_]+&invite-opened=yes"
+   ]
+  },
+  {
+   "name": "Mercari",
+   "patterns": [
+    "bmo.mercari.jp"
+   ]
+  },
+  {
+   "name": "MessageGears",
+   "patterns": [
+    "/o/4/eyJhaSI6"
+   ]
+  },
+  {
+   "name": "Meta",
+   "patterns": [
+    "facebook.com/aymt/aa/",
+    "facebook.com/r/v/",
+    "facebook.com/email_open_log_pic.php",
+    "facebookdevelopers.com/trk",
+    "fb.com/trk"
+   ]
+  },
+  {
+   "name": "MetaData",
+   "patterns": [
+    "metadata.io/e1t/o/"
+   ]
+  },
+  {
+   "name": "Microsoft",
+   "patterns": [
+    "svc.dynamics.com/t/i/",
+    "mucp.api.account.microsoft.com",
+    "gridinbound.blob.core.windows.net",
+    "dist.nam.formspro.microsoft.com/api/invite/outbound/"
+   ]
+  },
+  {
+   "name": "MixMax",
+   "patterns": [
+    "email.mixmax.com",
+    "track.mixmax.com",
+    "mixmax.com/api/track/"
+   ]
+  },
+  {
+   "name": "Mixpanel",
+   "patterns": [
+    "api.mixpanel.com/tr"
+   ]
+  },
+  {
+   "name": "Moneyforward",
+   "patterns": [
+    "tm.moneyforward.com/I/"
+   ]
+  },
+  {
+   "name": "Movable Ink",
+   "patterns": [
+    "/p/[cu]p/.+/o.gif"
+   ]
+  },
+  {
+   "name": "Mumara",
+   "patterns": [
+    "/campaign/track-email/[0-9][0-9][0-9][0-9][0-9][0-9]__[0-9][0-9][0-9]__[0-9][0-9][0-9][0-9][0-9][0-9][0-9]__[0-9][0-9][0-9]"
+   ]
+  },
+  {
+   "name": "MyEmma",
+   "patterns": [
+    "e2ma.net/track",
+    "t.e2ma.net"
+   ]
+  },
+  {
+   "name": "Nation Builder",
+   "patterns": [
+    "nationbuilder.com/r/o"
+   ]
+  },
+  {
+   "name": "NeteCart",
+   "patterns": [
+    "netecart.com/ltrack"
+   ]
+  },
+  {
+   "name": "Netflix",
+   "patterns": [
+    "beaconimages.netflix.net/img/"
+   ]
+  },
+  {
+   "name": "NetHunt",
+   "patterns": [
+    "nethunt.com/api/v1/track/email/"
+   ]
+  },
+  {
+   "name": "Neustar",
+   "patterns": [
+    "/emailprefs/images/[a-z0-9_]+/[0-9]+/"
+   ]
+  },
+  {
+   "name": "Newegg",
+   "patterns": [
+    "newegg.com/mr/.+.gif"
+   ]
+  },
+  {
+   "name": "NewtonHQ",
+   "patterns": [
+    "tr.cloudmagic.com"
+   ]
+  },
+  {
+   "name": "NTT",
+   "patterns": [
+    "club-ntt-west.com/cn-w/cmn/img/1.png"
+   ]
+  },
+  {
+   "name": "Omnisend",
+   "patterns": [
+    "/transactional/track/.+\\?signature="
+   ]
+  },
+  {
+   "name": "Ongage",
+   "patterns": [
+    "/\\?x[ou]l=.+&(amp;)?eih="
+   ]
+  },
+  {
+   "name": "OpenBracket",
+   "patterns": [
+    "openbracket.co/track"
+   ]
+  },
+  {
+   "name": "OpenWork",
+   "patterns": [
+    "openwork.jp/log_mail_open_com"
+   ]
+  },
+  {
+   "name": "Opicle",
+   "patterns": [
+    "track.opicle.com"
+   ]
+  },
+  {
+   "name": "Optimove",
+   "patterns": [
+    "/ss/o/[a-zA-Z0-9_.-]+/[a-z0-9][a-z0-9][a-z0-9]/[a-zA-Z0-9_]+/ho.gif"
+   ]
+  },
+  {
+   "name": "Oracle",
+   "patterns": [
+    "tags.bluekai.com/site",
+    "en25.com/e/",
+    "dynect.net/trk.php",
+    "lifelock.custhelp.com/rd/",
+    "bm5150.com/t/",
+    "bm23.com/t/",
+    "/t/o\\?",
+    "/pub/as\\?_ri_=",
+    "/e/FooterImages/FooterImage"
+   ]
+  },
+  {
+   "name": "OutMaster",
+   "patterns": [
+    "outmaster.co/mailer/index.php/campaigns/"
+   ]
+  },
+  {
+   "name": "Outreach",
+   "patterns": [
+    "app.outreach.io",
+    "outrch.com/api/mailings/opened",
+    "getoutreach.com/api/mailings/opened",
+    "a.science-recruiting.com/api/mailings/opened"
+   ]
+  },
+  {
+   "name": "pafin",
+   "patterns": [
+    "mail.cryptact.com/ty/v/"
+   ]
+  },
+  {
+   "name": "Paved",
+   "patterns": [
+    "vpdae.com/open/[0-9][0-9][0-9][0-9].gif"
+   ]
+  },
+  {
+   "name": "PayBack",
+   "patterns": [
+    "email.payback.in/a/",
+    "mail.payback.in/tr/"
+   ]
+  },
+  {
+   "name": "PayPal",
+   "patterns": [
+    "paypal-communication.com/O/",
+    "t.paypal.com/ts\\?"
+   ]
+  },
+  {
+   "name": "Paystone",
+   "patterns": [
+    "link.datacandy.com/i/"
+   ]
+  },
+  {
+   "name": "Paytm",
+   "patterns": [
+    "trk.paytmemail.com"
+   ]
+  },
+  {
+   "name": "Peach Aviation",
+   "patterns": [
+    "mlapp.flypeach.com/mail/prod/receipt/read.php\\?id=",
+    "mag.flypeach.com/c/"
+   ]
+  },
+  {
+   "name": "Pepipost",
+   "patterns": [
+    "[A-Z][A-Z][A-Z][A-Z][A-Z][A-Z][A-Z][A-Z][A-Z]\\?id="
+   ]
+  },
+  {
+   "name": "PersistIQ",
+   "patterns": [
+    "infinite-stream-5194.herokuapp.com/pixel"
+   ]
+  },
+  {
+   "name": "phpList",
+   "patterns": [
+    "/ut.php\\?u="
+   ]
+  },
+  {
+   "name": "PipeDrive",
+   "patterns": [
+    "api.nylas.com/open"
+   ]
+  },
+  {
+   "name": "Playdom",
+   "patterns": [
+    "playdom.com/g"
+   ]
+  },
+  {
+   "name": "Plusgrade",
+   "patterns": [
+    "upgrade.plusgrade.com/offer/"
+   ]
+  },
+  {
+   "name": "Polymail",
+   "patterns": [
+    "polymail.io/v2/z/",
+    "share.polymail.io"
+   ]
+  },
+  {
+   "name": "Postmark",
+   "patterns": [
+    "pstmrk.it"
+   ]
+  },
+  {
+   "name": "Press Ganey",
+   "patterns": [
+    "email.patients.pgsurveying.com"
+   ]
+  },
+  {
+   "name": "ProlificMail",
+   "patterns": [
+    "prolificmail.com/ltrack"
+   ]
+  },
+  {
+   "name": "Qualtrics",
+   "patterns": [
+    "/WRQualtricsContacts/Watermark.php",
+    "survey.satrixresearch.com/subscription/watermark.gif"
+   ]
+  },
+  {
+   "name": "Quora",
+   "patterns": [
+    "quora.com/qemail/mark_read"
+   ]
+  },
+  {
+   "name": "Rabobank",
+   "patterns": [
+    "mail.rabobank.nl/public/o/"
+   ]
+  },
+  {
+   "name": "Rakuten",
+   "patterns": [
+    "img.travel.rakuten.co.jp/share/mail/img/open/",
+    "r.rakuten.co.jp",
+    "cl.rakuten-bank.co.jp/rw/beacon_",
+    "cmb.rakuten-sec.co.jp/bin/checker"
+   ]
+  },
+  {
+   "name": "ReachMail",
+   "patterns": [
+    "/open/.+/image.gif"
+   ]
+  },
+  {
+   "name": "ReplyCal",
+   "patterns": [
+    "replycal.com/home/index/\\?token"
+   ]
+  },
+  {
+   "name": "ReplyMsg",
+   "patterns": [
+    "replymsg.com"
+   ]
+  },
+  {
+   "name": "Responder.co.il",
+   "patterns": [
+    "opens.responder.co.il"
+   ]
+  },
+  {
+   "name": "Rewe",
+   "patterns": [
+    "epost.rewe.de/action/view/"
+   ]
+  },
+  {
+   "name": "Rocketbolt",
+   "patterns": [
+    "email.rocketbolt.com/o/"
+   ]
+  },
+  {
+   "name": "Rule",
+   "patterns": [
+    "app.rule.io/track/image"
+   ]
+  },
+  {
+   "name": "Sailthru",
+   "patterns": [
+    "sailthru.com/trk",
+    "/img/[a-z0-9_.]+/[a-z0-9_][a-z0-9_][a-z0-9_][a-z0-9_][a-z0-9_][a-z0-9_][a-z0-9_][a-z0-9_].gif"
+   ]
+  },
+  {
+   "name": "Salesforce",
+   "patterns": [
+    "salesforceiq.com/t.png",
+    "beacon.krxd.net",
+    "app.relateiq.com/t.png",
+    "nova.collect.igodigital.com",
+    "/open.aspx\\?",
+    "pixel.inbox.exacttarget.com/pixel.gif",
+    "welcome.michaelcassel.com/r/.+/open/1",
+    "pardot.com/r/"
+   ]
+  },
+  {
+   "name": "SalesHandy",
+   "patterns": [
+    "saleshandy.com/web/email/countopened"
+   ]
+  },
+  {
+   "name": "SalesLoft",
+   "patterns": [
+    "salesloft.com/email_trackers"
+   ]
+  },
+  {
+   "name": "Selligent",
+   "patterns": [
+    "/optiext/optiextension.dll",
+    "strongview.com/t",
+    "emsecure.net",
+    "selligent.com",
+    "slgnt.eu",
+    "slgnt.us"
+   ]
+  },
+  {
+   "name": "SendGrid",
+   "patterns": [
+    "sendgrid.net/wf/open",
+    "sendgrid.net/trk",
+    "sendgrid.net/mpss/o",
+    "sendgrid.net/ss/o",
+    "sendgrid.com/wf/open",
+    "sendgrid.com/trk",
+    "sendgrid.com/mpss/o",
+    "sendgrid.com/ss/o",
+    "/wf/open\\?upn="
+   ]
+  },
+  {
+   "name": "Sendinblue",
+   "patterns": [
+    "sendibtd.com",
+    "sendibw.com/track/",
+    "amxe.net",
+    "/[a-z][a-z]/op/"
+   ]
+  },
+  {
+   "name": "SendPulse",
+   "patterns": [
+    "stat-pulse.com"
+   ]
+  },
+  {
+   "name": "Sendy",
+   "patterns": [
+    "/t/[a-zA-Z0-9_]+/[a-zA-Z0-9_]"
+   ]
+  },
+  {
+   "name": "Shopify",
+   "patterns": [
+    "/tools/emails/open/"
+   ]
+  },
+  {
+   "name": "Signal",
+   "patterns": [
+    "signl.live/tracker"
+   ]
+  },
+  {
+   "name": "Smore",
+   "patterns": [
+    "smore.com/app/reporting/pixel/"
+   ]
+  },
+  {
+   "name": "SMTP.com",
+   "patterns": [
+    "track.smtpsendmail.com/[0-9][0-9][0-9][0-9][0-9][0-9]?[0-9]?/o"
+   ]
+  },
+  {
+   "name": "Snov.io",
+   "patterns": [
+    "/track/open/v2-"
+   ]
+  },
+  {
+   "name": "SparkPost",
+   "patterns": [
+    "sparkpostmail2.com",
+    "/q/.+~~/"
+   ]
+  },
+  {
+   "name": "Splio",
+   "patterns": [
+    "trk-2.net/ouv"
+   ]
+  },
+  {
+   "name": "Sprinklr",
+   "patterns": [
+    "tracking-prod.sprinklr.com"
+   ]
+  },
+  {
+   "name": "Squarespace",
+   "patterns": [
+    "engage.squarespace-mail.com/v2/a.gif"
+   ]
+  },
+  {
+   "name": "Staples",
+   "patterns": [
+    "/ctt/mktOpen\\?"
+   ]
+  },
+  {
+   "name": "Steam",
+   "patterns": [
+    "store.steampowered.com/emi/"
+   ]
+  },
+  {
+   "name": "Step Coupon",
+   "patterns": [
+    "step-coupon.com/review_mail_read_status.html"
+   ]
+  },
+  {
+   "name": "Streak",
+   "patterns": [
+    "mailfoogae.appspot.com"
+   ]
+  },
+  {
+   "name": "Substack",
+   "patterns": [
+    "substack.com/o/"
+   ]
+  },
+  {
+   "name": "Superhuman",
+   "patterns": [
+    "r.superhuman.com"
+   ]
+  },
+  {
+   "name": "Taguchi",
+   "patterns": [
+    "taguchimail.com/i/app"
+   ]
+  },
+  {
+   "name": "TataDocomoBusiness",
+   "patterns": [
+    "tatadocomobusiness.com/rts/"
+   ]
+  },
+  {
+   "name": "Techgig",
+   "patterns": [
+    "tj_mailer_opened_count_all.php"
+   ]
+  },
+  {
+   "name": "Telstra",
+   "patterns": [
+    "tapi.telstra.com/presentation/v1/notification-mngmt/delivery-status-tracker"
+   ]
+  },
+  {
+   "name": "The Atlantic",
+   "patterns": [
+    "data-cdn.theatlantic.com/email.gif"
+   ]
+  },
+  {
+   "name": "The Chronicle of Higher Education",
+   "patterns": [
+    "d2uowlhdj52lqx.cloudfront.net/emailbeacon.png"
+   ]
+  },
+  {
+   "name": "The Washington Post",
+   "patterns": [
+    "palomaimages.washingtonpost.com/pr2/.+-beacon-[0-9]-[0-9]-[0-9][0-9]?-[0-9]",
+    "s2.washingtonpost.com/beacon/"
+   ]
+  },
+  {
+   "name": "TheTopInbox",
+   "patterns": [
+    "thetopinbox.com/track/"
+   ]
+  },
+  {
+   "name": "Thunderhead",
+   "patterns": [
+    "na5.thunderhead.com"
+   ]
+  },
+  {
+   "name": "Tinyletter",
+   "patterns": [
+    "tinyletterapp.com"
+   ]
+  },
+  {
+   "name": "ToutApp",
+   "patterns": [
+    "go.toutapp.com"
+   ]
+  },
+  {
+   "name": "Track",
+   "patterns": [
+    "trackapp.io/[br]/",
+    "trackapp.io/static/img/track.gif"
+   ]
+  },
+  {
+   "name": "Traverse",
+   "patterns": [
+    "/v1/.+/[0-9].gif\\?emailMd5Lower=",
+    "getpic.php\\?l="
+   ]
+  },
+  {
+   "name": "Tripolis",
+   "patterns": [
+    "/public/o/.+/t.gif"
+   ]
+  },
+  {
+   "name": "Trustyou",
+   "patterns": [
+    "analytics.trustyou.com/surveys/api/mailing/events/invitation/opened"
+   ]
+  },
+  {
+   "name": "Twilio",
+   "patterns": [
+    "api.segment.io/v1/pixel/track"
+   ]
+  },
+  {
+   "name": "Twitch",
+   "patterns": [
+    "spade.twitch.tv/track"
+   ]
+  },
+  {
+   "name": "Twitter",
+   "patterns": [
+    "twitter.com/scribe/ibis"
+   ]
+  },
+  {
+   "name": "UNiDAYS",
+   "patterns": [
+    "links[0-9]?.m.myunidays.com"
+   ]
+  },
+  {
+   "name": "Unsplash",
+   "patterns": [
+    "email.unsplash.com/o/"
+   ]
+  },
+  {
+   "name": "Upland PostUp",
+   "patterns": [
+    "efeedbacktrk.com"
+   ]
+  },
+  {
+   "name": "US Bancorp",
+   "patterns": [
+    "post-images.com/amy/open.action"
+   ]
+  },
+  {
+   "name": "User.com",
+   "patterns": [
+    ".user.com/emails/open/"
+   ]
+  },
+  {
+   "name": "Validity",
+   "patterns": [
+    ".returnpath.net/pixel.gif"
+   ]
+  },
+  {
+   "name": "Varibase",
+   "patterns": [
+    "e.varibase.com/mail/MOS"
+   ]
+  },
+  {
+   "name": "Vcommission",
+   "patterns": [
+    "tracking.vcommission.com"
+   ]
+  },
+  {
+   "name": "Verizon",
+   "patterns": [
+    "verizon.com/econtact/ecrm/EmailTracking.serv"
+   ]
+  },
+  {
+   "name": "VinSolutions",
+   "patterns": [
+    "vinlens.com/email.ashx\\?c="
+   ]
+  },
+  {
+   "name": "Vinted",
+   "patterns": [
+    "vinted.[a-z][a-z]/crm/email_track\\?crm_email_id="
+   ]
+  },
+  {
+   "name": "VoIP.ms",
+   "patterns": [
+    "voip.ms/email.php\\?id="
+   ]
+  },
+  {
+   "name": "Vtiger",
+   "patterns": [
+    "od2.vtiger.com/shorturl.php"
+   ]
+  },
+  {
+   "name": "Walmart",
+   "patterns": [
+    "w-mt.co/g/rptrcks/comm-smart-app/services/tracking/openTracker"
+   ]
+  },
+  {
+   "name": "We Are Web",
+   "patterns": [
+    "tracking.weareweb.in/index.php/campaigns/"
+   ]
+  },
+  {
+   "name": "Webtrekk",
+   "patterns": [
+    "webtrekk.net"
+   ]
+  },
+  {
+   "name": "WhatCounts",
+   "patterns": [
+    "/t\\?c=[0-9][0-9][0-9][0-9]&r=[0-9][0-9][0-9][0-9]&l=[0-9][0-9][0-9]?&t=[0-9][0-9]&e="
+   ]
+  },
+  {
+   "name": "WildApricot",
+   "patterns": [
+    "wildapricot.com/o/",
+    "wildapricot.org/emailtracker",
+    "/EmailTracker/EmailTracker.ashx"
+   ]
+  },
+  {
+   "name": "Windscribe",
+   "patterns": [
+    "windscribe.com/pixel"
+   ]
+  },
+  {
+   "name": "Wise",
+   "patterns": [
+    "links.transferwise.com/track/",
+    "api.transferwise.com"
+   ]
+  },
+  {
+   "name": "Wish",
+   "patterns": [
+    "wish.com/email-beacon.png"
+   ]
+  },
+  {
+   "name": "Wix",
+   "patterns": [
+    "shoutout.wix.com"
+   ]
+  },
+  {
+   "name": "WordPress",
+   "patterns": [
+    "pixel.wp.com/t.gif"
+   ]
+  },
+  {
+   "name": "Yahoo!",
+   "patterns": [
+    "a.analytics.yahoo.com/p.pl"
+   ]
+  },
+  {
+   "name": "Yahoo! Japan",
+   "patterns": [
+    "dsb.yahoo.co.jp/api/v1/clear.gif"
+   ]
+  },
+  {
+   "name": "YAMM",
+   "patterns": [
+    "yamm-track.appspot"
+   ]
+  },
+  {
+   "name": "Yardi",
+   "patterns": [
+    "/t/teo\\?ref="
+   ]
+  },
+  {
+   "name": "Yesware",
+   "patterns": [
+    "yesware.com/trk",
+    "yesware.com/t/",
+    "t.yesware.com"
+   ]
+  },
+  {
+   "name": "Zendesk",
+   "patterns": [
+    "futuresimple.com/api/v1/sprite.png"
+   ]
+  },
+  {
+   "name": "Zeta Global",
+   "patterns": [
+    "e.newsletters.cnn.com/open/",
+    "e.email.consumerreports.org/open/"
+   ]
+  },
+  {
+   "name": "Zoho",
+   "patterns": [
+    "maillist-manage.com/clicks/",
+    "/open.gif",
+    "sender[0-9].zohoinsights-crm.com/ocimage/"
+   ]
+  }
+ ]
+}

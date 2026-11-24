@@ -1,0 +1,28 @@
+{
+  "name": "@usualmail/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Usual Mail's web dashboard: server-rendered setup pages for inboxes, rules, devices and agents, and Handled.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "embed": "node scripts/embed.mjs",
+    "check": "node scripts/embed.mjs --check && tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json && node --test --test-reporter=spec \"test/*.test.ts\"",
+    "test": "node --test \"test/*.test.ts\""
+  },
+  "dependencies": {
+    "@usualmail/core": "file:../core",
+    "hono": "4.13.18"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "typescript": "7.0.2"
+  }
+}

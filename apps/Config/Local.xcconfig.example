@@ -1,0 +1,8 @@
+// Copy to Config/Local.xcconfig (gitignored) to run on a device or sign a build.
+// Unsigned builds and the iOS Simulator work without this file.
+
+// Your Apple Developer team ID (Xcode › Settings › Accounts), after the equals sign.
+DEVELOPMENT_TEAM =
+
+// A reverse-DNS prefix you own, so a fork's build doesn't clash with labs.usual.UsualMail.
+// BUNDLE_ID_PREFIX = com.example
