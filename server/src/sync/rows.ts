@@ -39,6 +39,7 @@ export async function createThread(ctx: Ctx, inbox: InboxRow, first: ProviderMes
     screened: false,
     screenedByMailbox: false,
     gatePending: false,
+    skippedScreening: null,
     summary: null,
     payment: null,
     paymentAgain: false,

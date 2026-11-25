@@ -47,7 +47,9 @@ test("adds search's tables, index and trigger, changes no row; the first start b
     ], "write");
     const before = await client.execute("SELECT * FROM threads ORDER BY id");
     await migrate(drizzle(client), { migrationsFolder: source });
-    assert.deepEqual((await client.execute("SELECT * FROM threads ORDER BY id")).rows, before.rows, "no thread changed");
+    // Columns later migrations add aren't this one's to judge.
+    const after = (await client.execute("SELECT * FROM threads ORDER BY id")).rows;
+    assert.deepEqual(after.map((row, i) => Object.fromEntries(Object.entries(row).filter(([key]) => key in before.rows[i]!))), before.rows.map((row) => ({ ...row })), "no thread changed");
     const made = await client.execute("SELECT type, name FROM sqlite_master WHERE name IN ('search_docs', 'search_people', 'search_index', 'search_docs_delete') ORDER BY name");
     assert.deepEqual(made.rows.map((row) => [row.type, row.name]), [["table", "search_docs"], ["trigger", "search_docs_delete"], ["table", "search_index"], ["table", "search_people"]]);
     assert.equal((await client.execute("SELECT count(*) AS n FROM search_index")).rows[0]!.n, 0, "nothing filled by the migration");

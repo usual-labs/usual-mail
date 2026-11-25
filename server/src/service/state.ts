@@ -2,7 +2,7 @@
 // Undo restores the touched parts from a record's `before`; approve compares them to see if a proposal is
 // stale.
 
-import type { ActionInput, ActionKind, Actor, Category, CategorySource, Need, Stack } from "@usualmail/core";
+import type { ActionInput, ActionKind, Actor, Category, CategorySource, Need, ScreeningPass, Stack } from "@usualmail/core";
 import type { SenderStatus, ThreadRow } from "../db/index.ts";
 
 /**
@@ -54,6 +54,11 @@ export interface ThreadState {
   screened: boolean;
   /** Screened because the mailbox filed it under Screening: such a filing holds even a one-time code. */
   screenedByMailbox: boolean;
+  /**
+   * The kind of mail that let it skip Screening while its sender isn't let in (`Thread.skippedScreening`); it goes with
+   * `screened`, and a screened thread has none. Absent in a state a record kept from before it existed: none.
+   */
+  skippedScreening?: ScreeningPass | null;
   summary: string | null;
   done: boolean;
   stack: Stack | null;
@@ -136,6 +141,7 @@ export function stateOf(row: ThreadRow, messages: Array<{ id: string; unread: bo
     categorizedByActor: row.categorizedByActor,
     screened: row.screened,
     screenedByMailbox: row.screenedByMailbox,
+    skippedScreening: row.skippedScreening,
     summary: row.summary,
     done: row.done,
     stack: row.stack,
@@ -190,6 +196,7 @@ export function withGroups(groups: readonly Group[], base: ThreadState, from: Th
       case "screened":
         next.screened = from.screened;
         next.screenedByMailbox = from.screenedByMailbox ?? false;
+        next.skippedScreening = from.skippedScreening ?? null;
         break;
       case "done":
         next.done = from.done;
@@ -289,8 +296,8 @@ export function applyAction(
 /**
  * A thread in a category. A screened thread stays screened, except that a one-time code stops being screened (its
  * sender still isn't let in), unless the mailbox filed it under Screening; and a one-time code loses its summary,
- * since one-time codes are never summarized. When the server's AI answered `otp` and the server's own check didn't
- * hold, the caller keeps the thread screened (`PerformInput.holdGate`).
+ * since one-time codes are never summarized. The server's AI at the screening gate decides screening itself
+ * (`PerformInput.gate`): unscreened with a kind the server's own check confirmed, otherwise kept screened.
  */
 export function categorizedState(state: ThreadState, category: Category): ThreadState {
   if (category !== "otp") return { ...state, category };
@@ -323,6 +330,7 @@ export function stateColumns(state: ThreadState): Partial<ThreadRow> {
     categorizedByActor: state.categorizedBy && state.categorizedBy !== "mailbox" ? state.categorizedByActor ?? null : null,
     screened: state.screened,
     screenedByMailbox: state.screened && state.screenedByMailbox,
+    skippedScreening: state.screened ? null : state.skippedScreening ?? null,
     summary: state.summary,
     done: state.done,
     stack: state.stack,

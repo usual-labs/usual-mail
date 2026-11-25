@@ -17,8 +17,17 @@ beforeEach(async () => {
 afterEach(() => t.close());
 
 const STRANGER = { name: "Sam Stranger", email: "sam@stranger.example" };
-/** A stranger's one-time code: machine-sent, with a code in its text, so the server's own check holds. */
-const CODE = { from: { name: "Quillpad", email: "no-reply@quillpad.example" }, subject: "Your sign-in code", text: "Your sign-in code is 482 913.", automated: true };
+/**
+ * A stranger's one-time code: its From domain proved by the provider's checker, machine-sent, with a code in its text,
+ * so the server's own check holds.
+ */
+const CODE = {
+  from: { name: "Quillpad", email: "no-reply@quillpad.example" },
+  subject: "Your sign-in code",
+  text: "Your sign-in code is 482 913.",
+  automated: true,
+  fromCheck: { result: "verified", domain: "quillpad.example" },
+} as const;
 
 async function inboxWithAi(options: { ai?: boolean; trust?: "suggest" | "act_with_undo" | "act_silently" } = {}) {
   const { inbox, mailbox } = await t.connect({ address: "me@ai.example", history: [historyFromKnown], trust: options.trust ?? "act_with_undo" });

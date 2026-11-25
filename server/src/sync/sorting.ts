@@ -155,6 +155,15 @@ async function asFiled(
 }
 
 /**
+ * Whether the thread is out of Screening only because the server's own check let it skip it (`skippedScreening`) and
+ * its sender still isn't let in. Mail written into it lets nobody in, and the AI doesn't move it to `conversation`.
+ */
+export async function skippedWhileUnknown(ctx: Ctx, row: ThreadRow): Promise<boolean> {
+  if (row.screened || !row.skippedScreening) return false;
+  return !row.sender || await senderStatus(ctx, row.inboxId, row.sender) !== "known";
+}
+
+/**
  * Someone else wrote into a thread that already existed. It ends a come-back-if-no-reply wait that is still
  * running, and brings a done thread back unless the writer is blocked or the thread is trashed. Mail older
  * than the thread's newest message (a provider catching up out of order) brings nothing back. Incoming mail that
@@ -179,8 +188,11 @@ export async function newMailInThread(ctx: Ctx, thread: ThreadRow, message: Prov
     await saveThreadState(ctx, row.id, next);
     await retireUndo(ctx, [row.id], changed);
   }
-  const recategorize = (row.category === "unknown" && row.categorizedBy === null)
-    || (row.categorizedBy === "ai" && row.category !== "conversation" && row.category !== "unknown");
+  // A thread that skipped Screening while its sender isn't let in is never asked again: the AI may only move it to
+  // `conversation`, and that would put a stranger's mail in Home.
+  const recategorize = ((row.category === "unknown" && row.categorizedBy === null)
+    || (row.categorizedBy === "ai" && row.category !== "conversation" && row.category !== "unknown"))
+    && !await skippedWhileUnknown(ctx, row);
   const summarize = row.category !== "otp";
   if (!recategorize && !summarize) return false;
   await ctx.db.update(threads).set({

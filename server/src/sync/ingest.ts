@@ -14,7 +14,8 @@ import { takeProviderState } from "./placement.ts";
 import { fitMessage } from "./fit.ts";
 import { becameOwn, changeHeldCopy, dropHeldCopy, holdCopy, sameMessage, sentKey, takeHeldCopy } from "./identity.ts";
 import { createThread, dateOf, deleteMessage, findByRef, insertMessage, refreshThread } from "./rows.ts";
-import { classify, newMailInThread } from "./sorting.ts";
+import { letInOwnSender, serverAddresses } from "./let-in.ts";
+import { classify, newMailInThread, skippedWhileUnknown } from "./sorting.ts";
 import { emitRules } from "../service/rules.ts";
 
 /**
@@ -62,6 +63,8 @@ export async function ingest(
   const arrived = new Set<string>();
   /** Who new incoming mail in this batch is from, lower case. */
   const wrote = new Set<string>();
+  /** Every inbox's address on this server, read when first needed (`let-in.ts`). */
+  const addresses = serverAddresses(ctx);
   // An opened old conversation is outside every listing (older than the window a listing covers): it takes no part in
   // one that is running, and carries a mark no listing drops.
   const listed = imported ? IMPORTED : await listingMark(ctx, inbox, batch);
@@ -129,6 +132,8 @@ export async function ingest(
     if (!incoming.outgoing) {
       arrived.add(thread.id);
       wrote.add(incoming.from.email.toLowerCase());
+      // One of the person's own, proved (another inbox here, a colleague at its own domain): let in, before sorting.
+      if (!history) for (const id of await letInOwnSender(ctx, inbox, incoming, addresses)) extraTidy.add(id);
     }
     if (incoming.outgoing) {
       // The inbox sent them mail: they are let in, and their screened threads with them. Not for a copy known only
@@ -139,9 +144,12 @@ export async function ingest(
       // Everyone in the first sync's history is let in, except the senders of threads filed under Screening there.
       if (!incoming.placement.screened && !imported) await markKnown(ctx, inbox.id, [incoming.from.email], { unscreen: false });
     } else if (!created.has(thread.id)) {
-      // Anyone writing into a thread that isn't screened is let in (someone copied on a conversation, say).
+      // Anyone writing into a thread that isn't screened is let in (someone copied on a conversation, say), except into
+      // one that skipped Screening while its sender isn't let in: that lets nobody in, its own sender included.
       const current = await getThread(ctx, thread.id);
-      if (current && !current.screened) for (const id of await markKnown(ctx, inbox.id, [incoming.from.email])) extraTidy.add(id);
+      if (current && !current.screened && !await skippedWhileUnknown(ctx, current)) {
+        for (const id of await markKnown(ctx, inbox.id, [incoming.from.email])) extraTidy.add(id);
+      }
       if (await newMailInThread(ctx, thread, incoming, before.get(thread.id)!.lastMessageAt)) aiWork.add(thread.id);
     }
   }

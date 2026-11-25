@@ -8,6 +8,7 @@ import {
   type ActionKind,
   type Actor,
   type Caller,
+  type ScreeningPass,
   type TrustLevel,
 } from "@usualmail/core";
 import { and, eq, gt, ne } from "drizzle-orm";
@@ -135,10 +136,12 @@ export interface PerformInput {
   /** The actor is a rule the person taught (source `person` or `correction`): it applies whatever the trust. */
   taught?: boolean;
   /**
-   * The server's AI answered `otp` for a thread at the screening gate, and the server's own check didn't hold: the
-   * thread takes the category but stays screened (docs/contract.md, "Rules and learning").
+   * The server's AI categorized a thread at the screening gate (its sender isn't let in; not filed under Screening by
+   * the mailbox). With `pass`, the kind of mail the server's own check confirmed, the thread stops being screened and
+   * says why, its sender still not let in; with null it stays screened, whatever the category (docs/contract.md,
+   * "Rules and learning").
    */
-  holdGate?: boolean;
+  gate?: { pass: ScreeningPass | null };
 }
 
 /**
@@ -152,10 +155,12 @@ export async function perform(ctx: Ctx, input: PerformInput): Promise<ActionRow 
     throw new ServiceError("invalid", "A come-back time must be in the future");
   }
   const change = await planChange(ctx, inbox, thread, action);
-  if (input.holdGate) {
+  if (input.gate) {
     const before = change.before.threads[0]!.state;
     const after = change.after.get(thread.id)!;
-    change.after.set(thread.id, { ...after, screened: before.screened, screenedByMailbox: before.screenedByMailbox });
+    change.after.set(thread.id, input.gate.pass
+      ? { ...after, screened: false, screenedByMailbox: false, skippedScreening: input.gate.pass }
+      : { ...after, screened: before.screened, screenedByMailbox: before.screenedByMailbox, skippedScreening: before.skippedScreening ?? null });
   }
   if (isNoop(change, groupsOf(action.kind))) return null;
   if (gate(input.actor, inbox.trust, action.kind, input.taught) === "proposed") return propose(ctx, input, change);

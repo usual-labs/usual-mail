@@ -12,14 +12,15 @@ import { messages, threads, type InboxRow, type MessageRow, type ThreadRow } fro
 import { perform } from "../service/actions.ts";
 import type { Ctx } from "../service/context.ts";
 import { blockedSenders, emitThread, getInbox, getThread, saveThreadState, threadState } from "../service/store.ts";
-import { looksLikeCode } from "./gate.ts";
+import { screeningPass, worthAsking } from "./gate.ts";
+import { acceptPass, passRequest } from "./pass-prompt.ts";
 import { AiServiceError, type AiAnswer, type AiModels, type AiObjectAnswer, type ChoiceRequest, type ObjectRequest, type TextRequest } from "./models.ts";
 import { checkEvent, combineEvent, type EventChange } from "./event.ts";
 import { saveEvent, withGroup } from "./event-group.ts";
 import { oneNamePerSender } from "./payment-store.ts";
 import { serverTimeZone } from "./payment-dates.ts";
 import { checkDetails, combineDetails, fillDetails, senderParty, servedPayment, settleDetails, type DatedText } from "./payment.ts";
-import { acceptCategory, acceptSummary, boundaryId, categorizeRequest, detailsRequest, eventRequest, summarizeRequest, summarizeSender, type SummarizeMessage } from "./prompt.ts";
+import { acceptCategory, acceptSummary, boundaryId, categorizeRequest, detailsRequest, eventRequest, summarizeRequest, summarizeSender, type CategorizeInput, type SummarizeMessage } from "./prompt.ts";
 import { effectiveModels, loadState } from "./state.ts";
 import { recordAnswer, recordFailure } from "./status.ts";
 import { recordUsage } from "./usage.ts";
@@ -127,7 +128,23 @@ export async function processThread(ctx: Ctx, threadId: string, open: OpenModels
     }
     // Every request counts, whatever the server then makes of the answer.
     await recordUsage(ctx, "categorize", categorize.model, { usage: answer.usage, generation: answer.generation ?? null });
-    await ctx.lock.run(() => applyCategory(ctx, threadId, categorize, answer.value));
+    // At the screening gate, which kind of mail it is is asked once more, only when the server's own check could let
+    // it through; the thread is written back once, with both answers.
+    const question = await ctx.lock.run(() => planPass(ctx, threadId, categorize, answer.value));
+    let asked: Asked | null = null;
+    if (question) {
+      try {
+        const passAnswer = await models.choose(question);
+        await recordUsage(ctx, "categorize", categorize.model, { usage: passAnswer.usage, generation: passAnswer.generation ?? null });
+        asked = { request: question, value: passAnswer.value };
+      } catch (error) {
+        // The category stands, screened; the service's failure counts as any other.
+        await recordUsage(ctx, "categorize", categorize.model, { failed: true });
+        await ctx.lock.run(() => applyCategory(ctx, threadId, categorize, answer.value, null));
+        return failed(ctx, threadId, error, "categorize");
+      }
+    }
+    await ctx.lock.run(() => applyCategory(ctx, threadId, categorize, answer.value, asked));
   } else {
     await ctx.lock.run(() => releaseGate(ctx, threadId));
   }
@@ -167,41 +184,71 @@ async function loaded(ctx: Ctx, threadId: string): Promise<{ thread: ThreadRow; 
   return mail.length ? { thread, inbox, mail } : null;
 }
 
-async function planCategorize(ctx: Ctx, threadId: string): Promise<(Planned<ChoiceRequest> & { onlyConversation: boolean }) | null> {
+/** A categorize request, with what it carried (the screening gate's question carries the same). */
+type PlannedCategory = Planned<ChoiceRequest> & { onlyConversation: boolean; input: CategorizeInput };
+
+/** The screening gate's question as sent, and the model's answer. */
+interface Asked {
+  request: ChoiceRequest;
+  value: string | null;
+}
+
+async function planCategorize(ctx: Ctx, threadId: string): Promise<PlannedCategory | null> {
   const found = await loaded(ctx, threadId);
   if (!found || !wantsCategoryNow(found.thread)) return null;
   const model = effectiveModels(ctx, await loadState(ctx))?.categorize;
   if (!model) return null;
   const newest = found.mail.at(-1)!;
-  const request = categorizeRequest(model, {
+  const input: CategorizeInput = {
     subject: await subjectToSend(ctx, found.thread, await sendableMessages(ctx, found.thread)),
     from: newest.from,
     listId: newest.listId,
     automated: newest.automated,
     text: newest.text,
     html: newest.html,
-  }, boundaryId(ctx.host.random.bytes(9)));
+  };
+  const request = categorizeRequest(model, input, boundaryId(ctx.host.random.bytes(9)));
   // A thread the AI filed elsewhere may only be moved to `conversation` (docs/contract-ai.md), unless it is asked
   // again about it, once, under today's words (ask-again.ts).
   const onlyConversation = found.thread.categorizedBy === "ai" && !found.thread.categoryAskAgain;
-  return { request, newestId: newest.id, model, onlyConversation };
+  return { request, newestId: newest.id, model, onlyConversation, input };
 }
 
-async function applyCategory(ctx: Ctx, threadId: string, planned: Planned<ChoiceRequest> & { onlyConversation: boolean }, answer: string | null): Promise<void> {
+/** At the sender's screening gate: screened because its sender isn't let in, not filed under Screening by the mailbox. */
+function atGate(thread: ThreadRow): boolean {
+  return thread.screened && !thread.screenedByMailbox;
+}
+
+/**
+ * The screening gate's question, when it is worth asking: the thread is at the gate, the AI's category may be a kind
+ * that skips Screening, and the server's own check could hold for the message the model read (gate.ts). Under the lock.
+ */
+async function planPass(ctx: Ctx, threadId: string, planned: PlannedCategory, answer: string | null): Promise<ChoiceRequest | null> {
+  const accepted = acceptCategory(answer, planned.onlyConversation);
+  const found = await loaded(ctx, threadId);
+  if (!accepted || !found || !wantsCategoryNow(found.thread) || !atGate(found.thread)) return null;
+  const read = found.mail.find((message) => message.id === planned.newestId);
+  if (!read || !worthAsking(accepted, read, ctx.avatars?.suffixes ?? null)) return null;
+  return passRequest(planned.model, planned.input, accepted, boundaryId(ctx.host.random.bytes(9)));
+}
+
+async function applyCategory(ctx: Ctx, threadId: string, planned: PlannedCategory, answer: string | null, asked: Asked | null): Promise<void> {
   await recordAnswer(ctx, true);
   const accepted: DecidedCategory | null = acceptCategory(answer, planned.onlyConversation);
   const found = await loaded(ctx, threadId);
   // Someone may have decided it meanwhile, or it may be done now: then the answer is moot.
   if (accepted && found && wantsCategoryNow(found.thread)) {
-    // A model's `otp` alone never lifts the screening gate: the server's own check must hold for the message it read.
-    const atGate = accepted === "otp" && found.thread.screened && !found.thread.screenedByMailbox;
+    // A model's answer alone never lifts the screening gate: the server's own check must hold for the message it read,
+    // for the kind the model named (or for a code, the AI's `otp`). Otherwise it stays screened, in this category.
     const read = found.mail.find((message) => message.id === planned.newestId);
+    const chosen = asked ? acceptPass(asked.value, asked.request) : null;
+    const pass = atGate(found.thread) && read ? screeningPass(accepted, chosen, read, ctx.avatars?.suffixes ?? null) : null;
     await perform(ctx, {
       inbox: found.inbox,
       thread: found.thread,
       action: { kind: "categorize", category: accepted },
       actor: { kind: "ai", job: "categorize", model: planned.model },
-      ...(atGate && !(read && looksLikeCode(read)) && { holdGate: true }),
+      ...(atGate(found.thread) && { gate: { pass } }),
     });
   }
   // Asked again once: from now on only mail joining asks, as for any thread the AI filed.

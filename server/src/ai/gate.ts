@@ -1,8 +1,21 @@
-// The server's own check before a model's `otp` lifts the screening gate (docs/contract.md, "Rules and learning"):
-// mail can talk a model into calling it a one-time code, so for a sender who isn't let in the answer counts only when
-// the mail also looks machine-sent and holds a code. Conservative on purpose: a code it misses stays in Screening,
-// where the person sees it; a stranger it wrongly let through would skip the gate.
+// The server's own check at the screening gate (docs/contract.md, "Rules and learning"; docs/contract-ai.md, "Mail is
+// untrusted input to a model"). Mail can talk a model into calling it anything, and phishing imitates exactly the mail
+// that may skip Screening, so for a sender who isn't let in a kind the AI named counts only when the server's own check
+// also holds for the message the model read:
+//
+// - the mailbox provider's checker proved its From domain, which is the address's own, not a public mail domain or a
+//   platform whose customers share its domain (the rule sender pictures use: `avatarDomain`);
+// - it looks machine-sent (`ProviderMessage.automated`);
+// - it shows that kind's evidence (gate-evidence.ts; a one-time code's is a code near a word for one).
+//
+// Conservative on purpose: what it misses waits in Screening, where the person sees it; a stranger it wrongly let
+// through would skip the gate. Pure: the caller gives the suffix list, or null when the server carries none (then
+// nothing is proved, and nothing passes).
 
+import { SCREENING_PASS_CATEGORIES, SCREENING_PASSES, type DecidedCategory, type ScreeningPass } from "@usualmail/core";
+import { avatarDomain } from "../avatars/rules.ts";
+import type { SuffixList } from "../avatars/suffixes.ts";
+import { EVIDENCE, holdsLink } from "./gate-evidence.ts";
 import { plainText } from "./text.ts";
 
 /** The words that name a code, as whole words in any case. */
@@ -37,10 +50,65 @@ export function holdsCode(text: string): boolean {
   return false;
 }
 
+/** The message the check reads: the newest incoming one, the one the model read. */
+export interface GateMessage {
+  subject: string;
+  text: string | null;
+  html: string | null;
+  automated: boolean;
+  from: { email: string };
+  /** The From domain the provider's checker proved, in ASCII, or null (`messages.fromVerified`). */
+  fromVerified: string | null;
+}
+
 /**
- * Whether a model's `otp` may lift the gate for this message: it looks machine-sent by the existing test (bulk,
- * auto-submitted, a list header or no-reply) and its subject or text holds a code.
+ * Whether the mail is an organisation's proved by the mailbox provider: the checker proved the From address's own
+ * domain, which isn't a public mail domain or a shared platform's, and it looks machine-sent. Every kind needs it.
  */
-export function looksLikeCode(message: { subject: string; text: string | null; html: string | null; automated: boolean }): boolean {
-  return message.automated && holdsCode(`${message.subject}\n${plainText(message.text, message.html)}`);
+export function provedMachineMail(message: GateMessage, suffixes: SuffixList | null): boolean {
+  return suffixes !== null && message.automated && avatarDomain(message.fromVerified, message.from.email, suffixes) !== null;
+}
+
+/** Whether the mail shows a kind's own evidence (not the proof every kind needs). */
+export function showsEvidence(kind: ScreeningPass, message: GateMessage): boolean {
+  const words = `${message.subject}\n${plainText(message.text, message.html)}`;
+  if (kind === "code") return holdsCode(words);
+  return EVIDENCE[kind]({ words, link: holdsLink(message.text, message.html) });
+}
+
+/** Whether the server's own check lets mail of this kind skip Screening: the proof, machine-sent, and its evidence. */
+export function mayPass(kind: ScreeningPass, message: GateMessage, suffixes: SuffixList | null): boolean {
+  return provedMachineMail(message, suffixes) && showsEvidence(kind, message);
+}
+
+/** The kinds a model may be asked about for mail in this category: a one-time code is the server's own check alone. */
+export function askableKinds(category: DecidedCategory): ScreeningPass[] {
+  return SCREENING_PASSES.filter((kind) => kind !== "code" && SCREENING_PASS_CATEGORIES[kind].includes(category));
+}
+
+/**
+ * Whether a one-time code passes without asking: the AI said `otp` and the server's own check holds, as it always
+ * did, now with the proof too.
+ */
+export function codePasses(category: DecidedCategory, message: GateMessage, suffixes: SuffixList | null): boolean {
+  return category === "otp" && mayPass("code", message, suffixes);
+}
+
+/**
+ * Whether asking which kind it is could let the mail through: it isn't a code that passes already, and one of the
+ * kinds its category may be passes the server's own check. Otherwise nothing is asked, and it stays screened.
+ */
+export function worthAsking(category: DecidedCategory, message: GateMessage, suffixes: SuffixList | null): boolean {
+  if (codePasses(category, message, suffixes) || !provedMachineMail(message, suffixes)) return false;
+  return askableKinds(category).some((kind) => showsEvidence(kind, message));
+}
+
+/**
+ * The kind that lets the mail skip Screening, or null: a code the server's check accepts, or the kind the model chose
+ * when it may be in this category and the server's check holds for it.
+ */
+export function screeningPass(category: DecidedCategory, chosen: ScreeningPass | null, message: GateMessage, suffixes: SuffixList | null): ScreeningPass | null {
+  if (codePasses(category, message, suffixes)) return "code";
+  if (!chosen || chosen === "code" || !SCREENING_PASS_CATEGORIES[chosen].includes(category)) return null;
+  return mayPass(chosen, message, suffixes) ? chosen : null;
 }

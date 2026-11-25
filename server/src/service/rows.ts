@@ -25,7 +25,7 @@ import type {
   TeachRow,
   ThreadRow,
 } from "../db/index.ts";
-import { PAYMENT_CATEGORIES } from "@usualmail/core";
+import { isScreeningPass, PAYMENT_CATEGORIES } from "@usualmail/core";
 import { sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { servedPayment } from "../ai/payment.ts";
 import { iso, isoOrUndefined } from "../util.ts";
@@ -110,6 +110,8 @@ export function toThread(row: ThreadRow): Thread {
   }
   if (row.need) thread.need = row.need;
   if (row.reason) thread.reason = row.reason;
+  // Why it is out of Screening while its sender isn't let in; never on a screened thread, whatever the row holds.
+  if (!row.screened && isScreeningPass(row.skippedScreening)) thread.skippedScreening = row.skippedScreening;
   if (row.summary) thread.summary = row.summary;
   if (row.payment && (PAYMENT_CATEGORIES as readonly string[]).includes(row.category)) thread.payment = servedPayment(row.payment)!;
   if (row.event && row.category === "notification") thread.event = row.event;

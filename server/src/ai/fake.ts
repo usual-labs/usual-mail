@@ -28,8 +28,9 @@ export class FakeModels implements AiModelAccess {
   readonly #defaults: Record<AiJob, string>;
   /** Every request, oldest first. */
   readonly requests: FakeRequest[] = [];
-  /** What `choose` answers. Default: a guess from the words in the mail. */
-  choose: (request: ChoiceRequest) => string | null | Promise<string | null> = guessCategory;
+  /** What `choose` answers. Default: a guess from the words in the mail (for the screening gate's question, its kind). */
+  choose: (request: ChoiceRequest) => string | null | Promise<string | null> = (request) =>
+    (request.options.some((option) => option.value === "none") ? guessPass(request) : guessCategory(request));
   /** What `write` answers. Default: the newest message's first sentence. */
   write: (request: TextRequest) => string | null | Promise<string | null> = firstSentence;
   /** What `extract` answers (a receipt's details, a notification's event, a search sentence's filters). Default: a guess by rule. */
@@ -130,6 +131,23 @@ function guessCategory(request: ChoiceRequest): string {
   if (item.listId || /newsletter|\bissue \d+|unsubscribe|digest/.test(words)) return "newsletter";
   if (item.machineSent === true) return "notification";
   return "conversation";
+}
+
+/** A rough guess at which kind of mail may skip Screening, among the request's own options; "none" otherwise. */
+function guessPass(request: ChoiceRequest): string {
+  const item = dataItems(request.data)[0] ?? {};
+  const words = `${String(item.subject ?? "")} ${String(item.text ?? "")}`.toLowerCase();
+  const guesses: Array<[string, RegExp]> = [
+    ["sign_in", /(sign[ -]?in|log[ -]?in|magic link)/],
+    ["email_confirmation", /(confirm|verify).*(e-?mail|address|account)/],
+    ["security", /(security|new device|was this you|suspicious)/],
+    ["account", /(reset your password|password reset|data export|account (was |has been )?deleted)/],
+    ["order", /(order|shipped|delivery|tracking)/],
+    ["booking", /(booking|reservation|flight|hotel|appointment)/],
+    ["payment", /(payment|charged|renewal|declined)/],
+  ];
+  const offered = new Set(request.options.map((option) => option.value));
+  return guesses.find(([kind, pattern]) => offered.has(kind) && pattern.test(words))?.[0] ?? "none";
 }
 
 /** A rough guess at a receipt's details from the newest message that names an amount, for demo mode and the switch. */

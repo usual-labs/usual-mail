@@ -10,6 +10,7 @@ import type {
   Rule,
   Thread,
 } from "@usualmail/core";
+import { skippedScreeningLine } from "@usualmail/core";
 
 /** How much of a message's text a result carries. */
 export const TEXT_LIMITS = { triage: 2000, thread: 4000 } as const;
@@ -78,6 +79,8 @@ export function threadState(thread: Thread) {
     ...(thread.trashed ? { trashed: true } : {}),
     ...(thread.need ? { need: thread.need } : {}),
     ...(thread.reason ? { reason: thread.reason } : {}),
+    // Out of Screening though its sender isn't let in: the kind of mail the server's own check let through.
+    ...(thread.skippedScreening ? { skippedScreening: skippedScreeningLine(thread.skippedScreening) } : {}),
   };
 }
 

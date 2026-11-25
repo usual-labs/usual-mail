@@ -3,7 +3,7 @@
 //
 // What the provider said is always shown in words: why a record failed or an undo was refused (`error`), and a
 // note on a change that worked (`note`). A record of a thread now in the trash says so, and can still be undone.
-import type { HandledItem, Inbox } from "@usualmail/core";
+import { skippedScreeningLine, type HandledItem, type Inbox } from "@usualmail/core";
 import { html, type Html } from "../html.ts";
 import { icon, postForm, type View } from "./layout.ts";
 import { hatLabel, hidden } from "./parts.ts";
@@ -46,7 +46,8 @@ export function handledItem(view: View, item: HandledItem, inbox: Inbox | undefi
 
   return html`<li class="handled-item">
 <span class="handled-subject">${inbox ? hatLabel(inbox, "small") : ""}<span>${thread.subject || "(no subject)"}</span>${
-    thread.trashed ? html`<span class="badge">In the trash</span>` : ""}${record.silent ? html`<span class="badge">Done silently</span>` : ""}</span>
+    thread.trashed ? html`<span class="badge">In the trash</span>` : ""}${record.silent ? html`<span class="badge">Done silently</span>` : ""}${
+    thread.skippedScreening ? html`<span class="badge">${skippedScreeningLine(thread.skippedScreening)}</span>` : ""}</span>
 <div class="reason ${record.state}">${icon(view, ACTOR_ICON[record.actor.kind])}<span class="reason-text" id="${textId}"><b>${actorName(record.actor)} ${actionPhrase(
     record.action,
     proposed,

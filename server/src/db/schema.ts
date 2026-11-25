@@ -30,6 +30,7 @@ import type {
   RuleDraft,
   RuleMatch,
   RuleSource,
+  ScreeningPass,
   Stack,
   TrustLevel,
 } from "@usualmail/core";
@@ -132,6 +133,12 @@ export const threads = sqliteTable("threads", {
    * to Screening and out again at the provider: the thread isn't written back until this is false.
    */
   gatePending: bool("gate_pending").notNull().default(false),
+  /**
+   * The kind of mail that let this thread skip Screening while its sender isn't let in (`Thread.skippedScreening`,
+   * core's `ScreeningPass`): the server's AI named it and the server's own check held (`ai/gate.ts`). Null otherwise,
+   * and cleared whenever the thread is screened.
+   */
+  skippedScreening: text("skipped_screening").$type<ScreeningPass>(),
   /** The AI's one or two plain lines on what the thread is about. Never on a one-time code. */
   summary: text("summary"),
   /**
