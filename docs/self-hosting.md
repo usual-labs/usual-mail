@@ -205,9 +205,16 @@ your own server then says "Gmail is connected"; go back to Usual Mail. The brows
 when the server's address is `127.0.0.1`.
 
 **Every week:** while your Google client's consent screen is in Testing, Google ends the sign-in after seven days.
-The inbox then says it needs attention; sign in again in place: in the Mac app's **Settings**, under **Inboxes**,
-press **Sign in with Google again…** on that inbox, or run `usual-mail inbox reconnect <inbox>`. Its rules and history
-stay. (**Add Gmail…** there connects another Gmail later.)
+The inbox then says it needs attention: the apps mark it with a warning and say it stopped syncing, with **Sign in
+again**. Sign in again in place: that button, or in the app's **Settings**, under **Inboxes**, **Sign in with Google
+again…** on that inbox, or `usual-mail inbox reconnect <inbox>`. Its rules and history stay. (**Add Gmail…** there
+connects another Gmail later.)
+
+Since 0.1.2 a short outage doesn't warn: a mailbox that can't be reached, times out or answers with errors needs
+attention only once that has gone on for ten minutes, with **Try again**. A refused sign-in, or your server's Google
+client gone or refused (which you fix with `usual-mail google set`), needs it at once. An inbox none of whose syncs
+has finished for 15 minutes (or five poll intervals, `USUAL_MAIL_POLL_SECONDS`) while the server runs says it hasn't
+synced since then; **Try again**, and if it stays, restart the server.
 
 Other mailboxes: `usual-mail inbox add --provider imap` asks for the IMAP and SMTP servers and the password.
 **IMAP inboxes are not yet safe for real mail:** use them only to try Usual Mail out, with a mailbox that holds

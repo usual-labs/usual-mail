@@ -519,8 +519,12 @@ mail is passed to a model, and how its decisions are recorded and corrected are 
   from it. The server verifies them with the provider before storing them. If that fails, nothing in the patch
   changes and the call answers `provider_error` with the provider's words. If the provider names another address
   than the inbox's, nothing changes and the call answers `invalid`. On success its status is `connecting` until its
-  next good sync (`ok`) or failed one (`needs_attention`); a paused inbox stays paused, and is `connecting` once
-  resumed.
+  next good sync (`ok`) or a failure that needs attention; a paused inbox stays paused, and is `connecting` once
+  resumed. Either starts the run of failures afresh.
+- **Why it needs attention** (`statusReason`, 0.1.2): with `needs_attention`, `needs_sign_in`, `host_setup`,
+  `provider_error` or `not_syncing`, so an interface offers the step that fits; a refused sign-in or the host's setup
+  at once, a failure that may pass after ten minutes, and a sync that stopped finishing after the larger of 15 minutes
+  and five polls ([sync](contract-sync.md#when-an-inbox-needs-attention)). Absent from a server before 0.1.2.
 - **How far its first sync has got** (`firstSync`, the owner's decision of 2026-11-23): while the first sync runs,
   `fetched` of the `total` messages its window holds, shown once the first sync has run two seconds and then at most
   every two seconds, each change with a new version and `inbox.changed`; gone when the first sync is done, with the

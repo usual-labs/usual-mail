@@ -177,9 +177,14 @@ describe("sync", () => {
   test("an inbox whose mailbox refuses the login needs attention, with the reason", async () => {
     const { inbox, mailbox } = await t.connect({ address: "me@acme.example" });
     mailbox.failSync = "The mail server refused the password.";
+    mailbox.signInRefused = true;
     await t.sync(inbox);
     const [after] = await t.server.listInboxes(t.person);
-    assert.deepEqual([after!.status, after!.statusDetail], ["needs_attention", "The mail server refused the password."]);
+    assert.deepEqual(
+      [after!.status, after!.statusDetail, after!.statusReason],
+      ["needs_attention", "The mail server refused the password.", "needs_sign_in"],
+      "a refused login needs attention at once",
+    );
     mailbox.failSync = null;
     await t.sync(inbox);
     assert.equal((await t.server.listInboxes(t.person))[0]!.status, "ok");

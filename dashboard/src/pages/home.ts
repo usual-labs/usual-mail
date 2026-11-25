@@ -4,11 +4,12 @@
 // part of it (docs/contract.md, "Trust" and "Lists").
 import type { AiSettings, AiStatus, Draft, HandledItem, Inbox, Rule } from "@usualmail/core";
 import { html, type Html } from "../html.ts";
-import { alert, href, icon, notice, page, pageHead, type View } from "../view/layout.ts";
+import { alert, href, icon, notice, page, pageHead, postForm, type View } from "../view/layout.ts";
 import { hatLabel } from "../view/parts.ts";
 import { handledItem } from "../view/reason.ts";
 import { STATE_NAMES, stateWords } from "../view/ai.ts";
 import { count, fullTime } from "../view/words.ts";
+import { attentionHint, needsNewDetails } from "./inboxes.ts";
 import { suggestionCard } from "./rules.ts";
 
 /** How many changes that need a look Home shows; Handled has the rest. */
@@ -42,6 +43,22 @@ ${inbox ? hatLabel(inbox, "small") : ""}
 </li>`;
 }
 
+/**
+ * The step that fits why an inbox needs attention, before its settings: new details for a refused sign-in (or a
+ * reason a server before 0.1.2 didn't give), trying again for a provider that kept failing or a sync that stopped,
+ * nothing here for the host's own setup (its hint says what the host does).
+ */
+function attentionAction(view: View, inbox: Inbox): Html | "" {
+  const path = `/inboxes/${encodeURIComponent(inbox.id)}`;
+  if (needsNewDetails(inbox)) {
+    return html`<a class="button primary" href="${href(view, path)}#connection-title">Reconnect<span class="visually-hidden"> ${inbox.name}</span></a>`;
+  }
+  if (inbox.statusReason === "provider_error" || inbox.statusReason === "not_syncing") {
+    return postForm(view, `${path}/sync`, html`<button class="button primary" type="submit">${icon(view, "down")}Sync now<span class="visually-hidden"> ${inbox.name}</span></button>`, "inline-form");
+  }
+  return "";
+}
+
 export function homePage(view: View, data: HomeData, o: { done?: string; error?: string } = {}): Html {
   const inboxes = new Map(data.inboxes.map((inbox) => [inbox.id, inbox]));
   const troubled = data.inboxes.filter((inbox) => inbox.status === "needs_attention");
@@ -60,7 +77,8 @@ export function homePage(view: View, data: HomeData, o: { done?: string; error?:
     (inbox) => html`<li class="card inbox">
 ${hatLabel(inbox)}
 <p class="hat-attention">${inbox.statusDetail || "Something is wrong with this inbox."}</p>
-<div class="actions"><a class="button" href="${href(view, `/inboxes/${encodeURIComponent(inbox.id)}`)}">${icon(view, "settings")}Open settings<span class="visually-hidden"> for ${inbox.name}</span></a></div>
+<p class="meta">${attentionHint(inbox)}</p>
+<div class="actions">${attentionAction(view, inbox)}<a class="button" href="${href(view, `/inboxes/${encodeURIComponent(inbox.id)}`)}">${icon(view, "settings")}Open settings<span class="visually-hidden"> for ${inbox.name}</span></a></div>
 </li>`,
   )}</ul>
 </section>`;

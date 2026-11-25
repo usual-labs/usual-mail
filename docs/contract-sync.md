@@ -158,7 +158,36 @@ new mail are on the contract's main page.
 - A message with a ref the server doesn't know is matched by its Message-ID and content before it counts as new,
   because a move gives a message a new ref (see "Which stored message new mail is" above).
 - A thread whose messages are all gone at the provider is removed, with `thread.removed`.
-- A failed sync sets the inbox to `needs_attention` with the reason in `statusDetail`.
+- A failed sync may set the inbox to `needs_attention`, with words in `statusDetail` and why in `statusReason`
+  (below).
+
+### When an inbox needs attention
+
+(The owner's decision of 2026-11-25, for 0.1.2; `core/src/inbox-health.ts`.) `needs_attention` comes with
+`statusReason`, so an interface offers the step that fits, and `statusDetail`'s words:
+
+- **`needs_sign_in`, at once:** the mailbox refused the inbox's sign-in: Google refused its refresh token, it was
+  signed in with another Google client than the server's now, Gmail refused the access or its scope, or the IMAP server
+  refused the login (a provider throws an error named `SignInRefused`, below). A person signs in again or gives new
+  details. For an inbox connected by hand, Google refusing its own client is this too.
+- **`host_setup`, at once:** the host's own setup stops it: the server has no Google client any more, Google refused
+  it, or the Gmail API is off in its project, for an inbox connected by signing in with Google. The host fixes it;
+  signing in again doesn't help.
+- **`provider_error`, after a grace:** any other failure (no connection, a name that doesn't resolve, a timeout, the
+  provider's own error or limits) may pass, so it leaves the status as it was until failures have gone on for
+  `SYNC_FAILURE_GRACE_MS` (ten minutes) since the first one after the last good sync, across two failed attempts at
+  least. A gap longer than `notSyncingAfterMs` since the last attempt (the server stopped, its machine asleep) starts the
+  count again rather than counting the gap. `statusDetail` is the provider's words.
+- **`not_syncing`:** no sync of an open inbox, good or failed, has finished for `notSyncingAfterMs` (the larger of 15
+  minutes and five poll intervals) while the server ran: its sync is stuck. Time while the server was stopped or its
+  machine asleep doesn't count, nor time since it started or woke (a Cloudflare object), nor a first sync that is
+  still sending batches or saying how far it got. It is said within a third of that time more, and a server that
+  starts again settles it before syncing. Its words say since when the inbox last synced; trying again
+  (`syncInbox`) may do, else restarting the server.
+
+A finished attempt that fails in a way that may pass ends `not_syncing`; a good sync ends every reason. A paused
+inbox has none. A server before 0.1.2 sends no reason: an interface then treats it as it did (the words, and the
+inbox's settings).
 
 ## Providers
 
@@ -252,6 +281,10 @@ app shows it under that label, done or not.
   - Use `note` for something a person should know about a change that worked, and `error` only with
     `ok: false`. The server shows an op's note on the action record that caused it, and a send's note on the
     draft.
+  - **Name a refused login** (0.1.2): when the mailbox refuses the stored credentials, throw an error whose `name` is
+    `SignInRefused` (core's `SIGN_IN_REFUSED`), so the inbox needs attention at once with `needs_sign_in` rather than
+    after the grace for failures that may pass. IMAP does for a refused login; Gmail's token errors are told apart by
+    the server itself.
 - **Optionally, search the mailbox itself** (`search` and `fetchThread`, both or neither; 2026-11-20,
   [search](contract-search.md#older-mail-in-the-mailbox)): find conversations by the words, phrases, exclusions and
   filters the server gives (`ProviderSearchQuery`), translated into its own query language, newest first, a page at a
@@ -358,9 +391,10 @@ worked); the tests use a fake of Google's endpoints built from that documentatio
 - **Tokens.** An inbox connected this way keeps, sealed like other mailbox credentials, only the client's id and the
   refresh token; the server adds the host's client secret whenever it opens the mailbox, so the host can change the
   secret without anyone signing in again. Its `connection` says `signIn: "google"`. When Google refuses the token (it
-  was revoked, it expired after seven days in Testing, the account's password changed), the inbox needs attention with
-  words that say to sign in with Google again, and nothing else changes. When the host's client is gone, or is another
-  client than the one the token belongs to, the inbox needs attention with words that say so.
+  was revoked, it expired after seven days in Testing, the account's password changed), the inbox needs attention
+  (`needs_sign_in`) with words that say to sign in with Google again, and nothing else changes. When the host's client
+  is gone or refused, the inbox needs attention (`host_setup`) with words that say so; when it is another client than
+  the one the token belongs to, `needs_sign_in`.
 - **Removing an inbox connected this way revokes its token at Google** (`POST https://oauth2.googleapis.com/revoke`),
   after the removal, in the background; a refused or failed revocation doesn't stop the removal and is only noted in
   the log. Google's documentation says revoking ends the whole grant of that Google account to the client's project:

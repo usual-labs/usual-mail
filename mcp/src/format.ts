@@ -55,6 +55,9 @@ export function inboxItem(inbox: Inbox) {
     trust: inbox.trust,
     status: inbox.status,
     ...(inbox.statusDetail ? { statusDetail: inbox.statusDetail } : {}),
+    // Why it needs attention (a refused sign-in, the host's setup, a failing provider, no sync finishing), so an agent
+    // can say what fixes it rather than guess from the words.
+    ...(inbox.statusReason ? { statusReason: inbox.statusReason } : {}),
     // While its first sync runs: messages fetched of the window's total, so more of its mail is still to come.
     ...(inbox.firstSync ? { firstSync: { fetched: inbox.firstSync.fetched, total: inbox.firstSync.total } } : {}),
     guide: inbox.guide,

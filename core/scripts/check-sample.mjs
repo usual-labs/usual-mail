@@ -114,6 +114,11 @@ data.inboxes.forEach((inbox, index) => {
   oneOf(inbox.provider, PROVIDERS, `${where}.provider`);
   oneOf(inbox.trust, TRUST, `${where}.trust`);
   oneOf(inbox.status, ["connecting", "ok", "needs_attention", "paused"], `${where}.status`);
+  // A reason only with needs_attention (docs/contract-sync.md, "When an inbox needs attention").
+  if (inbox.statusReason !== undefined) {
+    oneOf(inbox.statusReason, ["needs_sign_in", "host_setup", "provider_error", "not_syncing"], `${where}.statusReason`);
+    need(inbox.status === "needs_attention", `${where}.statusReason: only with needs_attention`);
+  }
   need(/^#[0-9A-F]{6}$/.test(inbox.color), `${where}.color: "${inbox.color}" is not #RRGGBB`);
   need(typeof inbox.guide === "string" && typeof inbox.agentAccess === "boolean", `${where}: guide or agentAccess`);
   // No per-inbox AI switch since 2026-11-17: with AI credentials set, every inbox's mail is processed.

@@ -267,6 +267,7 @@ export class FakeService implements MailService {
     if (credentials !== undefined && inbox.status !== "paused") {
       inbox.status = "connecting";
       delete inbox.statusDetail;
+      delete inbox.statusReason;
     }
     inbox.version += 1;
     return structuredClone(inbox);

@@ -295,6 +295,28 @@ function dataCheck(ctx: Context, dataDir: string): Check {
   return { name: "data", level: "ok", text: `${shown(ctx, dataDir)}, readable only by you` };
 }
 
+/**
+ * What to do about an inbox that needs attention, by why it does (`Inbox.statusReason`, docs/contract-sync.md): new
+ * details or signing in again, the host's Google client, or trying again. A server before 0.1.2 gives no reason.
+ */
+export function attentionFix(inbox: Inbox): string {
+  const quoted = JSON.stringify(inbox.name);
+  switch (inbox.statusReason) {
+    case "needs_sign_in":
+      return inbox.provider === "gmail"
+        ? `Sign in with Google again from the Mac or iPhone app or the dashboard; one connected by hand takes new details with \`usual-mail inbox reconnect ${quoted}\`.`
+        : `Give the new password: \`usual-mail inbox reconnect ${quoted}\`.`;
+    case "host_setup":
+      return "It is this server's own setup: give it the right Google client with `usual-mail google set --file <it>`. The inbox syncs again by itself.";
+    case "provider_error":
+      return `The provider kept failing: once it answers, \`usual-mail inbox sync ${quoted}\` tries again (the server does too).`;
+    case "not_syncing":
+      return `No sync has finished for a while though the server runs: run \`usual-mail inbox sync ${quoted}\`; if it stays like this, \`usual-mail stop\` and \`usual-mail start\`.`;
+    default:
+      return `Fix what it says, then run \`usual-mail inbox sync ${quoted}\`. A changed password: \`usual-mail inbox reconnect ${quoted}\`.`;
+  }
+}
+
 async function inboxChecks(client: Client): Promise<Check[]> {
   let inboxes: Inbox[];
   try {
@@ -307,14 +329,7 @@ async function inboxChecks(client: Client): Promise<Check[]> {
     const name = `inbox ${inbox.name}`;
     const words = STATUS_WORDS[inbox.status] ?? inbox.status;
     if (inbox.status === "needs_attention") {
-      return {
-        name,
-        level: "fail",
-        text: `needs attention: ${inbox.statusDetail ?? "no reason given"}`,
-        fix:
-          `Fix what it says, then run \`usual-mail inbox sync ${JSON.stringify(inbox.name)}\`. ` +
-          `A changed password: \`usual-mail inbox reconnect ${JSON.stringify(inbox.name)}\`.`,
-      };
+      return { name, level: "fail", text: `needs attention: ${inbox.statusDetail ?? "no reason given"}`, fix: attentionFix(inbox) };
     }
     if (inbox.status === "paused") {
       return { name, level: "warn", text: "paused", fix: `Run \`usual-mail inbox resume ${JSON.stringify(inbox.name)}\` to sync it again.` };

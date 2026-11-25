@@ -21,7 +21,9 @@ export function registerInboxTools(server: McpServer, { service, caller }: ToolC
         "Start here. Lists the inboxes this agent was given, each with its trust level and its guide. Read every " +
         "guide before sorting: it is the person's own notes on how mail in that inbox should be handled. An inbox " +
         "whose first sync is still running says how far it has got (firstSync: messages fetched of the total), so " +
-        "more of its older mail is still to come. " +
+        "more of its older mail is still to come. One that needs attention says why (statusDetail, and statusReason: " +
+        "needs_sign_in for the person to sign in again, host_setup for the server's host, provider_error or " +
+        "not_syncing when its mail may be behind), so tell the person rather than act on stale mail. " +
         `${TRUST_NOTE} ${DATA_NOTICE}`,
       annotations: READ_ONLY,
     },

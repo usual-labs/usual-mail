@@ -86,7 +86,7 @@ Registered in this order, the same for every agent token. Nothing that needs a p
 
 | Tool | Calls | Notes |
 |---|---|---|
-| `list_inboxes` | `listInboxes` | Name, address, trust, status, guide, and while a first sync runs `firstSync` (`fetched`, `total`; 2026-11-23, said in the description: more older mail is still to come); never the connection (no `aiProcessing` since the per-inbox switch was removed, 2026-11-17). The description explains the three trust levels as the contract's table does |
+| `list_inboxes` | `listInboxes` | Name, address, trust, status, guide, and while a first sync runs `firstSync` (`fetched`, `total`; 2026-11-23, said in the description: more older mail is still to come); with `needs_attention`, `statusDetail` and `statusReason` (0.1.2, the description says what each means); never the connection (no `aiProcessing` since the per-inbox switch was removed, 2026-11-17). The description explains the three trust levels as the contract's table does |
 | `update_guide` | `updateInbox(id, { guide })` | Only `guide` is ever sent |
 | `list_rules` | `listRules` | Each rule with who made it (`createdBy`: `person`, `agent <name>`, or `Usual Mail` for a rule from an older server), so an agent can tell its own suggestions |
 | `suggest_rule` | `createRule(draft)`; with `listFromThread`, `thread` first | `then` steps may `categorize` (with `category`). No source passed; the server makes it `agent` and off. `listFromThread` (a thread id) sets `match.listId` from the newest incoming message's `listId` and the inbox from the thread, so the agent copies nothing out of mail. Refused before the service: a thread without a List-Id, a thread in another inbox than `inboxId`, a `match.listId` that differs, no inbox, an empty match |

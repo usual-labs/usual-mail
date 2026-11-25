@@ -22,6 +22,33 @@ export function inboxFacts(view: View, inbox: Inbox): Html {
 </dl>`;
 }
 
+/**
+ * What to do about an inbox that needs attention, by why it does (`Inbox.statusReason`, docs/contract-sync.md, "When
+ * an inbox needs attention"): new details for a refused sign-in, the host for its own setup, trying again for a
+ * provider that kept failing or a sync that stopped. A server before 0.1.2 gives no reason: then both of the first.
+ */
+export function attentionHint(inbox: Inbox): string {
+  switch (inbox.statusReason) {
+    case "needs_sign_in":
+      return inbox.provider === "gmail"
+        ? "Sign in with Google again, or give new details, under Connection below; the inbox keeps its rules and history."
+        : "Give the new password or other details under Connection below; the inbox keeps its rules and history.";
+    case "host_setup":
+      return "This comes from the server's own setup, not this inbox's details: its host gives the server the right Google client (usual-mail google set). Then the inbox syncs again by itself.";
+    case "provider_error":
+      return "Sync now tries again. The words above are the provider's own; the inbox syncs again by itself once it answers.";
+    case "not_syncing":
+      return "Sync now tries again. If it stays like this, restart the server.";
+    default:
+      return "Sync now tries again. If the password or other details changed, give the new ones under Connection below; the inbox keeps its rules and history.";
+  }
+}
+
+/** Whether new details may fix it: a refused sign-in, or no reason from a server before 0.1.2. */
+export function needsNewDetails(inbox: Inbox): boolean {
+  return inbox.status === "needs_attention" && (inbox.statusReason === "needs_sign_in" || inbox.statusReason === undefined);
+}
+
 /** Why an inbox needs attention, in the hat's attention style. */
 export function statusDetail(inbox: Inbox): Html | "" {
   if (inbox.status !== "needs_attention" && !(inbox.statusDetail && inbox.status !== "ok")) return "";
@@ -110,7 +137,7 @@ function connectionFacts(inbox: Inbox): Html {
 function connectionSection(view: View, inbox: Inbox, o: InboxPageOptions["reconnect"], google: boolean): Html {
   const values: CredentialValues = o?.values ?? connectionValues(inbox);
   const errors = o?.errors ?? {};
-  const open = Boolean(o) || inbox.status === "needs_attention";
+  const open = Boolean(o) || needsNewDetails(inbox);
   const fields =
     inbox.provider === "imap"
       ? imapFields(values, errors, {
@@ -168,7 +195,7 @@ ${inbox.status === "needs_attention"
   ? alert(
       view,
       "attention",
-      html`<p>${inbox.statusDetail || "Something is wrong with this inbox."}</p><p class="meta">Sync now tries again. If the password or other details changed, give the new ones under Connection below; the inbox keeps its rules and history.</p>`,
+      html`<p>${inbox.statusDetail || "Something is wrong with this inbox."}</p><p class="meta">${attentionHint(inbox)}</p>`,
     )
   : ""}
 <section class="card" aria-labelledby="state-title">

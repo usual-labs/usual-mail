@@ -126,6 +126,9 @@ for the next INBOX change).
   `sync` and attachment reads retry once on a fresh connection; ops, sending and saving to Sent never retry.
 - After `quietMs` (60 s) without commands, a NOOP checks the connection before it is used again. If it doesn't
   answer within `probeMs` (10 s), a new connection is opened. Both cases are tested.
+- A refused login (`authenticationFailed`, `AUTHENTICATIONFAILED`) is an error named `SignInRefused` (core's
+  `SIGN_IN_REFUSED`, 0.1.2), "The IMAP server at … refused the user name or password.", so the server says at once
+  that the inbox needs a new password; every other failure may pass (`readableError`).
 - Timeouts: connect 30 s, greeting 16 s, socket 120 s. `close` waits at most 3 s for LOGOUT, then drops the
   socket, and stops every watcher.
 - Without implicit TLS, STARTTLS is required unless the host is this machine. On this machine (bridges such as

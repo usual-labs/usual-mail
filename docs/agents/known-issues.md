@@ -4,16 +4,28 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
-- **Every failed sync says the inbox stopped syncing, a brief one too** (apps and server, found 2026-11-25 by the
-  review of the apps' warning; open, waiting on the owner). The server sets `needs_attention` for any error a sync
-  throws (`server/src/sync/engine.ts`, `#sync`'s catch): a revoked Google sign-in, but also a network error, a timeout
-  or Gmail's 5xx or 429 once its six retries are spent, until the next good sync (a minute later on Node by default).
-  The apps' notice (`Shell/SyncWarning.swift`, [apps.md](apps.md)) can so flash up for a moment, and a Gmail inbox's
-  button is "Sign in again" even when signing in won't help (`clientRefused`, which the host fixes, or a provider
-  error): `statusDetail` is words only, the raw error message for anything but Google's token, so the apps can't
-  tell the cases apart. The fix is the server's: a reason with the status (sign-in refused, client refused, provider
-  error, unreachable) and a grace period before a transient failure counts, so the apps choose the button by reason
-  and don't flash. It waits on the owner's decision.
+- **Syncing can fall behind without a warning in three ways** (server, found 2026-11-25 by the review of the apps'
+  warning; open). Fixed in 0.1.2 (the owner's "Yes, fix it", [contract](../contract-sync.md#when-an-inbox-needs-attention)):
+  every failed sync used to set `needs_attention`, a brief network error too, so the apps' notice flashed and Gmail's
+  "Sign in again" showed when signing in couldn't help (the host's client refused, a provider error); and a sync that
+  never finished, or none at all while the server ran, warned of nothing. Now a refused sign-in and the host's setup
+  warn at once with their reason (`statusReason`), a failure that may pass only after ten minutes across two attempts,
+  and no finished sync for 15 minutes (or five polls) is `not_syncing` (`server/src/sync/health.ts`, `watch.ts`). Still
+  open, none of them a status:
+  - **IMAP skips a folder that has gone missing** (`mail/src/imap/sync.ts`, `mailboxMissing`): were INBOX itself to go
+    (renamed at the provider), new mail would stop arriving while the inbox stays `ok`.
+  - **A write-back that fails is logged and fails its records, never the inbox** (`sync/engine.ts`, `#runWriteBack`):
+    Handled shows each failed action, but nothing says the mailbox stopped taking changes.
+  - **Gmail leaves out a single message it can't read** (`failsTheBatch` false: a 400 or 404 on one message, data it
+    can't parse): skipped or kept as a note, with no warning on the inbox.
+  - **On Cloudflare, a sync cut short each time the object restarts isn't `not_syncing`**: the watch is in memory and
+    begins afresh at every start (so that a start or a wake never sets it off), so an object restarted before every sync
+    finishes would never warn. Not seen; `lastAttemptAt` is stored, should it be needed.
+- **The Dovecot suite's logins are refused** (`mail/test/imap/docker.ts`, found 2026-11-25, the first run with Docker
+  answering; open). The harness starts `dovecot/dovecot:2.4.5` with `USER_PASSWORD`, its probe user logs in, then most
+  per-test users (`u<random>@mail.example`) are refused, so 23 of its 32 tests fail with "refused the user name or
+  password". Not the code under test: the same failures with 0.1.2's change undone. Likely the image's default passdb
+  or its auth penalty; not looked into. `USUAL_MAIL_SKIP_DOCKER=1` skips the Docker suites.
 - **Whoever opens a new server first owns it, unless `USUAL_MAIL_OWNER_EMAIL` is set** (by design, the owner's choice
   of 2026-11-24; [server-owner.md](server-owner.md)). Scanners read Certificate Transparency logs and reach new
   hostnames (a custom domain, `onrender.com`, Coolify's `sslip.io`, `workers.dev`) within minutes. The deploy files ask

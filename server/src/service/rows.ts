@@ -63,6 +63,7 @@ export function toInbox(row: InboxRow): Inbox {
     version: row.version,
   };
   if (row.statusDetail && !row.paused) inbox.statusDetail = row.statusDetail;
+  if (row.statusReason && row.status === "needs_attention" && !row.paused) inbox.statusReason = row.statusReason;
   // Only while the first sync runs: a count left on a row whose first sync is done is never shown.
   if (!row.historyDone && row.firstSyncTotal !== null) {
     const fetched = row.firstSyncFetched ?? 0;

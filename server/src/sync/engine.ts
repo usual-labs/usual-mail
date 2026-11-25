@@ -1,13 +1,13 @@
 // The sync engine: one work queue per inbox for syncing and writing back, providers opened on demand,
-// watching (where the provider can) and polling for new mail, how far a first sync has got (progress.ts), repairing the
-// provider after a start or a reconnect, holding write-backs while an inbox is paused, and the timer for come-back
-// times and sent drafts that are no longer kept.
+// watching (where the provider can) and polling for new mail, how far a first sync has got (progress.ts), when an inbox
+// needs attention (health.ts) or has stopped syncing (watch.ts), repairing the provider after a start or a reconnect,
+// holding write-backs while an inbox is paused, and the timer for come-back times and sent drafts no longer kept.
 
-import type { MailProvider, ProviderOpResult, SyncProgress } from "@usualmail/core";
+import { notSyncingAfterMs, type MailProvider, type ProviderOpResult, type SyncProgress } from "@usualmail/core";
 import { eq, inArray } from "drizzle-orm";
 import { mayProcess } from "../ai/state.ts";
-import { attentionWords, providerCredentials } from "../google/credentials.ts";
-import { actions, inboxes, type ConnectionStatus, type InboxRow } from "../db/index.ts";
+import { providerCredentials } from "../google/credentials.ts";
+import { actions, inboxes, type InboxRow } from "../db/index.ts";
 import { failRecords, failUndo } from "../service/actions.ts";
 import { expireSentDrafts, nextSentExpiry } from "../service/drafts.ts";
 import type { Ctx, Hooks, WriteBackTask } from "../service/context.ts";
@@ -18,7 +18,10 @@ import { getInbox } from "../service/store.ts";
 import { errorMessage, Mutex, WorkQueues } from "../util.ts";
 import { announceComeBacks, nextComeBack } from "./comeback.ts";
 import { ingest } from "./ingest.ts";
+import { afterFailure, afterSuccess, classifyFailure, settled } from "./health.ts";
 import { FirstSyncCounts } from "./progress.ts";
+import { markNotSyncing, storeHealth } from "./status.ts";
+import { SyncWatch } from "./watch.ts";
 import { planOps, recordResults } from "./writeback.ts";
 
 /** Timers longer than this are re-armed, so a sleeping laptop or a far-off time can't drift too far. */
@@ -59,11 +62,16 @@ export class SyncEngine {
   readonly #closes = new Map<string, Promise<void>>();
   #started = false;
   #comeBackCancel: (() => void) | null = null;
+  /** Whether syncs still finish (watch.ts): looks every `everyMs` while the engine runs. */
+  readonly #liveness: SyncWatch;
 
   constructor(ctx: Ctx) {
     this.#ctx = ctx;
     this.#queues = new WorkQueues((error) => ctx.host.log.error("Background mail work failed", error));
     this.#firstSync = new FirstSyncCounts(ctx, (work) => this.#queues.track(work));
+    const clock = ctx.host.clock;
+    this.#liveness = new SyncWatch(() => clock.monotonic?.() ?? clock.now(), notSyncingAfterMs(ctx.options.pollIntervalMs));
+    this.#liveness.onSilent = (inboxIds) => markNotSyncing(ctx, inboxIds, this.#liveness.afterMs);
   }
 
   hooks(): Hooks {
@@ -78,19 +86,24 @@ export class SyncEngine {
   }
 
   /**
-   * Starts watching or polling every inbox that isn't paused, and the come-back timer. Come-back times that
-   * passed while the server was stopped are announced at once. Nothing starts if `signal` was aborted while the inboxes
-   * were read (the Node host asked to stop during its start-up).
+   * Starts watching or polling every inbox that isn't paused, the come-back timer and the watch on syncs. Come-back
+   * times that passed while the server was stopped are announced at once. An inbox an earlier run said had stopped
+   * syncing is settled first: that was the earlier run's, and this one begins afresh. Nothing starts if `signal` was
+   * aborted while the inboxes were read (the Node host asked to stop during its start-up).
    */
   async start(signal?: AbortSignal): Promise<void> {
     this.#started = true;
-    const rows = await this.#ctx.db.select({ id: inboxes.id, paused: inboxes.paused }).from(inboxes);
+    const rows = await this.#ctx.db.select({ id: inboxes.id, paused: inboxes.paused, reason: inboxes.statusReason }).from(inboxes);
     if (signal?.aborted) {
       this.#started = false;
       return;
     }
+    for (const row of rows) {
+      if (row.reason === "not_syncing") await storeHealth(this.#ctx, row.id, (r) => (r.statusReason === "not_syncing" ? settled(r) : null));
+    }
     for (const row of rows) if (!row.paused) this.#open(row.id);
     this.#queues.track(this.#fireTimer());
+    this.#liveness.start(this.#ctx.host.scheduler, (work) => this.#queues.track(work));
   }
 
   /**
@@ -101,6 +114,7 @@ export class SyncEngine {
     this.#started = false;
     this.#comeBackCancel?.();
     this.#comeBackCancel = null;
+    this.#liveness.stop();
     // `#close` marks its inbox closing before its first wait, so mapping marks them all at once.
     await Promise.all([...this.#loops.keys()].map((id) => this.#close(id)));
     await this.#queues.idle();
@@ -173,7 +187,13 @@ export class SyncEngine {
       // How far the first sync has got, from each batch and while a slow one runs (progress.ts).
       const firstSync = this.#firstSync;
       if (history) firstSync.begin(inboxId);
-      const onProgress = history ? (progress: SyncProgress) => firstSync.heard(inboxId, progress) : undefined;
+      // Each word of how far it got is a sign of life too, while one long batch runs (watch.ts).
+      const onProgress = history
+        ? (progress: SyncProgress) => {
+          this.#liveness.alive(inboxId);
+          firstSync.heard(inboxId, progress);
+        }
+        : undefined;
       // At most `syncRounds` batches (10,000 unless set), so one inbox's long first sync lets the other work in.
       for (let round = 0; round < ctx.options.syncRounds; round++) {
         // Being closed since the sync began (while its provider opened, say), or the engine stopping: no batch starts.
@@ -187,6 +207,7 @@ export class SyncEngine {
           return { ...await ingest(ctx, fresh, batch, history, !history && await mayProcess(ctx)), paused: fresh.paused };
         });
         if (!result) return;
+        this.#liveness.alive(inboxId);
         if (result.tidy.length) this.#writeBack({ inboxId, threadIds: result.tidy, recordIds: [] });
         if (result.aiNow.length) ctx.aiQueue.enqueue(result.aiNow);
         cursor = batch.cursor;
@@ -204,7 +225,9 @@ export class SyncEngine {
       if (history && finished) ctx.aiQueue.wake();
       // The first sync is done only once the provider has sent all of it: until then its mail stays history (not
       // screened as new), and its count stays.
-      await this.#setStatus(inboxId, "ok", null, { lastSyncedAt: ctx.now(), ...(history && finished && { historyDone: true }) });
+      const now = ctx.now();
+      this.#liveness.alive(inboxId);
+      await storeHealth(ctx, inboxId, () => afterSuccess(now), { lastSyncedAt: now, ...(history && finished && { historyDone: true }) });
       if (history && finished) firstSync.forget(inboxId);
       // Once the provider's own changes are in: what was held while the inbox was paused, in order.
       const held = this.#held.get(inboxId) ?? [];
@@ -227,40 +250,21 @@ export class SyncEngine {
       }
       ctx.host.log.error(`Syncing ${inboxId} failed: ${errorMessage(error)}`);
       this.#repairDue.add(inboxId);
-      await this.#setStatus(inboxId, "needs_attention", attentionWords(inbox, error));
+      // A refused sign-in or the host's setup needs the person at once; a failure that may pass only after the grace.
+      const failure = classifyFailure(inbox, error);
+      const now = ctx.now();
+      this.#liveness.alive(inboxId);
+      await storeHealth(ctx, inboxId, (row) => afterFailure(row, failure, now, this.#liveness.afterMs));
     } finally {
       this.#schedulePoll(inboxId);
     }
-  }
-
-  /**
-   * Stores how the last sync went. A changed status or reason raises the inbox's version and sends
-   * `inbox.changed`; `lastSyncedAt` moving alone is not a change, so it does neither. The first sync done drops its
-   * count, a change when one was shown.
-   */
-  async #setStatus(
-    inboxId: string,
-    status: ConnectionStatus,
-    detail: string | null,
-    extra: Partial<Pick<InboxRow, "lastSyncedAt" | "historyDone">> = {},
-  ): Promise<void> {
-    const ctx = this.#ctx;
-    await ctx.lock.run(async () => {
-      const row = await getInbox(ctx, inboxId);
-      if (!row) return;
-      const set = { status, statusDetail: detail, ...extra, ...(extra.historyDone && { firstSyncFetched: null, firstSyncTotal: null }) };
-      const counted = extra.historyDone === true && !row.historyDone && row.firstSyncTotal !== null;
-      const changed = row.status !== status || row.statusDetail !== detail || counted;
-      const next = { ...row, ...set, version: changed ? row.version + 1 : row.version };
-      await ctx.db.update(inboxes).set({ ...set, version: next.version }).where(eq(inboxes.id, inboxId));
-      if (changed) ctx.emit({ type: "inbox.changed", inbox: toInbox(next) });
-    });
   }
 
   #open(inboxId: string): void {
     if (!this.#started || this.#loops.has(inboxId)) return;
     const loop: Loop = { pollCancel: null, stopWatch: null };
     this.#loops.set(inboxId, loop);
+    this.#liveness.alive(inboxId);
     this.#repairDue.add(inboxId);
     this.#queues.track(this.#watch(inboxId, loop));
     this.requestSync(inboxId);
@@ -357,6 +361,7 @@ export class SyncEngine {
   /** Marks the inbox closing before its first wait (`stop` relies on it), then waits for its batch in hand. */
   async #close(inboxId: string): Promise<void> {
     this.#markClosing(inboxId, 1);
+    this.#liveness.forget(inboxId);
     const loop = this.#loops.get(inboxId);
     this.#loops.delete(inboxId);
     try {

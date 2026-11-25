@@ -120,6 +120,10 @@ struct SampleDecodingTests {
         // Outlook left the contract: a server that still sends it gets an unknown kind, kept as sent.
         #expect(ProviderKind(rawValue: "outlook") == .unknown("outlook"))
         #expect(ProviderKind.known == [.imap, .gmail])
+        // Why an inbox needs attention (0.1.2), and a reason a later server may add.
+        #expect(
+            InboxStatusReason.known.map(\.rawValue) == ["needs_sign_in", "host_setup", "provider_error", "not_syncing"])
+        #expect(InboxStatusReason(rawValue: "quota_spent") == .unknown("quota_spent"))
     }
 
     @Test func everyValueIsOneTheAppKnows() throws {
@@ -146,6 +150,8 @@ struct SampleDecodingTests {
         let personal = try #require(sample.inboxes.first { $0.id == "inb_personal" })
         #expect(personal.status == .needsAttention)
         #expect(personal.statusDetail == "The IMAP server at imap.home.example refused the user name or password.")
+        #expect(personal.statusReason == .needsSignIn)
+        #expect(sample.inboxes.filter { $0.id != "inb_personal" }.allSatisfy { $0.statusReason == nil })
         #expect(personal.trust == .actSilently)
         #expect(personal.agentAccess)
 

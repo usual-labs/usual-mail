@@ -455,7 +455,7 @@ describe("repair", () => {
     // The mailbox goes away and comes back: the first good sync after that repairs.
     mailbox.failSync = "Connection reset";
     await t.sync(inbox);
-    assert.equal((await t.server.listInboxes(t.person))[0]!.status, "needs_attention");
+    assert.equal((await t.server.listInboxes(t.person))[0]!.status, "ok", "a failure that may pass waits out the grace");
     mailbox.failSync = null;
     await t.sync(inbox);
     assert.equal((await t.server.listInboxes(t.person))[0]!.status, "ok");

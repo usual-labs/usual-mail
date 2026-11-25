@@ -50,7 +50,10 @@ test("the count is kept on the inbox: listed, kept while it needs attention, and
   let failFrom = 3;
   slow(s, (call) => {
     s.clock.advance(2_500);
-    s.mailboxes.get("me@progress.example")!.failSync = call >= failFrom ? "Connection refused" : null;
+    const mailbox = s.mailboxes.get("me@progress.example")!;
+    // A refused login, so it needs attention at once rather than after the grace.
+    mailbox.failSync = call >= failFrom ? "The mail server refused the password" : null;
+    mailbox.signInRefused = true;
   });
   const { inbox } = await s.connect({ address: "me@progress.example", history: history(7) });
   // 2 of 7, then 4 of 7, each shown; from the third call on, the mailbox doesn't answer.

@@ -8,8 +8,9 @@ store, the cursor and every decision. Read [the contract](../contract.md) first,
 State on 2026-11-17: both providers match the contract's fifth revision as amended the same day (categories and the
 Screening gate in place of piles): everything below is built and covered by tests that pass, except where a section
 says otherwise, and both are joined into the server (`server/src/node/parts.ts`). Nothing has touched a real
-mailbox. The Docker-backed tests (GreenMail, Dovecot) have **never run**: Docker on the build machine didn't answer
-earlier, and for the fifth revision it wasn't tried (`USUAL_MAIL_SKIP_DOCKER=1`). Gmail push notifications are not
+mailbox. The Docker-backed tests first ran on 2026-11-25 (Docker answered): GreenMail's pass; Dovecot's fail, its
+logins refused ([mail-checks.md](mail-checks.md), [known-issues.md](known-issues.md)). Before, Docker on the build
+machine didn't answer, and for the fifth revision it wasn't tried (`USUAL_MAIL_SKIP_DOCKER=1`). Gmail push notifications are not
 built. Since 2026-11-21 the Gmail provider has its own entry (`@usualmail/mail/gmail`, no IMAP code), converts
 messages a few at a time, and, with a size limit set, reads messages over it without their attachments' bytes and
 serves their attachments through `messages.attachments.get`: [mail-gmail-large.md](mail-gmail-large.md), tested
@@ -52,8 +53,9 @@ npm run test:gmail     # fake Gmail API
   60-second alarm signal didn't stop it); stopped by hand, it printed only its client section (27.3.1), never the
   daemon's. The file reports one skipped test with the reason. `docker version` gets 10 seconds
   (`USUAL_MAIL_DOCKER_TIMEOUT_MS`); `USUAL_MAIL_SKIP_DOCKER=1` skips on purpose.
-- Unverified about Docker: that Dovecot's default image allows a plain-text login on 31143, and how GreenMail
-  reports keywords and special-use folders. The harness probes keywords.
+- Unverified about Docker: how GreenMail reports keywords and special-use folders (the harness probes keywords).
+  Dovecot's default image let the harness's probe log in on 31143 on 2026-11-25, but refused most per-test users
+  after it, so its suite fails (open, [known-issues.md](known-issues.md)).
 
 ## The first sync's window
 

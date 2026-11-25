@@ -41,6 +41,9 @@ public struct Inbox: Codable, Hashable, Sendable, Identifiable, Versioned {
     public var status: InboxStatus
     /// Why the status is not `ok`, in words a person can act on.
     public var statusDetail: String?
+    /// Why it is `needsAttention`, so the apps offer the step that fits; only with that status. Nil from a server before
+    /// 0.1.2.
+    public var statusReason: InboxStatusReason?
     /// How far its first sync has got while it runs, once the server has a count; nil before and once it is done. It
     /// keeps its count while the inbox needs the person, or is paused (the server stops the first sync once the batch
     /// in hand is stored, and goes on from there when it is resumed); `fetching` is what to show.
@@ -55,7 +58,8 @@ public struct Inbox: Codable, Hashable, Sendable, Identifiable, Versioned {
         id: String, name: String, address: String, color: String, icon: InboxIcon = .person, position: Int = 0,
         provider: ProviderKind, connection: InboxConnection, trust: TrustLevel, guide: String = "",
         agentAccess: Bool = false, status: InboxStatus = .ok, statusDetail: String? = nil,
-        firstSync: FirstSyncProgress? = nil, lastSyncedAt: Date? = nil, createdAt: Date, version: Int = 1
+        statusReason: InboxStatusReason? = nil, firstSync: FirstSyncProgress? = nil, lastSyncedAt: Date? = nil,
+        createdAt: Date, version: Int = 1
     ) {
         self.id = id
         self.name = name
@@ -70,6 +74,7 @@ public struct Inbox: Codable, Hashable, Sendable, Identifiable, Versioned {
         self.agentAccess = agentAccess
         self.status = status
         self.statusDetail = statusDetail
+        self.statusReason = statusReason
         self.firstSync = firstSync
         self.lastSyncedAt = lastSyncedAt
         self.createdAt = createdAt

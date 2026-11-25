@@ -323,11 +323,45 @@ describe("silent records, notes and failures (contract revision 3)", () => {
   });
 });
 
+describe("an inbox that needs attention, by why (0.1.2)", () => {
+  test("Home and the inbox's page offer the step that fits: reconnect, sync now, or the host's own setup", async () => {
+    const app = setup();
+    const personal = app.fake.inboxes.find((inbox) => inbox.id === "inb_personal")!;
+    const home = async () => (await app.page("/")).body;
+    const reconnect = /href="\/inboxes\/inb_personal#connection-title">Reconnect/;
+    const syncNow = /action="\/inboxes\/inb_personal\/sync"/;
+    const formOpen = /<details class="reconnect" open>/;
+    // The sample's: a refused login.
+    assert.equal(personal.statusReason, "needs_sign_in");
+    assert.match(await home(), reconnect);
+    assert.doesNotMatch(await home(), syncNow);
+    assert.match(textOf(await home()), /Give the new password or other details under Connection below/);
+    assert.match((await app.page("/inboxes/inb_personal")).body, formOpen);
+    personal.statusReason = "provider_error";
+    assert.match(await home(), syncNow);
+    assert.doesNotMatch(await home(), reconnect);
+    assert.match(textOf(await home()), /The words above are the provider's own/);
+    assert.doesNotMatch((await app.page("/inboxes/inb_personal")).body, formOpen);
+    personal.statusReason = "not_syncing";
+    assert.match(await home(), syncNow);
+    assert.match(textOf(await home()), /If it stays like this, restart the server/);
+    personal.statusReason = "host_setup";
+    assert.doesNotMatch(await home(), reconnect);
+    assert.doesNotMatch(await home(), syncNow);
+    assert.match(textOf(await home()), /its host gives the server the right Google client \(usual-mail google set\)/);
+    assert.doesNotMatch((await app.page("/inboxes/inb_personal")).body, formOpen);
+    // A server before 0.1.2 gives no reason: new details may fix it, and syncing again may.
+    delete personal.statusReason;
+    assert.match(await home(), reconnect);
+    assert.match(textOf(await home()), /Sync now tries again\. If the password or other details changed/);
+  });
+});
+
 describe("an inbox's connection and trust (contract revisions 3 and 4)", () => {
   test("an IMAP inbox that needs attention shows its stored connection and opens the form filled with it, asking only for the password", async () => {
     const { body } = await setup().page("/inboxes/inb_personal");
     const text = textOf(body);
-    assert.match(text, /give the new ones under Connection below; the inbox keeps its rules and history/);
+    assert.match(text, /Give the new password or other details under Connection below; the inbox keeps its rules and history/);
     assert.doesNotMatch(text, /remove the inbox and connect it again/);
     assert.match(text, /Incoming \(IMAP\) imap\.home\.example:993, TLS, as me@home\.example/);
     assert.match(text, /Outgoing \(SMTP\) smtp\.home\.example:465, TLS, as me@home\.example/);

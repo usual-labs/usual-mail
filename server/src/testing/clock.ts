@@ -4,6 +4,8 @@ import type { Clock, Scheduler } from "../host.ts";
 
 export class ManualClock implements Clock, Scheduler {
   #now: number;
+  /** Time the machine slept (`sleep`), which `monotonic` doesn't count. */
+  #slept = 0;
   #timers: Array<{ at: number; run: () => void; id: number }> = [];
   #next = 0;
 
@@ -13,6 +15,20 @@ export class ManualClock implements Clock, Scheduler {
 
   now(): number {
     return this.#now;
+  }
+
+  monotonic(): number {
+    return this.#now - this.#slept;
+  }
+
+  /**
+   * The machine sleeps for `ms`: the wall clock jumps, the monotonic one doesn't, and every timer falls due that much
+   * later, as Node's timers do after a Mac sleeps. Nothing runs meanwhile.
+   */
+  sleep(ms: number): void {
+    this.#now += ms;
+    this.#slept += ms;
+    for (const timer of this.#timers) timer.at += ms;
   }
 
   setTimer(delayMs: number, run: () => void): () => void {

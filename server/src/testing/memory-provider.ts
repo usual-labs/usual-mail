@@ -22,6 +22,7 @@ import type {
   SyncBatch,
   SyncOptions,
 } from "@usualmail/core";
+import { SIGN_IN_REFUSED } from "@usualmail/core";
 import { memorySearch, memoryThread } from "./memory-search.ts";
 
 export interface MemoryMailboxOptions {
@@ -79,8 +80,13 @@ export class MemoryMailbox {
   readonly fromCheckReads: string[][] = [];
   /** Every search the mailbox was asked, oldest first. */
   readonly searches: ProviderSearchQuery[] = [];
-  /** Set to act like a mailbox that refuses the login: sync, verify, apply and send all fail with this. */
+  /**
+   * Set to act like a failing mailbox: sync, verify, apply and send all fail with this, as a failure that may pass (no
+   * connection, say), or as a refused login with `signInRefused`.
+   */
   failSync: string | null = null;
+  /** With `failSync`, the mailbox refuses the login: its error is core's `SIGN_IN_REFUSED`. */
+  signInRefused = false;
   /** Return an error message to refuse an op. */
   refuse: ((op: ProviderOp) => string | undefined) | null = null;
   failSend: string | null = null;
@@ -218,8 +224,17 @@ export class MemoryMailbox {
    * removals; their later pages carry an "F" (first sync) or "L" (reset) cursor so they keep listing. A first sync's
    * batches say how far it has got, as the real providers do: what of the window it has sent, of all it holds now.
    */
+  /** The error `failSync` makes, or null while it is unset. */
+  failure(): Error | null {
+    if (!this.failSync) return null;
+    const error = new Error(this.failSync);
+    if (this.signInRefused) error.name = SIGN_IN_REFUSED;
+    return error;
+  }
+
   sync(cursor: string | null, since: number | null, limit = 100): SyncBatch {
-    if (this.failSync) throw new Error(this.failSync);
+    const failure = this.failure();
+    if (failure) throw failure;
     const first = cursor === null || cursor.startsWith("F");
     let listing = first || cursor.startsWith("L");
     let after = cursor === null ? 0 : Number(cursor.replace(/^[FL]/, ""));
@@ -419,12 +434,14 @@ export class MemoryProvider implements MailProvider {
     }
     if (mailbox.kind === "gmail") {
       this.search = async (query, options) => {
-        if (mailbox.failSync) throw new Error(mailbox.failSync);
+        const failure = mailbox.failure();
+        if (failure) throw failure;
         mailbox.searches.push(structuredClone(query));
         return memorySearch(mailbox.reported(), query, options);
       };
       this.fetchThread = async (threadKey) => {
-        if (mailbox.failSync) throw new Error(mailbox.failSync);
+        const failure = mailbox.failure();
+        if (failure) throw failure;
         return memoryThread(mailbox.reported(), threadKey);
       };
     }
@@ -441,7 +458,8 @@ export class MemoryProvider implements MailProvider {
   }
 
   async verify(): Promise<{ address: string }> {
-    if (this.mailbox.failSync) throw new Error(this.mailbox.failSync);
+    const failure = this.mailbox.failure();
+    if (failure) throw failure;
     return { address: this.mailbox.address };
   }
 

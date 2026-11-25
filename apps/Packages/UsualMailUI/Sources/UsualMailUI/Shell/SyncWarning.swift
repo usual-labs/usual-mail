@@ -47,6 +47,9 @@ struct SyncNotice: Equatable {
         /// The inbox's page in the server's dashboard (`MailStore.dashboardURL(inboxId:)`), in the browser: the apps
         /// take no new IMAP details, and that page does ("Reconnect").
         case dashboard(inboxId: String)
+        /// Asks the server to sync it now (`POST /v1/inboxes/:id/sync`): for a provider that kept failing, or a sync
+        /// that stopped. The notice stays until a sync finishes well.
+        case tryAgain(inboxId: String)
         /// Settings' Accounts tab, where each inbox says how it stands.
         case openAccounts
 
@@ -54,13 +57,28 @@ struct SyncNotice: Equatable {
             switch self {
             case .signIn: "Sign in again"
             case .dashboard: "Reconnect on the dashboard"
+            case .tryAgain: "Try again"
             case .openAccounts: "Open Accounts"
+            }
+        }
+
+        /// The step for one inbox, by why it needs attention (`Inbox.statusReason`, 0.1.2): signing in again for a
+        /// refused sign-in (Gmail here, IMAP on the dashboard, since the apps take no new IMAP details); Accounts, and
+        /// no sign-in, for the host's own setup; trying again for a provider that kept failing or a sync that stopped.
+        /// No reason, from an older server, or one this app doesn't know: as for a refused sign-in.
+        static func step(for inbox: Inbox) -> Action {
+            switch inbox.statusReason {
+            case .hostSetup?: .openAccounts
+            case .providerError?, .notSyncing?: .tryAgain(inboxId: inbox.id)
+            case .needsSignIn?, .unknown?, nil:
+                // Any Gmail inbox signs in with Google again, one connected by hand too (Settings' Accounts tab).
+                inbox.provider == .gmail ? .signIn(inboxId: inbox.id) : .dashboard(inboxId: inbox.id)
             }
         }
     }
 
-    /// The notice for `stopped`, nil when it is empty. One inbox: its name, the server's words on why, and signing in
-    /// again for Gmail, its dashboard page for any other; several: their names or count, and Accounts.
+    /// The notice for `stopped`, nil when it is empty. One inbox: its name, the server's words on why, and the step
+    /// its reason calls for (`Action.step`); several: their names or count, and Accounts.
     static func notice(for stopped: [Inbox]) -> SyncNotice? {
         guard let first = stopped.first else { return nil }
         guard stopped.count == 1 else {
@@ -76,9 +94,7 @@ struct SyncNotice: Equatable {
         return SyncNotice(
             title: "\(first.name) stopped syncing.",
             detail: detail.isEmpty ? "New mail from it won't arrive here until it's reconnected." : detail,
-            // Any Gmail inbox signs in with Google again, one connected by hand too (Settings' Accounts tab); an IMAP
-            // one takes new details on the dashboard, since the apps' Accounts has nowhere to type them.
-            action: first.provider == .gmail ? .signIn(inboxId: first.id) : .dashboard(inboxId: first.id))
+            action: .step(for: first))
     }
 }
 
@@ -100,7 +116,9 @@ struct SyncWarningMark: View {
 /// runs to six lines on the iPhone) doesn't push the list down; Settings' Accounts tab and VoiceOver have it whole.
 struct SyncNoticeView: View {
     let notice: SyncNotice
-    let act: (SyncNotice.Action) -> Void
+    /// The button's step; the button shows it working until it returns ("Try again" waits for the server's answer).
+    let act: (SyncNotice.Action) async -> Void
+    @State private var working = false
 
     static let detailLines = 3
 
@@ -125,11 +143,16 @@ struct SyncNoticeView: View {
                 .accessibilityLabel(Text(verbatim: "\(notice.title) \(notice.detail)"))
                 // The app's one filled button: fixing it is the step the notice is there for.
                 Button {
-                    act(notice.action)
+                    Task {
+                        working = true
+                        await act(notice.action)
+                        working = false
+                    }
                 } label: {
-                    DarkButtonLabel(title: notice.action.title)
+                    DarkButtonLabel(title: notice.action.title, busy: working, enabled: !working)
                 }
                 .buttonStyle(PlainControlStyle())
+                .disabled(working)
                 .pointer()
             }
             Spacer(minLength: 0)

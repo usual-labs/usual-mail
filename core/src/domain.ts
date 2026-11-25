@@ -5,6 +5,7 @@
 import type { AiJob } from "./ai.ts";
 import type { Avatar } from "./avatars.ts";
 import type { FirstSyncProgress } from "./first-sync.ts";
+import type { InboxStatusReason } from "./inbox-health.ts";
 import type { GoogleSignInInfo } from "./google.ts";
 import type { OwnerInfo } from "./owner.ts";
 import type { RemotePictures } from "./pictures.ts";
@@ -217,6 +218,11 @@ export interface Inbox {
   status: InboxStatus;
   /** Why the status is not "ok", in words a person can act on. */
   statusDetail?: string;
+  /**
+   * Why it is `needs_attention`, so an interface offers the step that fits (`InboxStatusReason`); only with that
+   * status. Absent from a server before 0.1.2.
+   */
+  statusReason?: InboxStatusReason;
   /**
    * How far its first sync has got, while it runs (docs/contract-sync.md, "How far a first sync has got"). Present
    * once the provider has counted the first sync's window and the first sync has run for

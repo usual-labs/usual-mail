@@ -3,6 +3,18 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **When an inbox needs attention, 0.1.2 (2026-11-25, `ios-ui-tweaks`):** both type checks clean; `npm test` 1,077
+  tests (1,071 pass, 6 skipped, 0 fail), new `test/sync-health.test.ts` (13: the sorting of every failure kind, the
+  grace, a long gap starting a new run, the words in two zones, ten minutes of failing polls said once and cleared,
+  a refused login at once and new credentials clearing the run, a sleep between failures, a held sync said after the
+  stale time and settled, hours asleep not counted, a long first sync with one 32-minute batch, a restart, a pause) and
+  `test/migration-0021.test.ts`. The held-sleep and long-batch tests seen failing on mutations (the watch on the wall
+  clock; no sign of life from a first sync's words). Seven earlier tests changed where a failure that may pass had
+  meant an instant `needs_attention` (a refused login now names itself, or the status stays within the grace).
+  `npm run check:cloudflare`: both type checks clean, 91 tests pass (migration 0021 in the generated copy).
+  `node scripts/build.mjs <scratch>/dist` (7,996,436 bytes) and `smoke-bundle.mjs` on it passed, with `migrations` and
+  `node_modules` linked beside it; `dist/server.mjs` untouched (its hash unchanged).
+
 - **The owner password's re-review follow-ups (2026-11-24, `owner-claim-fix`):** `npm run check` in `server/` (both
   type checks, 1,063 tests: 1,057 pass, 6 skipped, 0 fail; the build and the smoke test). `npm run check:cloudflare`:
   both type checks clean, 91 tests pass. Each new test seen failing on a mutation that undoes its fix (the ceiling back

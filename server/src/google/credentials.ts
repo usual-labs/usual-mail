@@ -26,13 +26,27 @@ export function claimsSignIn(credentials: unknown): boolean {
   return typeof credentials === "object" && credentials !== null && "signIn" in credentials;
 }
 
+/**
+ * Why the provider of an inbox connected by signing in with Google can't be opened: the host's setup (`host_setup`, no
+ * Google client) or the inbox's own sign-in (`needs_sign_in`, made with another client). sync/health.ts reads `reason`.
+ */
+export class InboxAccessError extends Error {
+  readonly reason: "needs_sign_in" | "host_setup";
+
+  constructor(reason: "needs_sign_in" | "host_setup", message: string) {
+    super(message);
+    this.name = "InboxAccessError";
+    this.reason = reason;
+  }
+}
+
 /** The credentials to open the inbox's provider with: the stored ones, with the host's secret for a sign-in. */
 export async function providerCredentials(ctx: Ctx, inbox: InboxRow): Promise<unknown> {
   const stored: unknown = JSON.parse(await ctx.host.secrets.open(inbox.credentials, inbox.id));
   if (!isSignedIn(stored)) return stored;
   const client = await ctx.google?.client() ?? null;
-  if (!client) throw new Error(attention.clientMissing);
-  if (client.clientId !== stored.clientId) throw new Error(attention.otherClient);
+  if (!client) throw new InboxAccessError("host_setup", attention.clientMissing);
+  if (client.clientId !== stored.clientId) throw new InboxAccessError("needs_sign_in", attention.otherClient);
   return { clientId: stored.clientId, clientSecret: client.clientSecret, refreshToken: stored.refreshToken };
 }
 
@@ -51,9 +65,11 @@ export function signedInConnection(connection: InboxConnection): InboxConnection
   return connection.kind === "gmail" ? { ...connection, signIn: "google" } : connection;
 }
 
+
 /**
- * Why an inbox's sync failed, in words a person can act on. An inbox connected by signing in with Google whose token
- * or client Google refused is told to sign in again, or that the host must fix the client.
+ * Why an inbox's provider failed, in words a person can act on. An inbox connected by signing in with Google whose
+ * token or client Google refused is told to sign in again, or that the host must fix the client. How a sync sorts a
+ * failure is sync/health.ts's.
  */
 export function attentionWords(inbox: InboxRow, error: unknown): string {
   const signedIn = inbox.connection?.kind === "gmail" && inbox.connection.signIn === "google";

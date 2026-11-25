@@ -180,13 +180,13 @@ struct Navigation: Equatable, Sendable {
         accountsSignIn = inboxId
     }
 
-    /// The sync notice's button (`SyncNotice.Action`). The dashboard opens in the browser (`Pages`), leaving the
-    /// window where it is.
+    /// The sync notice's button (`SyncNotice.Action`). The dashboard opens in the browser and trying again asks the
+    /// server (`Pages`), leaving the window where it is.
     mutating func fixSync(_ action: SyncNotice.Action) {
         switch action {
         case .signIn(let inboxId): openAccounts(signingIn: inboxId)
         case .openAccounts: openAccounts()
-        case .dashboard: break
+        case .dashboard, .tryAgain: break
         }
     }
 

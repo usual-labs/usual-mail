@@ -68,7 +68,7 @@ which is why `npm run check` starts the bundle.
 | `--dev-fake-google <url>` | | off | **Development only.** Google's authorization page (`<url>/o/oauth2/v2/auth`), token and revocation endpoints and Gmail's API go to a fake at `<url>` (a loopback origin) under the same paths; any other address is refused, nothing reaches Google. Refused like `--dev-fake-ai` (loopback host, not `NODE_ENV=production`); the start line says "DEVELOPMENT ONLY" |
 | | `USUAL_MAIL_GOOGLE_CLIENT_ID`, `USUAL_MAIL_GOOGLE_CLIENT_SECRET` | the file | The host's Google client (a web application client), both or neither; they win over `<data-dir>/google-client.json` |
 | | `USUAL_MAIL_SECRET_KEY` | key file | 32 bytes in base64 or base64url that seal mailbox and AI credentials |
-| | `USUAL_MAIL_POLL_SECONDS` | `60` | Poll interval for every inbox. IMAP's IDLE watch brings INBOX changes sooner |
+| | `USUAL_MAIL_POLL_SECONDS` | `60` | Poll interval for every inbox. IMAP's IDLE watch brings INBOX changes sooner. Five of them, or 15 minutes when that is longer, without a finished sync make an inbox `not_syncing` |
 | | `USUAL_MAIL_SYNC_DAYS` | `settings.json`, else `30` | How many days of mail a new inbox's first sync takes (`GET /v1/first-sync`, below). Wins over `<data-dir>/settings.json`, and a person can't change it while it is set; empty counts as unset |
 | | `USUAL_MAIL_OWNER_EMAIL` | none | Only Google's proof of this address claims an unclaimed server ([server-owner.md](server-owner.md)); refused at start when it isn't an address |
 | | `USUAL_MAIL_TRUSTED_PROXIES` | none | The reverse proxies in front of the server: addresses and CIDR ranges separated by commas, `private` (loopback, RFC 1918, 100.64.0.0/10, link-local, `fc00::/7`, `fe80::/10`) and `cloudflare` (Cloudflare's 22 published ranges, `CLOUDFLARE_RANGES`, copied 2026-11-24 from cloudflare.com/ips, never fetched). A connection from one of them is counted under the right-most `X-Forwarded-For` address that isn't one of them (`client-address.ts`, `node/client.ts`); from anyone else, and without the setting, the header is ignored. Refused at start when an entry isn't an address, range or word, and for any /0 range. The Caddy and Coolify files set `private`, Render's `private,cloudflare` |
@@ -171,7 +171,8 @@ src/pictures/        pictures from the web, host-neutral
                      caps and retries, the blank picture, checkedPicture
 src/sync/            the sync engine, batches (ingest, identity, rows, placement, sorting), write-back, come back; fit.ts:
                      a message made to fit a host's stored size (HostLimits.storedMessageBytes; Node: no limit);
-                     progress.ts: how far a first sync has got (Inbox.firstSync)
+                     progress.ts: how far a first sync has got (Inbox.firstSync); health.ts, watch.ts, status.ts:
+                     when an inbox needs attention and why (Inbox.statusReason)
 src/search/          search (docs/contract-search.md): terms.ts (the typed text and operators read into filters),
                      fts.ts (the FTS5 query, columns and weights), doc.ts (a thread's index entry), indexer.ts
                      (SearchIndex: kept right by version, built at a first start), local.ts (the query, ranking, cursors),
@@ -265,6 +266,22 @@ server, and its status.
   provider was opened with another window (`#checkWindow`), so a smaller window narrows it from that sync on (the
   providers never widen a first sync); a finished first sync never reads the window again. `conflict` while
   `USUAL_MAIL_SYNC_DAYS` set it, or with no way to keep it.
+- **When an inbox needs attention** (0.1.2, the owner's decision of 2026-11-25;
+  [sync](../contract-sync.md#when-an-inbox-needs-attention)): `sync/health.ts` sorts a failed attempt
+  (`classifyFailure`: `SignInRefused`, Google's refused token or another client, Gmail's 401 or missing scope are
+  `needs_sign_in`; no Google client, a refused host client or the Gmail API off in its project are `host_setup` for a
+  signed-in inbox, `needs_sign_in` for one connected by hand; anything else may pass) and makes the row's next state
+  (`afterFailure`, `afterSuccess`): at once with a reason, or `provider_error` once failures have run ten minutes
+  across two attempts, a gap longer than the stale time since the last attempt starting the run again. Migration 0021
+  keeps the reason, the last attempt's time and the run (`failing_since`, `failures`), so a Cloudflare restart doesn't
+  reset it. `sync/watch.ts` (`SyncWatch`) keeps each open inbox's last sign of life (opened, a batch stored, a first
+  sync's word, an attempt finished) in memory on `Clock.monotonic` (`performance.now()`, which a sleeping machine
+  doesn't advance) and looks every third of `notSyncingAfterMs` (5 minutes by default); `sync/status.ts` stores what
+  either makes (`storeHealth`, a version and `inbox.changed` only when status, words or reason changed) and marks
+  silent inboxes `not_syncing` (`markNotSyncing`, "No sync of this inbox has finished since 25 Nov, 14:02 UTC, …", in
+  the host's time zone). `start` settles a `not_syncing` left by the last run first. A new password or a resume clears
+  the run. Tested in `test/sync-health.test.ts` (the sorting, the grace, a sleeping machine, a held sync, a long first
+  sync, a restart, a pause) and `test/migration-0021.test.ts`.
 - **How far a first sync has got** (`src/sync/progress.ts`, `FirstSyncCounts`; 2026-11-23, the owner's decision;
   [sync](../contract-sync.md#sync)): during a sync of an inbox whose first sync runs (`!historyDone`), the engine
   passes `onProgress` to the provider and hears each batch's `progress` (not the batch that ends the first sync).
@@ -456,7 +473,8 @@ server, and its status.
   when the engine or `fillConnections` opens it, and fails with the person's words when the host's client is gone or
   another one; the engine checks before each sync of a signed-in inbox and reopens the provider when the secret
   changed. A refused token (`GoogleTokenError` from mail) becomes "… Sign in with Google again …" in `statusDetail`
-  (`attentionWords`). Removing such an inbox revokes its refresh token at Google in the background (`ctx.background`,
+  with `needs_sign_in`, a refused or missing host client `host_setup` (`sync/health.ts`; `attentionWords` still words
+  remote search's refusals). Removing such an inbox revokes its refresh token at Google in the background (`ctx.background`,
   which `whenIdle` waits for); a failure is logged as information, without the token. Credentials given by hand that
   carry `signIn` are `invalid`.
 - **The host's Google client from a person's device** (2026-11-21, the owner's decision; `src/google/setup.ts`, the

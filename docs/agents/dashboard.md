@@ -165,8 +165,12 @@ app.all("*", (c) => dashboard(c.req.raw));        // last
 #### An inbox's settings
 
 - **Connection:** the stored details as facts (IMAP's and SMTP's server, port, TLS or STARTTLS and login, whether a
-  copy of sent mail is saved; Gmail's client ID), from `Inbox.connection`. Then a disclosure, open when the inbox
-  needs attention or the form came back ("Give a new password…", "Give a new client secret and token…"). Its form
+  copy of sent mail is saved; Gmail's client ID), from `Inbox.connection`. Then a disclosure, open when new details
+  may fix the inbox (`needsNewDetails`: `statusReason` `needs_sign_in`, or none from a server before 0.1.2) or the
+  form came back ("Give a new password…", "Give a new client secret and token…"). The attention alert above, and Home's
+  list of inboxes that need attention, add the step for the reason (`attentionHint`; 0.1.2): new details or signing in
+  again, the host's `usual-mail google set`, or Sync now (`provider_error`, `not_syncing`, which Home offers as a
+  button; a refused sign-in gets "Reconnect" there). Its form
   starts with the stored details (`connectionValues` in `src/pages/inboxes.ts`): servers, ports, TLS, the login,
   saving sent mail; the SMTP user only when it differs from IMAP's, and the address only when the login differs
   from it. So the person types the password (or the client secret and refresh token) and changes only what

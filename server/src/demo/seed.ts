@@ -95,7 +95,11 @@ export async function seedSample(host: Host, demo: Demo, sample: SampleData, shi
         placement: { inInbox: !older.archived },
       });
     }
-    if (inbox.status === "needs_attention" && inbox.statusDetail) mailbox.failSync = inbox.statusDetail;
+    if (inbox.status === "needs_attention" && inbox.statusDetail) {
+      mailbox.failSync = inbox.statusDetail;
+      // A refused login needs attention at every sync; another failure would wait out the grace (sync/health.ts).
+      mailbox.signInRefused = inbox.statusReason === "needs_sign_in";
+    }
 
     await db.insert(inboxes).values({
       id: inbox.id,
@@ -110,6 +114,7 @@ export async function seedSample(host: Host, demo: Demo, sample: SampleData, shi
       agentAccess: inbox.agentAccess,
       status: connection(inbox.status),
       statusDetail: inbox.statusDetail ?? null,
+      statusReason: inbox.status === "needs_attention" ? inbox.statusReason ?? null : null,
       paused: inbox.status === "paused",
       lastSyncedAt: inbox.lastSyncedAt ? at(inbox.lastSyncedAt) : null,
       createdAt: at(inbox.createdAt),

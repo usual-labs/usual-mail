@@ -78,7 +78,8 @@ async function steps(
   const inbox = await first.connectInbox(person!, { name: "Mail", color: "#2F6FED", provider: kind, credentials });
   await first.whenIdle();
   assert.deepEqual(await subjects(first, person), ["1 days old"]);
-  assert.equal((await first.listInboxes(person!))[0]!.status, "needs_attention", "the first sync is still in progress");
+  // Still connecting: the failure after its first batch may pass, so it waits out the grace (sync/health.ts).
+  assert.equal((await first.listInboxes(person!))[0]!.status, "connecting", "the first sync is still in progress");
 
   // Started again with 7 days: the first sync goes on inside the new window only. What it had stays.
   const second = await start(7, false);

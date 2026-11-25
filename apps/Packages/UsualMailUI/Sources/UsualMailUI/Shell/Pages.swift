@@ -34,11 +34,12 @@ struct Pages: View {
         VStack(spacing: 0) {
             if let notice {
                 SyncNoticeView(notice: notice) { action in
-                    // The dashboard is a page in the browser; the rest move the window (`Navigation.fixSync`).
-                    if case .dashboard(let inboxId) = action {
-                        Links.open(store.dashboardURL(inboxId: inboxId))
-                    } else {
-                        fixSync(action)
+                    // The dashboard is a page in the browser and trying again a request; the rest move the window
+                    // (`Navigation.fixSync`).
+                    switch action {
+                    case .dashboard(let inboxId): Links.open(store.dashboardURL(inboxId: inboxId))
+                    case .tryAgain(let inboxId): try? await store.apiClient.syncInbox(id: inboxId)
+                    case .signIn, .openAccounts: fixSync(action)
                     }
                 }
                 .padding(.horizontal, Theme.page.leading)

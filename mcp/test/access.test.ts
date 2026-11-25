@@ -198,6 +198,18 @@ describe("what an agent sees", () => {
     assert.ok(service.calls.every((entry) => entry.caller === undefined || entry.caller === NARROW_AGENT));
   });
 
+  it("sees why an inbox needs attention, with its words, so it can say what fixes it", async () => {
+    const { handler, service } = setup();
+    const failing = service.inboxes.find((inbox) => inbox.id === "inb_harbor")!;
+    Object.assign(failing, { status: "needs_attention", statusDetail: "Connection refused", statusReason: "provider_error" });
+    const client = await connect(handler, "umt_agent");
+    const inboxes = (await call(client, "list_inboxes")).data as Array<Record<string, unknown>>;
+    const harbor = inboxes.find((inbox) => inbox.inboxId === "inb_harbor")!;
+    assert.deepEqual([harbor.status, harbor.statusReason, harbor.statusDetail], ["needs_attention", "provider_error", "Connection refused"]);
+    const northwind = inboxes.find((inbox) => inbox.inboxId === "inb_northwind")!;
+    assert.equal("statusReason" in northwind, false, "only with needs_attention");
+  });
+
   it("gets not_found for another inbox's thread, inbox, rules or brief section", async () => {
     const { handler } = setup();
     const client = await connect(handler, "umt_narrow");

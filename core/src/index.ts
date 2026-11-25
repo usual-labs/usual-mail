@@ -8,6 +8,7 @@ export * from "./google.ts";
 export * from "./google-client.ts";
 export * from "./google-setup.ts";
 export * from "./first-sync.ts";
+export * from "./inbox-health.ts";
 export * from "./owner.ts";
 export * from "./events.ts";
 export * from "./search.ts";

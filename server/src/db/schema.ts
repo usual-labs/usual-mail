@@ -20,6 +20,7 @@ import type {
   DraftState,
   InboxConnection,
   InboxIcon,
+  InboxStatusReason,
   FromCheck,
   Need,
   NotificationEvent,
@@ -60,6 +61,17 @@ export const inboxes = sqliteTable("inboxes", {
   agentAccess: bool("agent_access").notNull().default(false),
   status: text("status").$type<ConnectionStatus>().notNull(),
   statusDetail: text("status_detail"),
+  /** Why the status is `needs_attention` (`Inbox.statusReason`); null with any other status. */
+  statusReason: text("status_reason").$type<InboxStatusReason>(),
+  /**
+   * When the last sync attempt of the inbox finished, good or failed (sync/health.ts). A long gap before a failure
+   * (the server stopped, the machine asleep) starts a new run of failures rather than counting the gap.
+   */
+  lastAttemptAt: integer("last_attempt_at"),
+  /** When the current run of failures that may pass began (the first since the last good sync); null after a good one. */
+  failingSince: integer("failing_since"),
+  /** Failed attempts in that run: it needs attention only after two at least (`SYNC_FAILURE_GRACE_MS`). */
+  failures: integer("failures").notNull().default(0),
   paused: bool("paused").notNull().default(false),
   lastSyncedAt: integer("last_synced_at"),
   createdAt: integer("created_at").notNull(),

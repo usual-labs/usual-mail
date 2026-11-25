@@ -9,6 +9,11 @@ import type { Database } from "./db/index.ts";
 export interface Clock {
   /** Unix milliseconds. */
   now(): number;
+  /**
+   * Milliseconds on a clock that doesn't run while the machine sleeps and never goes back (Node: `performance.now()`),
+   * for how long the server itself has waited (sync/watch.ts). Absent: `now()`.
+   */
+  monotonic?(): number;
 }
 
 export interface Scheduler {
@@ -148,7 +153,7 @@ export interface Host {
 
 // --- Implementations that run on any host ----------------------------------------------------------------
 
-export const systemClock: Clock = { now: () => Date.now() };
+export const systemClock: Clock = { now: () => Date.now(), monotonic: () => performance.now() };
 
 export const webRandom: Random = {
   bytes: (length) => crypto.getRandomValues(new Uint8Array(length)),

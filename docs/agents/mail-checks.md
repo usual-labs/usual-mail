@@ -3,6 +3,12 @@
 What each pass ran and saw, newest first, split out of [mail.md](mail.md). Commands and the Docker notes are in
 mail.md, "Run and check".
 
+- **A refused IMAP login named (2026-11-25, 0.1.2):** mail `npm run check`, with Docker answering for the first time:
+  tsc clean; 615 tests, 563 passed, 29 skipped, 23 failed, every failure in "IMAP on Dovecot (dovecot/dovecot:2.4.5)",
+  whose per-test logins Dovecot refused ("The IMAP server at 127.0.0.1 refused the user name or password."). The
+  same 23 failed with this change undone (`connection.ts` as on `main`), so they aren't its. GreenMail's suite passed.
+  `test/imap/connection.test.ts` checks the refused login's name, `SignInRefused`.
+
 - **First-sync progress (2026-11-23):** mail `npm run check` (`USUAL_MAIL_SKIP_DOCKER=1`): tsc clean; 552 tests in 73
   suites, 537 passed, 15 skipped, 0 failed. New: `test/gmail/progress.test.ts` (7: every first-sync batch's count, the
   last included, none later; counting on in a new provider; `onProgress` once listed and after each message; a smaller

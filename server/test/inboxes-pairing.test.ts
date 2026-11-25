@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, test } from "node:test";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { migrate } from "drizzle-orm/libsql/migrator";
-import { ServiceError, type MailEvent, type PairingCode } from "@usualmail/core";
+import { ServiceError, SIGN_IN_REFUSED, type MailEvent, type PairingCode } from "@usualmail/core";
 import { aesGcmSecrets, FakeModels, MailServer, MemoryEventBus, ProviderRegistry, webRandom } from "../src/index.ts";
 import { openDatabase } from "../src/node/db.ts";
 import { createApp } from "../src/rest/app.ts";
@@ -40,7 +40,9 @@ describe("inbox versions", () => {
 
     assert.equal((await t.server.updateInbox(t.person, inbox.id, { name: "Acme" })).version, 3);
     assert.equal((await t.server.updateInbox(t.person, inbox.id, { name: "Acme" })).version, 3, "a patch that changes nothing");
-    mailbox.failSync = "Connection refused";
+    // A refused login needs attention at once (a failure that may pass would wait out the grace).
+    mailbox.failSync = "The mail server refused the password";
+    mailbox.signInRefused = true;
     await t.sync(inbox);
     mailbox.failSync = null;
     await t.sync(inbox);
@@ -63,7 +65,7 @@ describe("changing credentials", () => {
       const provider = mailbox.provider();
       // The password is checked on every call, as a mail server would after the password changed.
       const check = () => {
-        if (creds.password !== password) throw new Error("The mail server refused the password");
+        if (creds.password !== password) throw Object.assign(new Error("The mail server refused the password"), { name: SIGN_IN_REFUSED });
       };
       const [verify, sync] = [provider.verify.bind(provider), provider.sync.bind(provider)];
       provider.verify = async () => (check(), verify());

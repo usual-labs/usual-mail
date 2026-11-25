@@ -102,6 +102,33 @@ public enum InboxStatus: OpenEnum {
     }
 }
 
+/// Why an inbox is `needs_attention` (core's `InboxStatusReason`, docs/contract-sync.md, "When an inbox needs
+/// attention"), so the apps offer the step that fits: signing in again, the host's setup, trying again. A server before
+/// 0.1.2 sends none; a later one may send another (`unknown`).
+public enum InboxStatusReason: OpenEnum {
+    /// The mailbox refused the inbox's sign-in (Google's token, the IMAP login): sign in again, or new details.
+    case needsSignIn
+    /// The host's own setup stops it (the server's Google client refused or gone): the host fixes it.
+    case hostSetup
+    /// The provider kept failing for ten minutes: trying again may do.
+    case providerError
+    /// No sync of it has finished for a while though the server runs: trying again, else restarting the server.
+    case notSyncing
+    case unknown(String)
+
+    public static let known: [InboxStatusReason] = [.needsSignIn, .hostSetup, .providerError, .notSyncing]
+
+    public var rawValue: String {
+        switch self {
+        case .needsSignIn: "needs_sign_in"
+        case .hostSetup: "host_setup"
+        case .providerError: "provider_error"
+        case .notSyncing: "not_syncing"
+        case .unknown(let raw): raw
+        }
+    }
+}
+
 /// What a thread asks of the person.
 public enum Need: OpenEnum {
     case reply, decide, pay, read

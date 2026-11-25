@@ -29,7 +29,9 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
     3,400" and `words` "Fetching your mail · …", core's words mirrored; `sum` of the inboxes that have one, nil when
     none has),
     `Inbox.fetching` (the count while `connecting` or `ok`) and `Inbox.isFetching` (`connecting`, or a first sync still
-    running); kept in the on-device copy with the rest of the inbox's JSON;
+    running); kept in the on-device copy with the rest of the inbox's JSON; since 0.1.2 `Inbox.statusReason`
+    (`InboxStatusReason`: needsSignIn, hostSetup, providerError, notSyncing, `unknown(raw)` kept whole; nil from an
+    older server), which UsualMailUI's sync notice picks its button by;
     `APIClient.firstSync()`/`updateFirstSync(_:)` (`/v1/first-sync`); `MailStore.firstSyncWindow` (filled in the
     refresh for a person), `loadFirstSyncWindow()`, `updateFirstSync(days:) -> Bool` (a refusal, `invalid` or
     `conflict`, goes to `problem`; a window saved during a refresh isn't overwritten by it). Onboarding's

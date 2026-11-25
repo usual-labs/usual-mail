@@ -42,14 +42,15 @@ function silence(server: HoodiecrowServer): void {
 const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 describe("IMAP connection", () => {
-  it("verify reports a wrong password readably", async () => {
+  it("verify reports a wrong password readably, as a refused sign-in", async () => {
     const h = await hoodiecrowHarness(MODERN);
     try {
       const bad = createImapProvider({
         imap: { host: "127.0.0.1", port: h.imapPort, secure: false, user: USER, password: "wrong" },
         smtp: { host: "127.0.0.1", port: h.smtp.port, secure: false, user: USER, password: "wrong" },
       });
-      await assert.rejects(bad.verify(), /refused the user name or password/);
+      await assert.rejects(bad.verify(), (error: Error) =>
+        error.name === "SignInRefused" && /refused the user name or password/.test(error.message));
       await bad.close();
     } finally {
       await h.close();

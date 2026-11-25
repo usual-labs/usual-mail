@@ -206,13 +206,16 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   To reply, Pinned, Snoozed and the Inbox page), not on Settings, search or an open mail, a notice tops the card
   (`Pages`, fixed while the list scrolls): "Personal stopped syncing.", the server's `statusDetail` in three lines at
   most (Google's 265-character reason ran to six on the iPhone; Accounts and VoiceOver have it whole), and the dark
-  button. A Gmail inbox's is "Sign in again": Settings' Accounts tab, scrolled to that inbox, its Google sign-in
-  started at once (`Navigation.accountsSignIn`, dropped on leaving). Any other's is "Reconnect on the dashboard": the
-  inbox's dashboard page in the browser (`MailStore.dashboardURL(inboxId:)`), whose Reconnect form takes new IMAP
-  details, which the apps don't (the review of 2026-11-25). Two inboxes are named, more counted, with "Open
-  Accounts". Seen on the sample in a preview copy (`labs.usual.preview`) on 2026-11-25, and Google's long reason
-  and "Sign in again" with the sample's Gmail inbox stopped for the check only; the dashboard button not pressed
-  (the sample has no server). Every failed sync warns, a brief one too ([known-issues.md](known-issues.md)).
+  button, chosen by `statusReason` (`SyncNotice.Action.step`, 0.1.2; the server's sorting is in
+  [server.md](server.md)): `needsSignIn` is "Sign in again" for Gmail (Settings' Accounts tab, scrolled to that inbox,
+  its Google sign-in started at once: `Navigation.accountsSignIn`, dropped on leaving) and "Reconnect on the
+  dashboard" for IMAP (the inbox's dashboard page in the browser, `MailStore.dashboardURL(inboxId:)`, whose Reconnect
+  form takes new IMAP details, which the apps don't); `hostSetup` is "Open Accounts", starting nothing, since the host
+  fixes it; `providerError` and `notSyncing` are "Try again" (`APIClient.syncInbox`, the button working until the
+  server answers; the notice stays until a good sync). No reason (a server before 0.1.2) or an unknown one acts as a
+  refused sign-in did. Two inboxes are named, more counted, with "Open Accounts". Seen on the sample in a preview copy
+  (`labs.usual.preview`) on 2026-11-25, and Google's long reason and "Sign in again" with the sample's Gmail inbox
+  stopped for the check only; the dashboard and Try again buttons not pressed (the sample has no server).
   `SyncWarningTests`.
 - **The first run** (the onboarding session's `Onboarding/`, described in [apps-onboarding.md](apps-onboarding.md)):
   `MailWindow` shows `OnboardingView(session:)` over the whole window, with no rail or tabs, while

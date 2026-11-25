@@ -3,7 +3,7 @@
  * closed client, so each reconnect makes a new one. Closing never waits more than a few seconds.
  */
 import { ImapFlow, type ImapFlowOptions, type MailboxObject } from "imapflow";
-import type { ImapCredentials } from "@usualmail/core";
+import { SIGN_IN_REFUSED, type ImapCredentials } from "@usualmail/core";
 
 export interface ConnectionTimeouts {
   /** TCP and TLS setup. */
@@ -188,7 +188,10 @@ export async function closeClient(client: ImapFlow, ms: number): Promise<void> {
 export function readableError(error: unknown, host: string): Error {
   const e = error as { authenticationFailed?: boolean; code?: string; message?: string; responseText?: string };
   if (e?.authenticationFailed || e?.code === "AUTHENTICATIONFAILED") {
-    return new Error(`The IMAP server at ${host} refused the user name or password.`);
+    // Named so the server tells a refused sign-in from a failure that may pass (core's SIGN_IN_REFUSED).
+    const refused = new Error(`The IMAP server at ${host} refused the user name or password.`);
+    refused.name = SIGN_IN_REFUSED;
+    return refused;
   }
   if (e?.code === "ECONNREFUSED") return new Error(`Nothing answers on the IMAP port at ${host}.`);
   if (e?.code === "ENOTFOUND") return new Error(`The IMAP host ${host} wasn't found.`);

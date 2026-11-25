@@ -149,6 +149,10 @@ export async function insertInbox(ctx: Ctx, data: NewInbox, createdAt: number): 
     agentAccess: false,
     status: "connecting",
     statusDetail: null,
+    statusReason: null,
+    lastAttemptAt: null,
+    failingSince: null,
+    failures: 0,
     paused: false,
     lastSyncedAt: null,
     createdAt,
@@ -237,12 +241,16 @@ async function changeInbox(
     if (unpaused || fresh !== null) {
       next.status = "connecting";
       next.statusDetail = null;
+      next.statusReason = null;
     }
     if (fresh !== null) {
       next.credentials = fresh.sealed;
       next.connection = fresh.connection;
     }
-    const fields = ["name", "color", "icon", "position", "trust", "guide", "agentAccess", "paused", "status", "statusDetail", "credentials"] as const;
+    const fields = [
+      "name", "color", "icon", "position", "trust", "guide", "agentAccess", "paused", "status", "statusDetail", "statusReason",
+      "credentials",
+    ] as const;
     if (fields.every((key) => next[key] === current[key])) return { row: current, changed: false, reopen: false };
     next.version = current.version + 1;
     await ctx.db.update(inboxes).set({
@@ -256,6 +264,9 @@ async function changeInbox(
       paused: next.paused,
       status: next.status,
       statusDetail: next.statusDetail,
+      statusReason: next.statusReason,
+      // A new run: failures before the reconnect or the pause don't count towards the grace (sync/health.ts).
+      ...((unpaused || fresh !== null) && { failingSince: null, failures: 0 }),
       credentials: next.credentials,
       connection: next.connection,
       version: next.version,
