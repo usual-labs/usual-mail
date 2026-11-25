@@ -5,12 +5,13 @@
 #
 # Xcode signs with the team's own certificates and profiles, which it makes itself: sign in to the team under
 # Xcode › Settings › Accounts first. App Store Connect must already have an app record for the bundle ID
-# (<prefix>.UsualMail); the upload is refused without one. --mac's first upload was accepted (2026-11-25) though the
-# record then had only the iOS platform.
+# (<prefix>.UsualMail); the upload is refused without one. A record with only the iOS platform takes --mac's builds
+# too: App Store Connect adds the macOS version itself (2026-11-25).
 #
 # Usage: DEVELOPMENT_TEAM=ABCDE12345 scripts/testflight.sh [--mac] [--check]
 #   --mac     the Mac app instead of the iPhone app
-#   --check   signs and exports into build/TestFlight without uploading
+#   --check   signs and exports into build/TestFlight without uploading (with --mac, then checks every signature
+#             in the package's app is the app's own)
 #
 # BUNDLE_ID_PREFIX (default labs.usual) is the reverse-DNS prefix of the bundle ID.
 set -eu
@@ -66,5 +67,41 @@ xcodebuild archive -quiet -project UsualMail.xcodeproj -scheme "$scheme" -config
     CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY='Apple Development' \
     DEVELOPMENT_TEAM="$team" BUNDLE_ID_PREFIX="$prefix" \
     MARKETING_VERSION="$version" CURRENT_PROJECT_VERSION="$build"
+
+if [ "$platform" = mac ]; then
+    # Xcode signs each Swift package's resource bundle (Contents/Resources/*.bundle) with the archive's development
+    # certificate, and the App Store export re-signs only the app and code in the usual places (Frameworks, PlugIns
+    # and the like), never bundles under Resources: App Store Connect refuses those (ITMS-90284, 2026-11-25). They hold
+    # no code, so their own signatures come off and the export's signature of the app seals them as plain resources.
+    for bundle in "$archive"/Products/Applications/UsualMail.app/Contents/Resources/*.bundle; do
+        [ -d "$bundle" ] || continue
+        if [ -e "$bundle/Contents/MacOS" ] ||
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$bundle/Contents/Info.plist" >/dev/null 2>&1; then
+            echo "$bundle holds code, so its signature can't simply come off." >&2
+            exit 1
+        fi
+        rm -rf "$bundle/Contents/_CodeSignature"
+    done
+fi
+
 xcodebuild -exportArchive -archivePath "$archive" -exportPath "$out/$platform" \
     -exportOptionsPlist "$options" -allowProvisioningUpdates
+
+if [ "$platform" = mac ] && [ "$destination" = export ]; then
+    # Every signature in the exported app must be the app's own (App Store Connect checks this only after the upload;
+    # codesign --verify --deep doesn't look into bundles under Resources).
+    expanded="$out/mac/expanded"
+    pkgutil --expand-full "$out/mac/UsualMail.pkg" "$expanded"
+    app=$(find "$expanded" -maxdepth 3 -type d -name UsualMail.app | head -n 1)
+    codesign --verify --deep --strict "$app"
+    signer() { codesign -dvv "$1" 2>&1 | sed -n 's/^Authority=//p' | head -n 1; }
+    want=$(signer "$app")
+    echo "The app is signed by $want."
+    find "$app" -type d -name _CodeSignature | while read -r seal; do
+        item=$(dirname "$seal")
+        [ "$(basename "$item")" = Contents ] && item=$(dirname "$item")
+        got=$(signer "$item")
+        [ "$got" = "$want" ] || { echo "${item#"$app"/} is signed by ${got:-nobody}, not $want." >&2; exit 1; }
+    done
+    rm -rf "$expanded"
+fi

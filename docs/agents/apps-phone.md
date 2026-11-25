@@ -153,8 +153,18 @@ Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; d
   `generic/platform=macOS`. The Mac app got the iPhone's icon (`App/Assets.xcassets`, every Mac size from the same
   square, full-bleed: macOS 26 rounds it, as Finder showed) and its privacy manifest (`App/PrivacyInfo.xcprivacy`).
   `--mac --check` exported a signed 0.1.0 (a 19 MB `.pkg`, Apple silicon and Intel, sandboxed, Apple Distribution),
-  and the upload of build 202611251025 was accepted ("Upload succeeded", processing) without the macOS platform
-  having been added to the record by hand. Not yet seen ready or installed from TestFlight.
+  and build 202611251025 uploaded ("Upload succeeded") but App Store Connect failed it in processing (ITMS-90284):
+  the four Swift package resource bundles in `Contents/Resources` still carried the archive's Apple Development
+  signature, which the export doesn't replace ([known-issues.md](known-issues.md)). Since then the script takes those
+  bundles' signatures off in the archive before the export, and `--mac --check` fails if anything in the exported
+  app is signed by anyone but the app's signer. Build 202611251405, uploaded with that fix the same day, finished
+  processing as valid and went into internal testing; the record gained its macOS version by itself, nobody added
+  the platform by hand. Not yet seen installed from TestFlight.
+- **`--check` registers a build upload** that stays "awaiting upload" in App Store Connect (the export with
+  cloud-managed signing announces each build number). Harmless: the next number is always larger.
+- **The iPhone's bundles** go out the same way: at the app's root, sealed as files, still Apple Development in the
+  exported `.ipa` (seen 2026-11-25). App Store Connect accepts that for iOS (build 202611201656 is valid), so the
+  script leaves them alone.
 
 ## How to check
 

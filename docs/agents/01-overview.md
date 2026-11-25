@@ -196,7 +196,8 @@ the guided Google set-up of 2026-11-21):**
   hovered nothing. **The iPhone app** (2026-11-20, [apps-phone.md](apps-phone.md)) is a second target on the same
   packages: search, the switcher and settings above the card, the tabs at its foot. Tapped through in the simulator on
   the sample and on the owner's server; build 0.1.0 was uploaded to TestFlight on 2026-11-20 and seen installed on the
-  owner's Mac on 2026-11-25, as an iPhone app; the Mac app's 0.1.0 was uploaded to TestFlight on 2026-11-25.
+  owner's Mac on 2026-11-25, as an iPhone app; the Mac app's first TestFlight build was refused for its resource
+  bundles' signatures on 2026-11-25, and build 202611251405, with the fix, processed as valid the same day.
 
 ## Sign in with Google, the live run (2026-11-17)
 

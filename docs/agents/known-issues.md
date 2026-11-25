@@ -1151,6 +1151,27 @@ Debug signed with this Mac's "Apple Development" certificate instead: the design
 that certificate) stays the same across builds, so one "Always Allow" lasts. `check.sh` still builds unsigned, which
 is fine as it launches nothing.
 
+## The Mac app's TestFlight upload was refused for its resource bundles (ITMS-90284, fixed 2026-11-25)
+
+App Store Connect failed Mac build 202611251025 in processing: "Invalid Code Signing … must be signed with the
+certificate that is contained in the provisioning profile" for each Swift package's resource bundle
+(`GRDB_GRDB.bundle`, `UsualMailDesign_UsualMailDesign.bundle`, `UsualMailKit_UsualMailKit.bundle`,
+`UsualMailUI_UsualMailUI.bundle`). Xcode signs those bundles in their own package targets with the archive's
+identity, Apple Development. On the Mac they sit in `Contents/Resources`, which the app's seal treats as plain files
+(its `rules2`), and the App Store export re-signs only the app and nested code in the usual places (`Frameworks`,
+`PlugIns` and the like) with the cloud-managed Apple Distribution certificate. So the exported package had the app
+signed Apple Distribution and the four bundles still Apple Development. `codesign --verify --deep --strict` and
+`xcrun altool --validate-app` both pass that package; only processing after the upload catches it. The
+distribution certificate is cloud-managed, so nothing on this Mac can sign the bundles with it.
+
+`apps/scripts/testflight.sh --mac` now removes each bundle's `Contents/_CodeSignature` in the archive before the
+export. They hold no code (the script stops if one has `Contents/MacOS` or a `CFBundleExecutable`), so the export's
+signature of the app seals them as resources, privacy manifests included. `--mac --check` then expands the package
+and fails if anything in the app is signed by anyone but the app's signer. Build 202611251405, made this way,
+processed as valid. The iPhone's exported `.ipa` has the same development-signed bundles (at the app's root), and
+App Store Connect accepts them for iOS, so the script leaves the iPhone alone; if iOS processing ever refuses them,
+the same step applies there ([apps-phone.md](apps-phone.md), "Sending it to TestFlight").
+
 ## A `where` on a list of case patterns binds only the last one (Swift, 2026-11-20)
 
 `case .toReply, .pinned, .snoozed, .inbox where compact && !reading:` matches the first three always and applies the
