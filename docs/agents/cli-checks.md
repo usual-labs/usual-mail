@@ -3,6 +3,11 @@
 What each pass ran and saw on this Mac (Node 22.23.2, npm 10.9.8), newest first, split out of [cli.md](cli.md) on
 2026-11-24. Commands are in cli.md, "Run and check".
 
+- **The server review of 0.1.2 (2026-11-25):** `npm run check`: type check clean, 187 tests pass. `doctor`'s advice
+  for a Gmail sign-in names `inbox reconnect` (which signs in with Google again), and for a server it doesn't run the
+  host's own way. No test touches ports 8484 or 8585 any more: the Google tests' scratch config and the stand-in's
+  default address say 18585, and the pid-file test takes a free port.
+
 - **`doctor` by why an inbox needs attention, and 0.1.2 (2026-11-25):** `npm run check`: type check clean, 186 tests
   pass; new `test/doctor-attention.test.ts` (each `statusReason`'s fix, and the old advice without one).
 

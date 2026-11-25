@@ -83,7 +83,7 @@ export class StandIn {
   firstSync: FirstSyncWindow = { days: 30, setBy: "default", changeable: true };
   version = "0.0.0-stand-in";
   /** Google sign-in as `GET /v1/info` says it. */
-  google: GoogleSignInInfo = { available: false, redirectUri: "http://127.0.0.1:8585/v1/google/callback", missing: ["client"] };
+  google: GoogleSignInInfo = { available: false, redirectUri: "http://127.0.0.1:18585/v1/google/callback", missing: ["client"] };
   /** How each sign-in ends, after `polls` answers of `waiting`: which account signed in, and connected or a failure. */
   signInPlan: { address: string; ends: "connected" | GoogleSignInFailure; polls: number } = { address: "ana@gmail.example", ends: "connected", polls: 2 };
   readonly signIns = new Map<string, { deviceId: string; input: Record<string, unknown>; polls: number; outcome?: GoogleSignIn; expiresAt: string }>();

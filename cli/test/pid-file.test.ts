@@ -10,7 +10,7 @@ import { afterEach, beforeEach, mock, test } from "node:test";
 import { nodeLauncher, pidFile } from "../src/launch/node.ts";
 import { readRecord, removeRecord, writeRecord } from "../src/launch/pid-file.ts";
 import { FakeNode } from "./fakes.ts";
-import { context, scratch } from "./helpers.ts";
+import { context, freePort, scratch } from "./helpers.ts";
 
 let home: { dir: string; remove: () => void };
 let file: string;
@@ -88,7 +88,8 @@ test("a record naming this command's own process isn't the server, even when its
   const { ctx } = context({ home: home.dir, runner: node });
   mkdirSync(dirname(pidFile(ctx)), { recursive: true, mode: 0o700 });
   writeFileSync(pidFile(ctx), `${process.pid}\nstopping ${process.pid}\n`, { mode: 0o600 });
-  const launcher = nodeLauncher(ctx, { mode: "node", dataDir, port: 8484, serverFile: join(home.dir, "server.mjs") });
+  // A free port, never the one a real server here may use: nothing is reached, but nothing could be.
+  const launcher = nodeLauncher(ctx, { mode: "node", dataDir, port: await freePort(), serverFile: join(home.dir, "server.mjs") });
 
   assert.deepEqual(await launcher.state(), { state: "stopped" });
   assert.equal(await launcher.stop(), false);

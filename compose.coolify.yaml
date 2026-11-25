@@ -41,6 +41,9 @@ services:
       # Coolify's proxy, on its private Docker network, is the only way in: believe the client address it writes in
       # X-Forwarded-For, so wrong passwords count per client (docs/deploy.md, "Behind a proxy").
       - USUAL_MAIL_TRUSTED_PROXIES=private
+      # The server's time zone, a name like Europe/Berlin (UTC without it): the day mail was sent as the AI reads it, and
+      # the times in its words.
+      - TZ=${TZ:-UTC}
       # Your Google client for Gmail (docs/google-setup.md), both or neither; or give it from the Mac app instead.
       - USUAL_MAIL_GOOGLE_CLIENT_ID=${USUAL_MAIL_GOOGLE_CLIENT_ID:-}
       - USUAL_MAIL_GOOGLE_CLIENT_SECRET=${USUAL_MAIL_GOOGLE_CLIENT_SECRET:-}

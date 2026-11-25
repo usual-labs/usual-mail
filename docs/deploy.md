@@ -49,6 +49,10 @@ yet: a real VPS, Let's Encrypt, Coolify, Render and Railway themselves.
   a plain HTTP address and doesn't start.** Google sends people back to that address followed by
   `/v1/google/callback`, so register exactly that at Google ([google-setup.md](google-setup.md)). The server listens
   on port 8484 inside the container and answers `GET /healthz` when it is up.
+- **`TZ` for a time zone other than UTC.** The server works in its process's time zone, so in a container UTC unless
+  `TZ` names one (`Europe/Berlin`): the day each message was sent, as the AI reads it, and the times in its words, as
+  an inbox that "hasn't synced since 25 Nov, 14:02 UTC". The Compose files have the line; elsewhere set it with the
+  other variables.
 - **Memory:** about 100 MB measured at rest; 512 MB is the minimum to give it, 1 GB is comfortable.
 - **Backups** by the host's snapshots, or by stopping the server and copying `/data` (below).
 - **Updates go forward only.** The server updates its database to the version's form at every start, and an older

@@ -55,6 +55,11 @@ usual-mail init --mode docker
 From a copy of the repository it builds the image the first time. `compose.yaml` is there for people who prefer
 Docker Compose; its comments say how to pair with it.
 
+In a container the server works in UTC unless it is given `TZ`, a time zone name like `Europe/Berlin`: the day each
+message was sent, as the AI reads it, and the times in its words (an inbox that "hasn't synced since 25 Nov, 14:02").
+Set it under `environment` in `compose.yaml`. `usual-mail init --mode docker` doesn't pass one yet; with Node the
+server uses your computer's own.
+
 Either way, by default:
 
 - the **data** lives in `~/.local/share/usual-mail` (`--data-dir` chooses another folder). It holds your mail, the
@@ -212,9 +217,10 @@ connects another Gmail later.)
 
 Since 0.1.2 a short outage doesn't warn: a mailbox that can't be reached, times out or answers with errors needs
 attention only once that has gone on for ten minutes, with **Try again**. A refused sign-in, or your server's Google
-client gone or refused (which you fix with `usual-mail google set`), needs it at once. An inbox none of whose syncs
-has finished for 15 minutes (or five poll intervals, `USUAL_MAIL_POLL_SECONDS`) while the server runs says it hasn't
-synced since then; **Try again**, and if it stays, restart the server.
+client gone or refused (which you fix with `usual-mail google set`; on Cloudflare, with the Worker's Google secrets),
+needs it at once. An inbox none of whose syncs has finished for 15 minutes (or five poll intervals,
+`USUAL_MAIL_POLL_SECONDS`) while the server runs says when it last synced; **Try again**, and if it stays, restart the
+server.
 
 Other mailboxes: `usual-mail inbox add --provider imap` asks for the IMAP and SMTP servers and the password.
 **IMAP inboxes are not yet safe for real mail:** use them only to try Usual Mail out, with a mailbox that holds

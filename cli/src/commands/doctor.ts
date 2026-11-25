@@ -103,7 +103,7 @@ export async function runChecks(ctx: Context): Promise<Check[]> {
   if (run) add(dataCheck(ctx, run.dataDir));
   const owner = run ? ownerCodeCheck(ctx, run.dataDir, pairing?.level === "ok") : null;
   if (owner) add(owner);
-  if (answers && token) checks.push(...(await inboxChecks(client)));
+  if (answers && token) checks.push(...(await inboxChecks(client, run !== undefined)));
   if (answers && token) {
     const firstSync = await syncDaysCheck(client, run?.dataDir);
     if (firstSync) add(firstSync);
@@ -298,26 +298,30 @@ function dataCheck(ctx: Context, dataDir: string): Check {
 /**
  * What to do about an inbox that needs attention, by why it does (`Inbox.statusReason`, docs/contract-sync.md): new
  * details or signing in again, the host's Google client, or trying again. A server before 0.1.2 gives no reason.
+ * `runsHere`: this command runs the server (`usual-mail start`), so it gives the Google client and restarts it; for a
+ * server it doesn't run (on Cloudflare, say) the host does both its own way, which the server's words name.
  */
-export function attentionFix(inbox: Inbox): string {
+export function attentionFix(inbox: Inbox, runsHere = true): string {
   const quoted = JSON.stringify(inbox.name);
   switch (inbox.statusReason) {
     case "needs_sign_in":
       return inbox.provider === "gmail"
-        ? `Sign in with Google again from the Mac or iPhone app or the dashboard; one connected by hand takes new details with \`usual-mail inbox reconnect ${quoted}\`.`
+        ? `\`usual-mail inbox reconnect ${quoted}\` signs it in with Google again in your browser (or takes new details for one connected by hand); the Mac and iPhone apps and the dashboard can too.`
         : `Give the new password: \`usual-mail inbox reconnect ${quoted}\`.`;
     case "host_setup":
-      return "It is this server's own setup: give it the right Google client with `usual-mail google set --file <it>`. The inbox syncs again by itself.";
+      return runsHere
+        ? "It is this server's own setup: give it the right Google client with `usual-mail google set --file <it>`. The inbox syncs again by itself."
+        : "It is this server's own setup: its host gives it the right Google client, as the words above say (on Cloudflare, the Worker's secrets USUAL_MAIL_GOOGLE_CLIENT_ID and USUAL_MAIL_GOOGLE_CLIENT_SECRET). The inbox syncs again by itself.";
     case "provider_error":
       return `The provider kept failing: once it answers, \`usual-mail inbox sync ${quoted}\` tries again (the server does too).`;
     case "not_syncing":
-      return `No sync has finished for a while though the server runs: run \`usual-mail inbox sync ${quoted}\`; if it stays like this, \`usual-mail stop\` and \`usual-mail start\`.`;
+      return `No sync has finished for a while though the server runs: run \`usual-mail inbox sync ${quoted}\`; if it stays like this, ${runsHere ? "`usual-mail stop` and `usual-mail start`" : "restart the server where it runs"}.`;
     default:
       return `Fix what it says, then run \`usual-mail inbox sync ${quoted}\`. A changed password: \`usual-mail inbox reconnect ${quoted}\`.`;
   }
 }
 
-async function inboxChecks(client: Client): Promise<Check[]> {
+async function inboxChecks(client: Client, runsHere: boolean): Promise<Check[]> {
   let inboxes: Inbox[];
   try {
     inboxes = await client.raw<Inbox[]>("listInboxes");
@@ -329,7 +333,7 @@ async function inboxChecks(client: Client): Promise<Check[]> {
     const name = `inbox ${inbox.name}`;
     const words = STATUS_WORDS[inbox.status] ?? inbox.status;
     if (inbox.status === "needs_attention") {
-      return { name, level: "fail", text: `needs attention: ${inbox.statusDetail ?? "no reason given"}`, fix: attentionFix(inbox) };
+      return { name, level: "fail", text: `needs attention: ${inbox.statusDetail ?? "no reason given"}`, fix: attentionFix(inbox, runsHere) };
     }
     if (inbox.status === "paused") {
       return { name, level: "warn", text: "paused", fix: `Run \`usual-mail inbox resume ${JSON.stringify(inbox.name)}\` to sync it again.` };

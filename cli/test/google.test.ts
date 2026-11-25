@@ -20,7 +20,7 @@ const DOWNLOADED = {
     auth_uri: "https://accounts.google.com/o/oauth2/auth",
     token_uri: "https://oauth2.googleapis.com/token",
     client_secret: SECRET,
-    redirect_uris: ["http://127.0.0.1:8585/v1/google/callback"],
+    redirect_uris: ["http://127.0.0.1:18585/v1/google/callback"],
   },
 };
 
@@ -43,7 +43,7 @@ beforeEach(async () => {
   const me = server.addDevice("person", "usual-mail on test-machine");
   dataDir = join(home.dir, "data-" + Math.random().toString(36).slice(2));
   mkdirSync(dataDir, { recursive: true, mode: 0o700 });
-  savedConfig(home.dir, { server: server.url, token: me.token, deviceId: me.device.id, run: { mode: "node", dataDir, port: 8585 } });
+  savedConfig(home.dir, { server: server.url, token: me.token, deviceId: me.device.id, run: { mode: "node", dataDir, port: 18585 } });
   options = { home: home.dir };
 });
 
@@ -65,14 +65,14 @@ function recording(): { runner: Runner; ran: Array<{ command: string; args: stri
 test("google set --file puts the client Google's console downloaded into the data directory, owner-only, unprinted", async () => {
   const downloaded = join(home.dir, "client_secret_1234-abc.apps.googleusercontent.com.json");
   writeFileSync(downloaded, JSON.stringify(DOWNLOADED), { mode: 0o644 });
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const ran = await run(["google", "set", "--file", downloaded], options);
   assert.equal(ran.code, 0, ran.stderr);
   const file = join(dataDir, "google-client.json");
   assert.equal(readFileSync(file, "utf8"), JSON.stringify(DOWNLOADED), "the file as Google downloads it");
   assert.equal(mode(file), 0o600);
   assert.match(ran.stdout, /Google sign-in is available/);
-  assert.match(ran.stdout, /http:\/\/127\.0\.0\.1:8585\/v1\/google\/callback/);
+  assert.match(ran.stdout, /http:\/\/127\.0\.0\.1:18585\/v1\/google\/callback/);
   assert.match(ran.stdout, /seven days/);
   assert.match(ran.stdout, /restricted/);
   assertNowhere(SECRET, ran.stdout + ran.stderr);
@@ -121,10 +121,10 @@ test("google says what the server has, and exactly what the host must still do",
   assert.match(off.stdout, /off/);
   assert.match(off.stdout, /usual-mail google set/);
   assert.match(off.stdout, /Web application/);
-  assert.match(off.stdout, /http:\/\/127\.0\.0\.1:8585\/v1\/google\/callback/);
+  assert.match(off.stdout, /http:\/\/127\.0\.0\.1:18585\/v1\/google\/callback/);
   server.google = { available: false, missing: ["address"] };
   assert.match((await run(["google"], options)).stdout, /USUAL_MAIL_PUBLIC_URL/);
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const json = await run(["google", "--json"], options);
   assert.deepEqual(JSON.parse(json.stdout), server.google);
 });
@@ -164,8 +164,8 @@ test("google set never writes through a file or link at its temporary name, and 
 test("google prompt prints the browser agent's prompt with the server's redirect address filled in", async () => {
   const ran = await run(["google", "prompt"], options);
   assert.equal(ran.code, 0, ran.stderr);
-  assert.equal(ran.stdout, `${googleSetupPrompt("http://127.0.0.1:8585/v1/google/callback")}\n`, "the prompt alone, ready to copy");
-  assert.match(ran.stdout, /^- Redirect address: http:\/\/127\.0\.0\.1:8585\/v1\/google\/callback$/m);
+  assert.equal(ran.stdout, `${googleSetupPrompt("http://127.0.0.1:18585/v1/google/callback")}\n`, "the prompt alone, ready to copy");
+  assert.match(ran.stdout, /^- Redirect address: http:\/\/127\.0\.0\.1:18585\/v1\/google\/callback$/m);
   assert.equal(ran.stdout.match(/\[FILL IN: /g)?.length, 2, "the person fills in the addresses and the user type");
   assert.match(ran.stderr, /fill in the two lines that still say FILL IN/);
   assert.equal(server.calls("googleSetup").length, 1);
@@ -173,7 +173,7 @@ test("google prompt prints the browser agent's prompt with the server's redirect
   const json = await run(["google", "prompt", "--json"], options);
   assert.equal(json.code, 0, json.stderr);
   const setup = JSON.parse(json.stdout);
-  assert.equal(setup.prompt, googleSetupPrompt("http://127.0.0.1:8585/v1/google/callback"));
+  assert.equal(setup.prompt, googleSetupPrompt("http://127.0.0.1:18585/v1/google/callback"));
   assert.equal(setup.steps.length, 7);
 });
 
@@ -194,9 +194,9 @@ test("a client file that doesn't list the server's address is a hint in google, 
   // Downloaded before the redirect address was changed at Google: the file is frozen, and Google's own list counts.
   const older = { web: { ...DOWNLOADED.web, redirect_uris: ["http://localhost:3000/oauth2callback"] } };
   writeFileSync(join(dataDir, "google-client.json"), JSON.stringify(older), { mode: 0o600 });
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const hint = (text: string) => {
-    assert.match(text, /doesn't list http:\/\/127\.0\.0\.1:8585\/v1\/google\/callback among the client's redirect addresses/);
+    assert.match(text, /doesn't list http:\/\/127\.0\.0\.1:18585\/v1\/google\/callback among the client's redirect addresses/);
     assert.match(text, /The file may simply be older than a change made at Google/);
     assert.match(text, /If Google refuses a sign-in, check that address at Google/);
     assert.doesNotMatch(text, /will fail|add exactly that address/);
@@ -227,7 +227,7 @@ test("a client file that doesn't list the server's address is a hint in google, 
 });
 
 test("inbox add signs in with Google when the server can: opens the browser, waits, and says what happened", async () => {
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const { runner, ran: opened } = recording();
   const ran = await run(["inbox", "add", "--provider", "gmail", "--name", "Ana", "--color", "green", "--trust", "act_with_undo"], { ...options, runner });
   assert.equal(ran.code, 0, ran.stderr);
@@ -242,7 +242,7 @@ test("inbox add signs in with Google when the server can: opens the browser, wai
 });
 
 test("inbox add --no-browser prints the address only; a failed sign-in says why and exits 1", async () => {
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   server.signInPlan = { address: "ana@gmail.example", ends: "declined", polls: 1 };
   const ran = await run(["inbox", "add", "--provider", "gmail", "--name", "Ana", "--color", "green", "--no-browser"], options);
   assert.equal(ran.code, 1);
@@ -252,7 +252,7 @@ test("inbox add --no-browser prints the address only; a failed sign-in says why 
 });
 
 test("inbox add pastes a client id, secret and token when asked to, or when the server can't sign in", async () => {
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const ran = await run(["inbox", "add", "--provider", "gmail", "--name", "Ana", "--color", "green", "--client-id", "own.apps.example", "--secrets-stdin"], { ...options, stdin: "secret\nrefresh\n" });
   assert.equal(ran.code, 0, ran.stderr);
   assert.equal(server.calls("startGoogleSignIn").length, 0);
@@ -264,7 +264,7 @@ test("inbox add pastes a client id, secret and token when asked to, or when the 
 });
 
 test("inbox reconnect signs a Gmail inbox in again with Google, in place; another account is refused", async () => {
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const ana = server.addInbox({ name: "Ana", address: "ana@gmail.example", provider: "gmail", status: "needs_attention", statusDetail: "Google no longer accepts this inbox's sign-in. Sign in with Google again." });
   const ran = await run(["inbox", "reconnect", "Ana", "--no-browser"], options);
   assert.equal(ran.code, 0, ran.stderr);
@@ -289,7 +289,7 @@ test("doctor says whether Google sign-in is set up, what to do if not, and refus
   const google = JSON.parse(off.stdout).checks.find((check: { name: string }) => check.name === "google");
   assert.equal(google.level, "warn");
   assert.match(google.fix, /usual-mail google set/);
-  assert.match(google.fix, /http:\/\/127\.0\.0\.1:8585\/v1\/google\/callback/);
+  assert.match(google.fix, /http:\/\/127\.0\.0\.1:18585\/v1\/google\/callback/);
 
   writeFileSync(join(dataDir, "google-client.json"), JSON.stringify(DOWNLOADED));
   chmodSync(join(dataDir, "google-client.json"), 0o644);
@@ -298,7 +298,7 @@ test("doctor says whether Google sign-in is set up, what to do if not, and refus
   assert.match(loose.fix, /chmod 600/);
 
   chmodSync(join(dataDir, "google-client.json"), 0o600);
-  server.google = { available: true, redirectUri: "http://127.0.0.1:8585/v1/google/callback" };
+  server.google = { available: true, redirectUri: "http://127.0.0.1:18585/v1/google/callback" };
   const on = JSON.parse((await run(["doctor", "--json"], options)).stdout).checks.find((check: { name: string }) => check.name === "google");
   assert.equal(on.level, "ok");
   assert.match(on.text, /seven days/);

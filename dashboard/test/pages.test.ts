@@ -348,7 +348,7 @@ describe("an inbox that needs attention, by why (0.1.2)", () => {
     personal.statusReason = "host_setup";
     assert.doesNotMatch(await home(), reconnect);
     assert.doesNotMatch(await home(), syncNow);
-    assert.match(textOf(await home()), /its host gives the server the right Google client \(usual-mail google set\)/);
+    assert.match(textOf(await home()), /its host gives the server the right Google client, as the words above say/);
     assert.doesNotMatch((await app.page("/inboxes/inb_personal")).body, formOpen);
     // A server before 0.1.2 gives no reason: new details may fix it, and syncing again may.
     delete personal.statusReason;

@@ -34,7 +34,9 @@ export function attentionHint(inbox: Inbox): string {
         ? "Sign in with Google again, or give new details, under Connection below; the inbox keeps its rules and history."
         : "Give the new password or other details under Connection below; the inbox keeps its rules and history.";
     case "host_setup":
-      return "This comes from the server's own setup, not this inbox's details: its host gives the server the right Google client (usual-mail google set). Then the inbox syncs again by itself.";
+      // The server's words name how this host gives the client (`usual-mail google set`, or on Cloudflare the Worker's
+      // secrets), so the hint doesn't guess.
+      return "This comes from the server's own setup, not this inbox's details: its host gives the server the right Google client, as the words above say. Then the inbox syncs again by itself.";
     case "provider_error":
       return "Sync now tries again. The words above are the provider's own; the inbox syncs again by itself once it answers.";
     case "not_syncing":
