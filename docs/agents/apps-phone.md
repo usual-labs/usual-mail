@@ -55,9 +55,11 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   way: a row's texts and picture are the button's own label, since from a `Label` the menu took the first text only
   and no address ever showed (fixed 2026-11-25). An inbox that stopped syncing (`Shell/SyncWarning.swift`, in
   [apps.md](apps.md)) has the red triangle for its icon, drawn as it is (`Icon.warningMenuImage`), and "Stopped
-  syncing" under its name; while any inbox has stopped, the capsule shows the triangle before its chevron and says so
-  to VoiceOver (`PhoneSwitch.warning`), so the menu tells without being opened. The notice over the lists is the
-  Mac's. Seen on the sample in the simulator, 2026-11-25. Its ink follows the wallpaper under it (`RailTone`). The
+  syncing" under its name. On the chosen inbox the check mark takes the triangle's place, as it takes any icon's;
+  its "Stopped syncing" line stays, and so does the capsule's triangle: while any inbox has stopped, the capsule
+  shows it before its chevron and says so to VoiceOver (`PhoneSwitch.warning`), so the menu tells without being
+  opened. The address line under the other names waits on the owner (the review of 2026-11-25). The notice over the
+  lists is the Mac's. Seen on the sample in the simulator, 2026-11-25. Its ink follows the wallpaper under it (`RailTone`). The
   top row sits 16 above the card (the concept's 24, "a bit less" at the owner's word of 2026-11-24;
   `PhoneLayout.gap`).
 - **The row at the card's foot** is the Mac's `TopBar` with `compact`: the tabs and the screening capsule; with a mail

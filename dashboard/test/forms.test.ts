@@ -405,7 +405,7 @@ describe("changing a connected inbox's credentials", () => {
     // What the server now stores is what the form starts with next time; never the password.
     assert.match(page.body, /id="new-imap-host" name="imapHost" value="imap\.home\.example"/);
     assert.doesNotMatch(page.body, /a brand new password/);
-    assert.doesNotMatch(page.body, /The mail server refused the password/, "it no longer needs attention");
+    assert.doesNotMatch(page.body, /refused the user name or password/, "it no longer needs attention");
   });
 
   test("Gmail sends a new client id, secret and refresh token", async () => {

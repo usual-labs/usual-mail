@@ -29,7 +29,7 @@ struct SyncWarningTests {
     @Test func onlyAnInboxThatNeedsAttentionWarns() {
         let statuses: [InboxStatus] = [.connecting, .ok, .needsAttention, .paused, .unknown("later")]
         let warned = statuses.filter { status in
-            SyncWarning.stopped(inboxes("inb_northwind", status)[0])
+            inboxes("inb_northwind", status).contains { $0.id == "inb_northwind" && SyncWarning.stopped($0) }
         }
         #expect(warned == [.needsAttention])
         #expect(sample.filter(SyncWarning.stopped).map(\.id) == ["inb_personal"])
@@ -70,12 +70,13 @@ struct SyncWarningTests {
     }
 
     @Test func oneInboxSaysWhyInTheServersWordsAndHowToFixIt() throws {
-        // The sample's IMAP inbox: the server's words, and Accounts, since only Gmail signs in again from the apps.
+        // The sample's IMAP inbox: the server's words, and its dashboard page, which takes new details; the apps
+        // don't.
         let personal = try #require(SyncNotice.notice(for: [inbox("inb_personal")]))
         #expect(personal.title == "Personal stopped syncing.")
-        #expect(personal.detail == "The mail server refused the password. Sign in again.")
-        #expect(personal.action == .openAccounts)
-        #expect(personal.action.title == "Open Accounts")
+        #expect(personal.detail == "The IMAP server at imap.home.example refused the user name or password.")
+        #expect(personal.action == .dashboard(inboxId: "inb_personal"))
+        #expect(personal.action.title == "Reconnect on the dashboard")
         // A Gmail inbox signs in with Google again.
         let words = "Google no longer accepts this inbox's sign-in."
         let gmail = try #require(
@@ -98,7 +99,8 @@ struct SyncWarningTests {
     @Test func severalInboxesAreNamedOrCountedAndSentToAccounts() throws {
         var stopped = sample
         for index in stopped.indices { stopped[index].status = .needsAttention }
-        let two = try #require(SyncNotice.notice(for: Array(stopped.prefix(2))))
+        let two = try #require(
+            SyncNotice.notice(for: ["inb_northwind", "inb_harbor"].compactMap { id in stopped.first { $0.id == id } }))
         #expect(two.title == "Northwind Studio and Harbor & Pine stopped syncing.")
         #expect(two.detail == "New mail from them won't arrive here until they're reconnected.")
         #expect(two.action == .openAccounts)
@@ -122,8 +124,12 @@ struct SyncWarningTests {
             leave(&nav)
             #expect(nav.accountsSignIn == nil)
         }
-        // Accounts alone: the tab, nothing signing in.
+        // The dashboard opens in the browser: the window stays where it is.
         nav.press(.inbox)
+        let before = nav
+        nav.fixSync(.dashboard(inboxId: "inb_personal"))
+        #expect(nav == before)
+        // Accounts alone: the tab, nothing signing in.
         nav.settingsTab = .about
         nav.fixSync(.openAccounts)
         #expect(nav.place == .settings && nav.settingsTab == .accounts && nav.accountsSignIn == nil)

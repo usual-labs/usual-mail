@@ -5,7 +5,7 @@ import UsualMailKit
 /// Settings' Accounts tab: the inboxes (each with its icon, `InboxIconPicker`, and for Gmail signing in with Google
 /// again), "Add a Gmail account…" (the rail's plus's sheet, `AddGmailSheet`), then the server this Mac is paired with,
 /// its password (`ServerPassword`) and, at the foot, disconnecting from it. Opened from the notice on an inbox that
-/// stopped syncing (`SyncNotice`), it signs that Gmail inbox in with Google again at once.
+/// stopped syncing (`SyncNotice`), it scrolls to that Gmail inbox and signs it in with Google again at once.
 struct AccountsTab: View {
     let session: AppSession
     @Environment(MailStore.self) private var store
@@ -22,10 +22,25 @@ struct AccountsTab: View {
     }
 
     var body: some View {
+        // Within Settings' scroll view: opened to sign an inbox in, it scrolls to that row first, so its steps
+        // ("Finish in your browser", "Stop waiting") show among many inboxes.
+        ScrollViewReader { scroller in
+            page
+                .task {
+                    guard let inbox = signingIn else { return }
+                    // Once the rows are laid out.
+                    await Task.yield()
+                    scroller.scrollTo(inbox, anchor: .top)
+                }
+        }
+    }
+
+    private var page: some View {
         SettingsView.page {
             SettingsView.group("Inboxes") {
                 ForEach(store.lists.inboxes) { inbox in
                     InboxRow(inbox: inbox, signingIn: $signingIn)
+                        .id(inbox.id)
                 }
                 if store.lists.inboxes.isEmpty {
                     SettingsView.words("No inboxes yet.")

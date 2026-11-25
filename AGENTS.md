@@ -62,7 +62,7 @@ the software. Private planning stays in the parent workspace.
   "On Cloudflare" and the README's Deploy button, not tried yet), `mail.md` (with `mail-checks.md`, its check runs, `mail-imap.md`, the IMAP
   provider's folders, cursor, sync, sending, watching and connections, and `mail-gmail-large.md`, Gmail's
   large messages and bounded memory: the size check, the full form, attachments, the shared gate), `design.md`,
-  `apps.md` (with `apps-kit.md`, the data layer, `apps-phone.md`, the iPhone app, `apps-runs.md`, what was seen when the Mac app ran, `apps-search.md`, the search page, and `apps-tests.md`), `dashboard.md`, `mcp.md`, `cli.md` (with `cli-checks.md`, its check runs),
+  `apps.md` (with `apps-kit.md`, the data layer, `apps-lists.md`, the card's lists, `apps-phone.md`, the iPhone app, `apps-runs.md`, what was seen when the Mac app ran, `apps-search.md`, the search page, and `apps-tests.md`), `dashboard.md`, `mcp.md`, `cli.md` (with `cli-checks.md`, its check runs),
   `site.md` (the static website for mail.usual.dev: landing page, privacy policy, terms). The overview says which
   parts exist.
 

@@ -197,7 +197,7 @@ describe("demo mode", () => {
     await server.whenIdle();
     assert.deepEqual(await server.home(person, {}), before);
     const personal = (await server.listInboxes(person)).find((i) => i.id === "inb_personal")!;
-    assert.deepEqual([personal.status, personal.statusDetail], ["needs_attention", "The mail server refused the password. Sign in again."]);
+    assert.deepEqual([personal.status, personal.statusDetail], ["needs_attention", "The IMAP server at imap.home.example refused the user name or password."]);
   });
 
   test("letting the screened sender in brings their conversation into Home and writes it back", async () => {

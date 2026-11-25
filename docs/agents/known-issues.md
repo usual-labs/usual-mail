@@ -4,6 +4,16 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
+- **Every failed sync says the inbox stopped syncing, a brief one too** (apps and server, found 2026-11-25 by the
+  review of the apps' warning; open, waiting on the owner). The server sets `needs_attention` for any error a sync
+  throws (`server/src/sync/engine.ts`, `#sync`'s catch): a revoked Google sign-in, but also a network error, a timeout
+  or Gmail's 5xx or 429 once its six retries are spent, until the next good sync (a minute later on Node by default).
+  The apps' notice (`Shell/SyncWarning.swift`, [apps.md](apps.md)) can so flash up for a moment, and a Gmail inbox's
+  button is "Sign in again" even when signing in won't help (`clientRefused`, which the host fixes, or a provider
+  error): `statusDetail` is words only, the raw error message for anything but Google's token, so the apps can't
+  tell the cases apart. The fix is the server's: a reason with the status (sign-in refused, client refused, provider
+  error, unreachable) and a grace period before a transient failure counts, so the apps choose the button by reason
+  and don't flash. It waits on the owner's decision.
 - **Whoever opens a new server first owns it, unless `USUAL_MAIL_OWNER_EMAIL` is set** (by design, the owner's choice
   of 2026-11-24; [server-owner.md](server-owner.md)). Scanners read Certificate Transparency logs and reach new
   hostnames (a custom domain, `onrender.com`, Coolify's `sslip.io`, `workers.dev`) within minutes. The deploy files ask

@@ -44,19 +44,23 @@ struct SyncNotice: Equatable {
         /// Settings' Accounts tab, signing this Gmail inbox in with Google again at once, as its "Sign in with Google
         /// again…" does.
         case signIn(inboxId: String)
+        /// The inbox's page in the server's dashboard (`MailStore.dashboardURL(inboxId:)`), in the browser: the apps
+        /// take no new IMAP details, and that page does ("Reconnect").
+        case dashboard(inboxId: String)
         /// Settings' Accounts tab, where each inbox says how it stands.
         case openAccounts
 
         var title: String {
             switch self {
             case .signIn: "Sign in again"
+            case .dashboard: "Reconnect on the dashboard"
             case .openAccounts: "Open Accounts"
             }
         }
     }
 
-    /// The notice for `stopped`, nil when it is empty. One inbox: its name, the server's words on why, and for a Gmail
-    /// inbox signing in again; several: their names or count, and Accounts.
+    /// The notice for `stopped`, nil when it is empty. One inbox: its name, the server's words on why, and signing in
+    /// again for Gmail, its dashboard page for any other; several: their names or count, and Accounts.
     static func notice(for stopped: [Inbox]) -> SyncNotice? {
         guard let first = stopped.first else { return nil }
         guard stopped.count == 1 else {
@@ -72,8 +76,9 @@ struct SyncNotice: Equatable {
         return SyncNotice(
             title: "\(first.name) stopped syncing.",
             detail: detail.isEmpty ? "New mail from it won't arrive here until it's reconnected." : detail,
-            // Any Gmail inbox signs in with Google again, one connected by hand too (Settings' Accounts tab).
-            action: first.provider == .gmail ? .signIn(inboxId: first.id) : .openAccounts)
+            // Any Gmail inbox signs in with Google again, one connected by hand too (Settings' Accounts tab); an IMAP
+            // one takes new details on the dashboard, since the apps' Accounts has nowhere to type them.
+            action: first.provider == .gmail ? .signIn(inboxId: first.id) : .dashboard(inboxId: first.id))
     }
 }
 
@@ -91,10 +96,13 @@ struct SyncWarningMark: View {
 }
 
 /// The notice on the card (`SyncNotice`): the triangle, what stopped and why, and its button (the dark one), on the
-/// danger colour's tint, as wide as the page's content.
+/// danger colour's tint, as wide as the page's content. The why stops at `detailLines`, so a long reason (Google's
+/// runs to six lines on the iPhone) doesn't push the list down; Settings' Accounts tab and VoiceOver have it whole.
 struct SyncNoticeView: View {
     let notice: SyncNotice
     let act: (SyncNotice.Action) -> Void
+
+    static let detailLines = 3
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -109,6 +117,8 @@ struct SyncNoticeView: View {
                     Text(verbatim: notice.detail)
                         .font(Theme.sans(12))
                         .foregroundStyle(Theme.body)
+                        .lineLimit(Self.detailLines)
+                        .truncationMode(.tail)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityElement(children: .ignore)

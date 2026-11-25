@@ -33,10 +33,17 @@ struct Pages: View {
         let notice = SyncNotice.notice(for: SyncWarning.shown(nav: nav, inboxes: store.lists.inboxes))
         VStack(spacing: 0) {
             if let notice {
-                SyncNoticeView(notice: notice, act: fixSync)
-                    .padding(.horizontal, Theme.page.leading)
-                    .padding(.top, 16)
-                    .transition(.blurReveal)
+                SyncNoticeView(notice: notice) { action in
+                    // The dashboard is a page in the browser; the rest move the window (`Navigation.fixSync`).
+                    if case .dashboard(let inboxId) = action {
+                        Links.open(store.dashboardURL(inboxId: inboxId))
+                    } else {
+                        fixSync(action)
+                    }
+                }
+                .padding(.horizontal, Theme.page.leading)
+                .padding(.top, 16)
+                .transition(.blurReveal)
             }
             page
                 .frame(maxHeight: .infinity, alignment: .top)

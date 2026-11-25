@@ -145,7 +145,7 @@ struct SampleDecodingTests {
         let sample = try SampleData.load()
         let personal = try #require(sample.inboxes.first { $0.id == "inb_personal" })
         #expect(personal.status == .needsAttention)
-        #expect(personal.statusDetail == "The mail server refused the password. Sign in again.")
+        #expect(personal.statusDetail == "The IMAP server at imap.home.example refused the user name or password.")
         #expect(personal.trust == .actSilently)
         #expect(personal.agentAccess)
 

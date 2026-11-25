@@ -19,7 +19,7 @@ describe("Home", () => {
     assert.equal(status, 200);
     const text = textOf(body);
     assert.match(text, /1 inbox needs attention/);
-    assert.match(text, /The mail server refused the password\. Sign in again\./);
+    assert.match(text, /The IMAP server at imap\.home\.example refused the user name or password\./);
     assert.match(text, /Claude Code wants to mark it done: A monthly newsletter you read on the magazine's site/);
     assert.match(text, /Coffee Roasters Monthly: the November cupping notes/);
     assert.match(text, /Shipping notices are notifications/);
@@ -53,7 +53,7 @@ describe("Inboxes", () => {
     assert.match(text, /me@home\.example · IMAP/);
     assert.match(text, /hello@northwind\.example · Gmail/);
     assert.match(text, /Status Needs attention/);
-    assert.match(text, /The mail server refused the password/);
+    assert.match(text, /refused the user name or password/);
     assert.match(text, /Trust Act silently/);
     assert.match(text, /Trust Act with undo/);
     assert.match(text, /Trust Suggest/);

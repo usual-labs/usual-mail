@@ -81,7 +81,7 @@
       "guide": "",
       "agentAccess": true,
       "status": "needs_attention",
-      "statusDetail": "The mail server refused the password. Sign in again.",
+      "statusDetail": "The IMAP server at imap.home.example refused the user name or password.",
       "firstSync": {
         "fetched": 1840,
         "total": 2600

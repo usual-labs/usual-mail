@@ -5,9 +5,10 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
 
 - `SyncWarningTests` (UI, 2026-11-25): only `needs_attention` warns; the notice on every list with the inbox's
   mail and not on Settings, search or an open mail; its words for one inbox (the server's, or a line of its own when
-  there are none), two and three; Gmail's "Sign in again" and the others' "Open Accounts"; `Navigation.accountsSignIn`
-  set by the button and dropped by another tab, stack, search or profile; the iPhone menu's line under the name and
-  the capsule's words.
+  there are none), two and three; Gmail's "Sign in again", another single inbox's "Reconnect on the dashboard"
+  (which leaves the window where it is) and several inboxes' "Open Accounts"; `Navigation.accountsSignIn` set by the
+  button and dropped by another tab, stack, search or profile; the iPhone menu's line under the name and the
+  capsule's words. Each inbox is looked up by its id, not its place in the sample.
 - `FirstSyncProgressTests` (Kit, 2026-11-23): `Inbox.firstSync` decoded, written back and brought by `inbox.changed`;
   core's words ("1,200 of 3,400"); fetching while `connecting` or a first sync still running, not while paused or
   needing the person; several inboxes add up those that have a count (one connecting without one, just resumed or
