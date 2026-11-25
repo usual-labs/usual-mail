@@ -134,7 +134,7 @@ function checkerIn(value: string): string | null {
 const checkerName = (name: string): string => name.trim().toLowerCase().replace(/\.$/, "");
 
 /** The one domain a result's property names (a domain, or an address whose domain counts), or null for none or several. */
-function namedDomain(entry: AuthenticationResult, property: string): string | null {
+export function namedDomain(entry: AuthenticationResult, property: string): string | null {
   const found = new Set<string | null>();
   for (const [name, value] of entry.properties) {
     if (name !== property) continue;

@@ -107,6 +107,12 @@ export interface ProviderMessage {
    * now) or wasn't asked (`ProviderOptions.authentication`).
    */
   fromCheck?: FromCheck;
+  /**
+   * The recipient fields (`to`, `cc`) the sender's own DKIM signature vouches for: each given once in the message, and
+   * named in the `h=` of every aligned signature the provider's checker passed. Read only when `fromCheck` is verified.
+   * A field given twice, or added after signing, isn't in it (docs/contract-ai.md, the screening gate).
+   */
+  signedRecipients?: Array<"to" | "cc">;
 }
 
 /**
