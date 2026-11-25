@@ -88,8 +88,8 @@
                     }
                     .padding(.horizontal, PhoneLayout.barMargin)
                 }
-                // Settings' preview of the background takes the screen's shape, and the top row's ink the tone of the
-                // wallpaper under it.
+                // Settings' preview of the background blurs against the screen, and the top row's ink takes the tone of
+                // the wallpaper under it.
                 .environment(\.windowSize, screen)
                 .environment(\.railWindow, screen)
             }

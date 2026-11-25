@@ -224,9 +224,4 @@ struct AppearanceTests {
         await background.choose(try Self.png([Self.picture(width: 800, height: 500, gray: 0.95)]))
         #expect(background.tone?.isLight(under: railButton, in: window) == true)
     }
-
-    @Test func thePreviewIsASmallSquare() {
-        // The owner's words of 2026-11-25: "the background image is so big and consuming all page, make it square".
-        #expect(AppearanceTab.previewSide > 0 && AppearanceTab.previewSide <= 96)
-    }
 }

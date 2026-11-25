@@ -38,6 +38,8 @@ public final class GoogleSignInFlow {
     @ObservationIgnored private let connected: @MainActor () async -> Void
     @ObservationIgnored private let pause: @Sendable (Duration) async throws -> Void
     @ObservationIgnored private let clock: @Sendable () -> Date
+    /// The sign-in being waited for, so the wait can go on after the task following it was cancelled (`resume`).
+    @ObservationIgnored private var following: GoogleSignInStart?
 
     /// How often to ask how the sign-in stands while the person is at Google.
     static let interval: Duration = .seconds(1)
@@ -96,7 +98,16 @@ public final class GoogleSignInFlow {
         }
         open(url)
         step = .waiting
+        following = started
         await follow(started)
+    }
+
+    /// Goes on waiting for the sign-in already started, after the task following it was cancelled: its view was put
+    /// away while the person was at Google (a row of a form scrolled off; the review of 2026-11-25), and is back.
+    /// Nothing unless it is still waiting.
+    public func resume() async {
+        guard step == .waiting, let following else { return }
+        await follow(following)
     }
 
     /// Back to the button after a failure, or to stop waiting.

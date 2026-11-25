@@ -22,7 +22,7 @@ enum BackgroundPicture {
             switch self {
             case .undecodable: "This file isn't a picture Usual Mail can read. The background is unchanged."
             case .unreadable: "This file couldn't be opened. The background is unchanged."
-            case .unwritable: "The picture couldn't be kept on this Mac. The background is unchanged."
+            case .unwritable: "The picture couldn't be kept on \(SettingsWords.device). The background is unchanged."
             }
         }
     }

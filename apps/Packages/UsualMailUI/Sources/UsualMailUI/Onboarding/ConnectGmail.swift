@@ -147,7 +147,16 @@ struct GoogleSignInStep: View {
             await flow.check()
             if startsAtOnce, flow.step == .ready { begin() }
         }
-        .onDisappear { running?.cancel() }
+        // Put away (a Settings row scrolled off), it stops asking; back while it still waits, it asks again about the
+        // same sign-in, so a sign-in finished meanwhile shows as finished.
+        .onAppear {
+            guard running == nil, flow?.step == .waiting else { return }
+            running = Task { await flow?.resume() }
+        }
+        .onDisappear {
+            running?.cancel()
+            running = nil
+        }
     }
 
     /// Whether a screen's notes on signing in wait: while the server is asked, and while its client is set up.

@@ -28,8 +28,8 @@ struct AccountsTab: View {
     }
 
     var body: some View {
-        // Within Settings' scroll view: opened to sign an inbox in, it scrolls to that row first, so its steps
-        // ("Finish in your browser", "Stop waiting") show among many inboxes.
+        // Around the tab's form: opened to sign an inbox in, it scrolls to that row first, so its steps ("Finish in
+        // your browser", "Stop waiting") show among many inboxes.
         ScrollViewReader { scroller in
             page
                 .task {
@@ -105,11 +105,16 @@ private struct InboxRow: View {
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
+                    // On the iPhone how it stands goes under the address, so a long one ("Fetching your mail · 120
+                    // of 340") never squeezes the name on a small screen; the Mac has room at the right.
+                    #if os(iOS)
+                        status
+                    #endif
                 }
                 Spacer(minLength: 12)
-                Text(InboxWords.status(inbox))
-                    .font(Theme.sans(SettingsType.note))
-                    .foregroundStyle(inbox.status == .needsAttention ? UsualColor.danger : Theme.time)
+                #if os(macOS)
+                    status
+                #endif
             }
             if inbox.status == .needsAttention, let detail = inbox.statusDetail, !detail.isEmpty {
                 SettingsView.refusal(detail)
@@ -129,6 +134,14 @@ private struct InboxRow: View {
         }
         .padding(.vertical, 4)
         .animation(Motion.reveal, value: icon.refusal)
+    }
+
+    /// How it stands, in red when it needs the person.
+    private var status: some View {
+        Text(InboxWords.status(inbox))
+            .font(Theme.sans(SettingsType.note))
+            .foregroundStyle(inbox.status == .needsAttention ? UsualColor.danger : Theme.time)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

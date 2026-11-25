@@ -140,6 +140,7 @@ struct BackgroundImage: View {
 }
 
 extension EnvironmentValues {
-    /// The window's size, for Settings' preview of the background, drawn in the window's shape.
+    /// The window's size, the screen's on the iPhone: what Settings' preview of the background blurs against, and the
+    /// Gmail sheet's room.
     @Entry var windowSize: CGSize = .zero
 }

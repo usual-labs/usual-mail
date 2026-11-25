@@ -53,7 +53,7 @@ struct AppearanceTab: View {
                 .padding(.vertical, 4)
             }
             SettingsView.group(
-                "Soften", footer: ["A slight blur and dim behind the window, so the words over it read more easily."]
+                "Soften", footer: ["A slight blur and dim of the background, so the words over it read more easily."]
             ) {
                 Toggle(
                     "Soften the background",

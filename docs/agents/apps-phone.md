@@ -85,7 +85,14 @@ points since 2026-11-25, below).
   (on a 402-point screen even "Appearance" does). Snooze and more are the system's menus (`PhoneBarMenu`; the
   owner's words of 2026-11-25, "this menu does not look native", of the popovers they had been): snooze's times; why
   the mail is here as the menu's title, Move to feed, "Move to paper trail" a submenu (as an invoice, as a receipt),
-  Forward and Label greyed, and Remove in red, apart. The Mac keeps its popovers. Seen in the simulator.
+  Forward and Label greyed, and Remove in red, apart. The Mac keeps its popovers. Seen in the simulator; a long
+  reason as the title wraps whole (four lines for an agent's). Its times are worked out every minute and on coming
+  back to the front (`TimelineView`), as are the swipe's when its dialog opens, so a phone locked over 18:00 offers no
+  "Later today, 18:00" (the review of 2026-11-25).
+- **Settings on the iPhone:** an inbox's state sits under its address, not at the row's right, so a first sync's
+  words never squeeze its name. "Sign in with Google again" keeps waiting when its row scrolls off and back: a
+  `Form` puts away rows out of sight, cancelling the wait, and the step asks about the same sign-in again when its
+  row comes back (`GoogleSignInFlow.resume`; the review of 2026-11-25).
 - **Home's swipes** (owner's words of 2026-11-25): a row swiped left marks it seen (read: it moves from New to Seen),
   or a seen one unseen; swiped right, it snoozes, asking when with the menu's times. Each way is a setting in
   Settings' Appearance tab, "Swiping a mail" (`SwipeAction`, `SwipeSettings`: seen or unseen, snooze, reply later,

@@ -226,6 +226,35 @@ struct GoogleSignInFlowTests {
         #expect(tooLate.step == .failed(GoogleSignInFlow.failureWords(.expired)))
     }
 
+    @Test func aWaitCutShortGoesOnWithTheSameSignIn() async throws {
+        // The view following it is put away while the person is at Google (its task cancelled: the pause throws), then
+        // comes back: the flow asks about the same sign-in again, without starting another.
+        let transport = server(states: [#""state":"waiting""#, #""state":"connected","inboxId":"inb_9""#])
+        let cut = Mutex(true)
+        let opened = Opened()
+        let flow = GoogleSignInFlow(
+            client: APIClient(server: testServer, token: "tok_1", transport: transport),
+            open: { opened.urls.append($0) }, connected: { opened.fetched += 1 },
+            pause: { _ in
+                if cut.withLock({ was in
+                    defer { was = false }; return was
+                }) {
+                    throw CancellationError()
+                }
+            },
+            clock: { ISO8601DateFormatter().date(from: "2026-11-17T10:00:00Z")! })
+        await flow.start()
+        #expect(flow.step == .waiting)
+        await flow.resume()
+        #expect(flow.step == .connected(inboxId: "inb_9", reconnected: false))
+        #expect(opened.urls.count == 1 && opened.fetched == 1)
+        let starts = transport.requests.filter { $0.pathAndQuery == "/v1/google/sign-ins" }
+        #expect(starts.count == 1)
+        // Once it ended, resuming does nothing.
+        await flow.resume()
+        #expect(flow.step == .connected(inboxId: "inb_9", reconnected: false))
+    }
+
     @Test func aSignInThatStaysWaitingPastItsEndExpires() async throws {
         let transport = server(states: [#""state":"waiting""#])
         let opened = Opened()

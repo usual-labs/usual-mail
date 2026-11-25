@@ -263,15 +263,19 @@ struct TopBar: View {
             .accessibilityAddTraits(button.chosen ? .isSelected : [])
         } else {
             #if os(iOS)
-                // The system's menu on the iPhone (the owner's words of 2026-11-25: "this menu does not look native").
-                Menu {
-                    PhoneBarMenu(action: action, mail: mail, now: now, choose: act)
-                } label: {
-                    capsule(item, icon: action.icon, title: nil, tinted: true)
+                // The system's menu on the iPhone (the owner's words of 2026-11-25: "this menu does not look native"). Its
+                // times are worked out afresh every minute, and on coming back to the front, not from when the mail
+                // was opened: a phone locked at 16:45 and opened at 17:55 offers no "Later today, 18:00".
+                TimelineView(.everyMinute) { context in
+                    Menu {
+                        PhoneBarMenu(action: action, mail: mail, now: context.date, choose: act)
+                    } label: {
+                        capsule(item, icon: action.icon, title: nil, tinted: true)
+                    }
+                    .menuOrder(.fixed)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(action.title)
                 }
-                .menuOrder(.fixed)
-                .buttonStyle(.plain)
-                .accessibilityLabel(action.title)
             #else
                 Button {
                     menu = action

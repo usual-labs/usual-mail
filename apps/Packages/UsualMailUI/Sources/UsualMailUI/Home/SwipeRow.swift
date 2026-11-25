@@ -56,7 +56,8 @@ extension View {
                 )
                 .sensoryFeedback(.impact(weight: .medium), trigger: past) { was, now in now && !was }
                 .confirmationDialog("Snooze until", isPresented: $choosingSnooze, titleVisibility: .visible) {
-                    ForEach(SnoozeChoice.choices(now: store.now)) { choice in
+                    // The times from when it opens, not from the store's last look at the clock.
+                    ForEach(SnoozeChoice.choices(now: Date())) { choice in
                         Button(choice.title) { act(choice.input) }
                     }
                 }

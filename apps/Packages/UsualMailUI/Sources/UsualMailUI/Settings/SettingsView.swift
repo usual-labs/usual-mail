@@ -60,24 +60,16 @@ struct SettingsView: View {
             #endif
     }
 
-    /// One section: its title (and `trailing` at the title's right, as the usage's period), its rows, and under them
-    /// `footer`'s quiet lines.
-    static func group(
-        _ title: String?, trailing: some View = EmptyView(), footer: [String] = [],
-        @ViewBuilder _ content: () -> some View
-    ) -> some View {
+    /// One section: its title, its rows, and under them `footer`'s quiet lines.
+    static func group(_ title: String?, footer: [String] = [], @ViewBuilder _ content: () -> some View) -> some View {
         Section {
             content()
         } header: {
             if let title {
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(verbatim: title)
-                        .font(Theme.sans(SettingsType.header, weight: .semibold))
-                        .foregroundStyle(SettingsType.headerInk)
-                        .textCase(nil)
-                    Spacer(minLength: 0)
-                    trailing
-                }
+                Text(verbatim: title)
+                    .font(Theme.sans(SettingsType.header, weight: .semibold))
+                    .foregroundStyle(SettingsType.headerInk)
+                    .textCase(nil)
             }
         } footer: {
             if !footer.isEmpty {
