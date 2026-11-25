@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AuthenticationOptions, HeaderField } from "../../src/message/auth-results.ts";
 import { parseMessage } from "../../src/message/parse.ts";
-import { signedRecipients } from "../../src/message/signed-recipients.ts";
+import { headerBlockReadable, signedRecipients } from "../../src/message/signed-recipients.ts";
 
 const organisationalDomain = (domain: string): string | null => domain.split(".").slice(-2).join(".") || null;
 const GMAIL: AuthenticationOptions = { checker: "mx.google.com", organisationalDomain };
@@ -130,5 +130,129 @@ describe("through the parser", () => {
     const parsed = await parseMessage(lines.join("\r\n"), { ownAddresses: [], authentication: GMAIL });
     assert.equal(parsed.fromCheck?.result, "verified");
     assert.deepEqual(parsed.signedRecipients, []);
+  });
+});
+
+describe("the fourth review's attacks, and the check being monotone (2026-11-25)", () => {
+  /** A signature with the given domain, h= and b=, and optionally i=. */
+  const sig = (d: string, h: string, b: string, i?: string) => `v=1; a=rsa-sha256; d=${d};${i ? ` i=${i};` : ""} s=s1; h=${h}; bh=abc=; b=${b}`;
+  const result = (entries: string) => `mx.google.com; ${entries}; dmarc=pass (p=REJECT) header.from=brand.example`;
+  const check = (from: string, ...pairs: Array<[string, string]>) => signedRecipients(fields(...pairs), from, GMAIL);
+
+  it("a real signature whose i= names a subdomain still bounds what counts, so a forged one for that subdomain can't add Cc", () => {
+    const passing = result("dkim=pass header.i=@alerts.brand.example header.b=AbCd1234");
+    const real = sig("brand.example", "from:to:subject", "AbCd1234real", "@alerts.brand.example");
+    assert.deepEqual(check("brand.example", ["Authentication-Results", passing], ["DKIM-Signature", real], ["To", "me@inbox.example"]), ["to"], "the real one alone");
+    const attack = check("brand.example", ["Authentication-Results", passing], ["Cc", "me@inbox.example"],
+      ["DKIM-Signature", sig("alerts.brand.example", "from:to:cc:subject", "AbCd1234forged")], ["DKIM-Signature", real], ["To", "attacker@elsewhere.example"]);
+    assert.deepEqual(attack, ["to"], "no Cc");
+  });
+
+  it("a d= written in Unicode, or with a trailing dot, is the domain the result names", () => {
+    const ascii = new URL("http://brånd.example").hostname;
+    const unicode = signedRecipients(fields(
+      ["Authentication-Results", `mx.google.com; dkim=pass header.i=@${ascii} header.b=AbCd1234; dmarc=pass header.from=${ascii}`],
+      ["Cc", "me@inbox.example"], ["DKIM-Signature", sig(ascii, "from:to:cc", "AbCd1234forged")],
+      ["DKIM-Signature", sig("brånd.example", "from:to", "AbCd1234real")], ["To", "x@y.example"],
+    ), ascii, GMAIL);
+    assert.deepEqual(unicode, ["to"], "the Unicode signature bounds it, so the forged ASCII one adds no Cc");
+    const dotted = check("brand.example", ["Authentication-Results", result("dkim=pass header.i=@brand.example header.b=AbCd1234")],
+      ["Cc", "me@inbox.example"], ["DKIM-Signature", sig("brand.example", "from:to:cc", "AbCd1234forged")], ["DKIM-Signature", sig("brand.example.", "from:to", "AbCd1234real")], ["To", "x@y.example"]);
+    assert.deepEqual(dotted, ["to"]);
+  });
+
+  it("every signature of the organisation bounds what counts, whether it matches a result or not", () => {
+    const passing = result("dkim=pass header.i=@brand.example header.b=AbCd1234");
+    const unmatched = check("brand.example", ["Authentication-Results", passing], ["DKIM-Signature", sig("brand.example", "from:to:cc", "AbCd1234one")],
+      ["DKIM-Signature", sig("mail.brand.example", "from:to", "Other0000")], ["To", "x@y.example"], ["Cc", "me@inbox.example"]);
+    assert.deepEqual(unmatched, ["to"], "the signature no result names still takes Cc away");
+  });
+
+  it("a d= that isn't a host name, or has no organisation, leaves nothing", () => {
+    const passing = ["Authentication-Results", result("dkim=pass header.i=@brand.example header.b=AbCd1234")] as [string, string];
+    const real = ["DKIM-Signature", sig("brand.example", "from:to", "AbCd1234real")] as [string, string];
+    assert.deepEqual(check("brand.example", passing, real, ["DKIM-Signature", sig("[192.0.2.1]", "from:to", "x")], ["To", "x@y.example"]), []);
+    // As the Public Suffix List does, no organisation for a name of one label.
+    const suffixed: AuthenticationOptions = { checker: "mx.google.com", organisationalDomain: (domain) => (domain.includes(".") ? organisationalDomain(domain) : null) };
+    assert.deepEqual(signedRecipients(fields(passing, real, ["DKIM-Signature", sig("example", "from:to", "x")], ["To", "x@y.example"]), "brand.example", suffixed), [], "a top-level name alone");
+  });
+
+  it("a signature the result says failed leaves nothing, wherever it is", () => {
+    const passing = result("dkim=pass header.i=@brand.example header.b=AbCd1234; dkim=fail header.i=@brand.example header.b=XyZw9876");
+    assert.deepEqual(check("brand.example", ["Authentication-Results", passing], ["DKIM-Signature", sig("brand.example", "from:to:cc", "XyZw9876x")],
+      ["DKIM-Signature", sig("brand.example", "from:to", "AbCd1234real")], ["To", "x@y.example"]), []);
+    assert.deepEqual(check("brand.example", ["Authentication-Results", passing], ["DKIM-Signature", sig("other.example", "from:to", "XyZw9876x")],
+      ["DKIM-Signature", sig("brand.example", "from:to", "AbCd1234real")], ["To", "x@y.example"]), [], "another domain's too");
+  });
+
+  it("monotone: adding any of these fields, alone or two together, anywhere below the checker's result, never adds a field", () => {
+    const passing = result("dkim=pass header.i=@brand.example header.b=AbCd1234; dkim=fail header.i=@relay.example header.b=QqQq0000");
+    const bases: Array<Array<[string, string]>> = [
+      [["Authentication-Results", passing], ["DKIM-Signature", sig("brand.example", "from:to:cc:subject", "AbCd1234real")], ["To", "me@inbox.example"], ["Cc", "a@b.example"]],
+      [["Authentication-Results", passing], ["DKIM-Signature", sig("brand.example", "from:subject", "AbCd1234real")], ["To", "me@inbox.example"]],
+      [["Authentication-Results", passing], ["DKIM-Signature", sig("brand.example", "from:to:subject", "AbCd1234real", "@alerts.brand.example")], ["To", "me@inbox.example"]],
+    ];
+    const additions: Array<[string, string]> = [
+      ["To", "attacker@elsewhere.example"], ["Cc", "me@inbox.example"], ["To ", "me@inbox.example"], ["cc", "x@y.example"],
+      ["DKIM-Signature", sig("brand.example", "from:to:cc:subject:date", "AbCd1234forged")],
+      ["DKIM-Signature", sig("alerts.brand.example", "from:to:cc", "AbCd1234forged")],
+      ["DKIM-Signature", sig("brand.example", "from", "Zzzz0000")],
+      ["DKIM-Signature", sig("relay.example", "from:to:cc", "AbCd1234x")],
+      ["DKIM-Signature", sig("brand.example", "from:to:cc", "QqQq0000x")],
+      ["DKIM-Signature", "v=1; d=brand.example; d=brand.example; h=to:cc; b=x"],
+      ["DKIM-Signature", "v=1; D=brand.example; h=to:cc; b=AbCd1234x"],
+      ["DKIM-Signature", "v=1; d=brand.example; h=to:cc"],
+      ["DKIM-Signature ", sig("brand.example", "from:to:cc", "AbCd1234y")],
+      ["Authentication-Results", "mx.google.com; dkim=pass header.i=@brand.example header.b=Zzzz0000; dmarc=pass header.from=brand.example"],
+      ["X-Note", "nothing"], ["From", "Other <x@brand.example>"],
+    ];
+    const insert = (base: Array<[string, string]>, at: number, added: Array<[string, string]>) => [...base.slice(0, at), ...added, ...base.slice(at)];
+    let tried = 0;
+    for (const base of bases) {
+      const before = new Set(check("brand.example", ...base));
+      const lists = [...additions.map((one) => [one]), ...additions.flatMap((one, i) => additions.slice(i + 1).map((two) => [one, two]))];
+      for (const added of lists) {
+        for (let at = 1; at <= base.length; at++) {
+          const after = check("brand.example", ...insert(base, at, added));
+          tried++;
+          assert.ok(after.every((field) => before.has(field)), `${JSON.stringify(added)} at ${at} added ${JSON.stringify(after)} to ${JSON.stringify([...before])}`);
+        }
+      }
+    }
+    assert.ok(tried > 1_000, `${tried} messages tried`);
+  });
+});
+
+describe("a header line that is neither a field nor a fold (the fourth review's attack)", () => {
+  const lines = (malformed: string | null) => [
+    `Authentication-Results: ${RESULT}`,
+    "From: Brand <no-reply@brand.example>",
+    "Cc: me@inbox.example",
+    "DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:cc:subject:date; bh=abc=; b=AbCd1234forged",
+    ...(malformed === null ? [] : [malformed]),
+    "DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:subject:date; bh=abc=; b=AbCd1234wxyz",
+    "To: attacker@elsewhere.example",
+    "Subject: New sign-in",
+    "Date: Wed, 25 Nov 2026 10:00:00 +0000",
+    "Message-ID: <a@brand.example>",
+    "",
+    "Was this you?",
+  ].join("\r\n");
+
+  it("hides the fields below it from the parser, so nothing counts", async () => {
+    for (const [why, line] of [["no colon", "Just some words"], ["a space inside the name", "Bad Name: x"], ["a non-ASCII byte", "Naïve: x"], ["DEL", "Del\u007fName: x"]] as const) {
+      const parsed = await parseMessage(lines(line), { ownAddresses: [], authentication: GMAIL });
+      assert.equal(parsed.fromCheck?.result, "verified", why);
+      assert.deepEqual(parsed.signedRecipients, [], why);
+      assert.equal(headerBlockReadable(lines(line)), false, why);
+      assert.equal(headerBlockReadable(new TextEncoder().encode(lines(line))), false, `${why}, as bytes`);
+    }
+  });
+
+  it("without it, the real signature bounds what counts: no Cc", async () => {
+    const parsed = await parseMessage(lines(null), { ownAddresses: [], authentication: GMAIL });
+    assert.deepEqual(parsed.signedRecipients, ["to"], "only To, which names the attacker; the added Cc doesn't count");
+    assert.equal(headerBlockReadable(lines(null)), true);
+    assert.equal(headerBlockReadable("To : a@b.example\r\n folded\r\n\r\nBody: not a header"), true, "a space before the colon, a fold, then the body");
   });
 });

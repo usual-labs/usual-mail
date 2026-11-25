@@ -9,7 +9,7 @@ import { fromCheckOf, type AuthenticationOptions } from "./auth-results.ts";
 import { firstHeader, headerMap, isAutomated, listIdOf, messageIds, stripBrackets } from "./headers.ts";
 import { htmlToText } from "./html-to-text.ts";
 import { sanitizeHtml } from "./sanitize.ts";
-import { signedRecipients } from "./signed-recipients.ts";
+import { headerBlockReadable, signedRecipients } from "./signed-recipients.ts";
 import { threadKeyFor } from "./thread.ts";
 
 export type ParsedMessage = Omit<ProviderMessage, "ref" | "seen" | "placement" | "outgoing" | "threadKey"> & {
@@ -81,8 +81,11 @@ export async function parseMessage(raw: Uint8Array | string, context: ParseConte
   // The message's own headers only, top first: never those of a message attached to it.
   if (context.authentication) {
     message.fromCheck = fromCheckOf(email.headers, from.email, context.authentication);
-    // Which of To and Cc the sender's own signature vouches for: only once the From domain is proved.
-    if (message.fromCheck.result === "verified") message.signedRecipients = signedRecipients(email.headers, message.fromCheck.domain, context.authentication);
+    // Which of To and Cc the sender's own signature vouches for: only once the From domain is proved, and none when a
+    // line of the header block is neither a field nor a fold (the parser read no fields past it).
+    if (message.fromCheck.result === "verified") {
+      message.signedRecipients = headerBlockReadable(raw) ? signedRecipients(email.headers, message.fromCheck.domain, context.authentication) : [];
+    }
   }
   return message;
 }

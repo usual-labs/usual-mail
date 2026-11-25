@@ -68,18 +68,30 @@ export interface AuthenticationResults {
   results: AuthenticationResult[];
 }
 
+/**
+ * A header field's name as compared: lower case, without the spaces a parser may keep before its colon ("To :"). Every
+ * lookup here and in signed-recipients.ts uses it, so a field written that way counts like any other (one more From,
+ * one more Authentication-Results), which only takes proof away.
+ */
+export const fieldName = (field: HeaderField): string => field.key.trim().toLowerCase();
+
+/** The topmost Authentication-Results field, the only one a receiving checker's can be. */
+export function topAuthenticationResults(headers: readonly HeaderField[]): HeaderField | undefined {
+  return headers.find((field) => fieldName(field) === "authentication-results");
+}
+
 /** Longer values, deeper comments, more results or properties are refused unread: no checker writes them. */
 const LIMITS = { length: 16_384, depth: 16, results: 64, properties: 32 };
 
 /** What the provider's own checker proved about the From domain. */
 export function fromAuthentication(headers: readonly HeaderField[], options: AuthenticationOptions): FromAuthentication {
-  const top = headers.find((field) => field.key.toLowerCase() === "authentication-results");
+  const top = topAuthenticationResults(headers);
   if (!top) return { result: "no_header" };
   const parsed = parseAuthenticationResults(top.value);
   if (!parsed) return { result: "unverified", reason: "malformed" };
   const trusted = checkerName(options.checker);
   if (!trusted || checkerName(parsed.checker) !== trusted) return { result: "other_checker" };
-  const ours = headers.filter((field) => field.key.toLowerCase() === "authentication-results" && checkerIn(field.value) === trusted);
+  const ours = headers.filter((field) => fieldName(field) === "authentication-results" && checkerIn(field.value) === trusted);
   if (ours.length > 1) return { result: "repeated" };
   const fromDomain = singleFromDomain(headers);
   if (!fromDomain) return { result: "unverified", reason: "from_unusable" };
@@ -147,7 +159,7 @@ export function namedDomain(entry: AuthenticationResult, property: string): stri
 
 /** The domain of the From field's one mailbox, in ASCII; null unless there is exactly one field naming one mailbox. */
 function singleFromDomain(headers: readonly HeaderField[]): string | null {
-  const from = headers.filter((field) => field.key.toLowerCase() === "from");
+  const from = headers.filter((field) => fieldName(field) === "from");
   if (from.length !== 1) return null;
   const parsed = addressParser(from[0]!.value);
   if (parsed.length !== 1 || parsed[0]!.group) return null;
