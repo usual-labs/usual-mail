@@ -45,6 +45,12 @@ and the notes:
 
 ## Ideas
 
+- **Ship each app only its own tour clips** (the clip review of 2026-11-25): the Mac's `tour-mac-*.mp4` and the
+  iPhone's `tour-phone-*.mp4` are both resources of `UsualMailUI`, which both apps link, so each carries the other's,
+  about 2.3 MB. Two resource-only targets (one a platform), each a dependency of `UsualMailUI` with a platform
+  condition (`.when(platforms:)`), would leave each app its own; `TourClip.url` would then look in that target's
+  bundle.
+
 - **Ask for the current password before a new one replaces it** (`PUT /v1/owner/password`, from the owner password's
   security review, 2026-11-24): today any person's device sets a new password without the old one, by design (a
   person's device already has the owner's whole access, and it is how a forgotten one is replaced). Asking for the

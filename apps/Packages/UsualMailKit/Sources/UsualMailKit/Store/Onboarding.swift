@@ -209,15 +209,18 @@ public enum Onboarding {
             title: "Reply later, pin, snooze.",
             line: "Put mail aside to answer, keep it at hand, or bring it back when it matters."),
         Slide(title: "Screening.", line: "First mail from someone new waits here until you let them in."),
-        Slide(title: "Your whole inbox.", line: "Everything as Gmail has it, newest first, one press away."),
+        Slide(title: "Your whole inbox.", line: inboxPageLine),
         Slide(title: "Your inboxes.", line: inboxesLine),
     ]
 
-    /// Where the inboxes are switched: the rail on the Mac, the switcher's menu at the top of the iPhone's screen (its
-    /// tour shows the iPhone, 2026-11-25).
+    /// How far the Inbox page is: the rail's one button on the Mac; on the iPhone two taps, the switcher and Inbox in
+    /// its menu, as its tour's clip shows (the clip review of 2026-11-25). Where the inboxes are switched: the rail on
+    /// the Mac, the switcher's menu at the top of the iPhone's screen (its tour shows the iPhone, 2026-11-25).
     #if os(iOS)
+        static let inboxPageLine = "Everything as Gmail has it, newest first, two taps away."
         static let inboxesLine = "Switch between them from the menu at the top, or see them all at once."
     #else
+        static let inboxPageLine = "Everything as Gmail has it, newest first, one press away."
         static let inboxesLine = "Switch between them on the left, or see them all at once."
     #endif
 

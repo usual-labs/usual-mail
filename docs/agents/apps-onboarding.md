@@ -84,9 +84,10 @@ applies only to inboxes connected after it is set.
    the server that failed, an empty field offers "Test again" (`testAi`).
 7. **While your mail comes in:** nine slides (`Onboarding.slides`, title and line): Home is what needs you, A line on
    every message, Feed, Receipts, Notifications, Reply later / pin / snooze, Screening, Your whole inbox, Your inboxes
-   (Notifications and Your whole inbox added by the owner on 2026-11-20). The last slide's line names where the
-   inboxes are switched: "on the left" on the Mac (the rail), "from the menu at the top" on the iPhone (the
-   switcher; 2026-11-25, with the iPhone's own clips). Each slide plays its own clip (`TourClip`,
+   (Notifications and Your whole inbox added by the owner on 2026-11-20). Two lines name the iPhone's own way
+   (2026-11-25, with its own clips): Your whole inbox is "one press away" on the Mac (the rail's button), "two taps
+   away" on the iPhone (the switcher, then Inbox, as its clip shows; from the clip review), and the inboxes are
+   switched "on the left" on the Mac (the rail), "from the menu at the top" on the iPhone (the switcher). Each slide plays its own clip (`TourClip`,
    `Onboarding/TourClip.swift`; the owner's words of 2026-11-25: "use dummy data to show properly the features, and
    even show a cursor animating … with a gif/video instead of image"), each app its own ("in iphone, the videos should
    show the iphone UI not mac UI!", the same day): the app on the tour's sample, five to ten seconds, silent, looping
@@ -108,9 +109,14 @@ applies only to inboxes connected after it is set.
      (`tour/compose.swift`: CoreGraphics frames to ffmpeg; `"pointer": "touch"` for the iPhone's). Nothing drives the
      Mac app (this Mac gives the sessions no pointer): each state is its own capture of its window, the pointer is
      drawn; its windows open on screen while it runs. The iPhone's are captured in a booted simulator through
-     agent-device (`AGENT_DEVICE`, `SIMULATOR`), which opens the app in each state, taps the switcher for the three
-     states with its menu open, and takes the screenshots at 3x, the status bar at 9:41 meanwhile (`simctl
-     status_bar`, cleared after); made on an iPhone 18 Pro (402 × 874 points, which the clips' taps assume). Seen on
+     agent-device (`AGENT_DEVICE`; `scripts/tour/capture-phone.zsh`), which opens the app in each state, taps the
+     switcher for the three states with its menu open, and takes the screenshots at 3x, the status bar at 9:41
+     meanwhile (`simctl status_bar`); made on an iPhone 18 Pro (402 × 874 points, which the clips' taps assume).
+     `SIMULATOR` names the simulator by its UDID, needed when more than one is booted, and agent-device is pointed at
+     it too (`--udid`), so the status bar set is the screen captured. The bar is given back however the capture ends
+     (the clip review of 2026-11-25): the captures run in their own zsh, as zsh skips its EXIT trap when `set -e`
+     stops a function (known-issues.md), and a signal exits through that trap; tried with a forced failure and a
+     Ctrl-C mid-capture. Seen on
      2026-11-25 in the Mac preview copy, opened straight at this step with
      `-UsualMailOnboardingSteps '{ <server name> = whileWaiting; }'` (the defaults' argument domain), and in the
      iPhone simulator's preview copy the same way: the first slide's clip, the sixth and the ninth with its words.

@@ -1210,6 +1210,18 @@ the same step applies there ([apps-phone.md](apps-phone.md), "Sending it to Test
 condition only to `.inbox`. Written that way in `TopBar.items` it would have emptied the Mac's row on To reply, Pinned
 and Snoozed; caught before any build was kept. Test the condition before the `switch`, or repeat `where` per pattern.
 
+## zsh skips its EXIT trap when `set -e` stops a function, and `status` is read-only (2026-11-25)
+
+Found by the review of the tour script (`apps/scripts/make-tour.sh phone`, which sets the simulator's status bar to
+9:41 and must give it back). Under zsh 5.9, `set -eu; trap 'echo CLEARED' EXIT; f(){ false; }; f` prints nothing: a
+failure that `set -e` stops inside a function leaves without the EXIT trap (at the top level the trap runs). INT, TERM
+and HUP with no trap of their own skip it too. And `status` is zsh's read-only `$?`: `cmd || status=$?` aborts the
+script, again without the trap. `make-tour.sh` therefore runs the captures in their own zsh
+(`scripts/tour/capture-phone.zsh`, `zsh -eu … || captured=$?`), sets the EXIT trap before the override, turns
+INT, TERM and HUP into `exit 130`, and clears the bar itself after a good capture. Don't write `capture … || exit`
+instead: `||` turns `set -e` off inside the function. Tried against the booted simulator the same day: a forced
+failure (a screenshot refused) exited 1 and a Ctrl-C mid-capture 130, and after each the bar had no override.
+
 ## Hosting platforms (2026-11-23, from their documentation and local runs; none tried on the platform itself)
 
 - **A plain HTTP public address stops the server.** `USUAL_MAIL_PUBLIC_URL` must be HTTPS unless it is loopback; an

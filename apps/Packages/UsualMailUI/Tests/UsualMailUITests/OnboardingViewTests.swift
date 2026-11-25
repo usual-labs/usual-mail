@@ -9,8 +9,12 @@ import UsualMailKit
 @MainActor
 struct OnboardingViewTests {
     @Test func everySlideHasItsClipBundledForEachApp() throws {
-        // The Mac's clips show the Mac app, the iPhone's the iPhone app; each app plays its own.
-        #expect(TourClip.all == TourClip.mac)
+        // The Mac's clips show the Mac app, the iPhone's the iPhone app; each app plays its own, in its own frame.
+        #if os(iOS)
+            #expect(TourClip.all == TourClip.phone && TourClip.aspect == TourClip.phoneAspect)
+        #else
+            #expect(TourClip.all == TourClip.mac && TourClip.aspect == TourClip.macAspect)
+        #endif
         for clips in [TourClip.mac, TourClip.phone] {
             #expect(clips.count == Onboarding.slides.count, "one clip a slide")
             for clip in clips {
