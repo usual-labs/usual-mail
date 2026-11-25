@@ -399,6 +399,9 @@ The iPhone tweaks and the owner's password (2026-11-24) were rebased onto `main`
 owner's request. The stop fixes after them (2026-11-24) say 0.1.1 wherever `1881044` wrote the version (every
 `package.json` and lockfile, `server/src/version.ts`, `cli/src/version.ts`, `mcp/src/server.ts`,
 `mcp/src/ui/view-script.ts`, and the deploy guide's tag example); notes about the first release still say 0.1.0.
+0.1.2 (2026-11-25, on `ios-ui-tweaks`, not tagged or pushed yet) bumps the same places and the README's status line,
+for the apps' warning on an inbox that stopped syncing and the server's side of it (`Inbox.statusReason`, a grace for
+failures that may pass, a watch on syncs that never finish; [server.md](server.md)).
 
 ## Layout
 

@@ -305,7 +305,7 @@ export const VIEW_SCRIPT = String.raw`
   if (typeof ResizeObserver === "function") new ResizeObserver(resized).observe(document.documentElement);
 
   request("ui/initialize", {
-    appInfo: { name: "usual-mail-" + view, version: "0.1.1" },
+    appInfo: { name: "usual-mail-" + view, version: "0.1.2" },
     appCapabilities: { availableDisplayModes: ["inline"] },
     protocolVersion: "2026-01-26"
   }).then(function (result) {
