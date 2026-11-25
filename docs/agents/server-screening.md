@@ -37,7 +37,7 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   googlemail.com, on Gmail only in a field `messages.signed_recipients` holds (the mail part's `signedRecipients`:
   given once, named in the `h=` of every aligned DKIM signature Gmail's checker passed; null for mail stored before,
   so it never passes); (d) the proved domain isn't under a `TENANT_PLATFORMS` entry; (e) `carriesUsersWords`: no
-  address at google.com, microsoft.com (and under them) but `ACCOUNT_SECURITY`'s two account-security senders, nor at
+  address at google.com, microsoft.com (and under them) but Microsoft's account team (`ACCOUNT_SECURITY`), nor at
   paypal.* (by name), venmo.com, square.com, squareup.com, stripe.com or sharepointonline.com) and `EVIDENCE[kind]`. **A code**
   needs machine-sent mail, (c), `holdsCode` and `home`, or no `home` when the inbox's provider has no checker (IMAP:
   0.1.2's behaviour, the coordinator's decision, (c) read on To and Cc as given); a Gmail inbox's missing or failed
@@ -106,11 +106,14 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   To given twice, a document's mention; a joined message that would pass on its own but wasn't asked about; asked
   again to an invoice; the stored and served "a screened thread carries no kind" backups.
 - `screening-senders` (13), `migration-0022` (both columns), `e2e-ai-gmail` (the code carries a DKIM-Signature whose b=
-  starts with Gmail's `header.b`, signing To), mail's `signed-recipients` (14: given once and signed, a Cc added, To or
-  Cc twice, a forged signature copying the passing one's first characters, failed or unaligned signatures, the domain
-  fallback, unreadable signatures; the final review's attacks: a padded real signature with a forged one, SPF-only
-  DMARC with a forged brand signature copying another domain's `b=`, a signature lacking `d=`, `h=` or `b=` or writing
-  `D=`, `To :` with a space; and through the parser).
+  starts with Gmail's `header.b`, signing To), mail's `signed-recipients` (22: each attack the four reviews ran,
+  through the parser too: a Cc added, To or Cc twice, a forged signature copying the passing one's first characters, a
+  padded real signature, SPF-only DMARC with a forged brand signature, a signature lacking `d=`, `h=` or `b=` or
+  writing `D=`, `To :`, a real signature whose `i=` names a subdomain, a Unicode or dotted `d=`, a `d=` that can't be
+  placed, a signature matching a failed result, every malformed header line; an unmatched signature of the
+  organisation still bounding the answer; and a monotone property: about 1,400 messages, each hostile field alone and
+  in pairs at every place below Gmail's result, never adding a field). `ai-addresses` (12): names with marks,
+  full-width at signs and dots, long domains, joined addresses and two-unit characters at a cut.
 - **Speed** (`test/linear.ts`): 20 bodies of 1 MB, each run in a worker thread that is terminated at 10 seconds, since
   a slow pattern blocks the event loop and node:test's own timeout can't fire: the gate's check (`screening-gate`), and
   the requests, snippets, a model's answers, names, List-Ids and pictures' addresses (`ai-linear`), each under 3 s

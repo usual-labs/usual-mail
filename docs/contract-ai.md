@@ -558,10 +558,13 @@ conservative on purpose, so what it misses waits in Screening rather than a stra
   alert can be sent on to others with its signature intact): (a) no List-Id; (b) every Reply-To at the From's
   registrable domain; (c) To or Cc names the inbox's own address, a `+tag` ignored and dots at gmail.com (and
   googlemail.com), and on Gmail only in a field the sender's own DKIM signature vouches for
-  (`ProviderMessage.signedRecipients`: the field is given once, and every aligned signature Gmail's checker passed
-  names it in its `h=`; a message giving To or Cc twice, or with any DKIM signature that can't be read or lacks
-  `d=`, `h=` or `b=`, has none; a signature fits a pass only when Gmail's result names exactly its domain and, when
-  it prints `header.b`, the signature starts with it). This stops a copy sent on by Bcc and a replay with a
+  (`ProviderMessage.signedRecipients`: the field is given once, Gmail's checker passed a signature of the From
+  address's organisation, and every DKIM signature in the message whose `d=` is in that organisation, matched to a
+  result or not, names the field in its `h=`; one of them must match a passing result. A message giving To or Cc
+  twice, with any signature that can't be read, lacks `d=`, `h=` or `b=`, has a `d=` with no organisation or matches
+  a result that didn't pass, or with a header line that is neither a field nor a fold, has none. The check is
+  monotone: anything added to the headers or altered in them only takes fields away). This stops a copy sent on by
+  Bcc and a replay with a
   To or Cc added on top (the second security review: a real signed alert to the attacker, with `Cc: victim` added,
   passed before); it doesn't stop every replay: a sender who signs a field naming someone else is beyond it, and mail
   signed with no DKIM at all (DMARC by SPF alone) never passes; (d) not from a platform whose customers send from
@@ -569,8 +572,9 @@ conservative on purpose, so what it misses waits in Screening rather than a stra
   helpscoutapp.com, service-now.com, intercom-mail.com, my.salesforce.com, gitbook.io, notion.site and the like);
   (e) not from a notifier whose mail carries its users' words: google.com and microsoft.com whole (each product
   there sends its own notices: a document's comments, a file shared, a calendar event, a form's answers, a team's
-  chat), but for their account-security senders (`no-reply@accounts.google.com`,
-  `account-security-noreply@accountprotection.microsoft.com`), and payment services' requests and receipts
+  chat; Google's own account alerts too, since a genuine one can carry an app name an attacker typed), but for
+  Microsoft's account team (`account-security-noreply@accountprotection.microsoft.com`, as Microsoft names it), and
+  payment services' requests and receipts
   (paypal.*, venmo.com, square.com, squareup.com, stripe.com; sharepointonline.com too); where a request can't be
   told from a security alert at the same address, the address is refused, and a real alert waits in Screening;
   **and**

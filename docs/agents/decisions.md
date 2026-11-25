@@ -907,6 +907,19 @@ proof's parser sound, and agreed that invoices never skip and with the separate 
 - **google.com and microsoft.com are refused whole** for every kind but a code, but for their account-security
   senders, since each product there carries its users' words under one proof.
 
+**The quick check after it, the same day** (NO-GO on the same family: each round one more real signature could be made
+not to count, then a forged one decided):
+
+- **The signed-recipients check is monotone,** argued at the top of `mail/src/message/signed-recipients.ts` and
+  tested: Gmail's result proves a signature of the From address's organisation passed, so the real one is among the
+  message's signatures; every signature whose `d=` is in that organisation bounds what counts, matched to a result or
+  not. A `d=` is compared in ASCII; one that can't be placed, a signature matching a failed result, or a header line
+  that is neither a field nor a fold (the parser reads no fields past it) leaves nothing.
+- **Google gets no exemption** (a genuine account alert can carry an attacker-typed app name, Kaspersky); Microsoft's
+  account team keeps one (support.microsoft.com/en-us/help/13967).
+- **Addresses:** combining marks, full-width at signs and ideographic dots, and domains of any length are taken out;
+  a cut never leaves the start of joined addresses, and counts its window in UTF-16 units.
+
 Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
 mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").
 

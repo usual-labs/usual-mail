@@ -173,15 +173,19 @@ batch's `progress`.
 - `signedRecipients` (2026-11-25, the screening gate's second security review; [contract](../contract-ai.md#mail-is-untrusted-input-to-a-model)):
   only when `fromCheck` is verified. Which of To and Cc the sender's own DKIM signature vouches for
   (`message/signed-recipients.ts`): none when the message gives To or Cc twice (postal-mime merges a second field
-  into the first, so an added one would otherwise read as the sender's); else each field given once that every
-  aligned DKIM signature matching a pass in Gmail's trusted result names in its `h=` (a signature fits a pass only
-  when the result names exactly its domain, `header.d` or else `header.i`'s, and, when Gmail prints `header.b`, it
-  starts with it; the intersection, so a signature added later only takes a field away). None is ever skipped: any
-  signature that can't be read (a tag twice, over 16 KB) or lacks `d=`, `h=` or `b=` leaves no field (the final
-  security review: a real signature padded past the limit was skipped and a forged one decided). Tag names are kept
-  case-sensitive (RFC 6376), header names are counted trimmed (`To :` is a To). At most 16 signatures. Gmail's large
-  messages keep every header when rebuilt (`gmail/payload.ts`), so the same holds there. Tests:
-  `test/unit/signed-recipients.test.ts` (14: each attack the reviews ran, through the parser too).
+  into the first, so an added one would otherwise read as the sender's); else, when Gmail's trusted result passed a
+  signature of the From address's organisation, each field given once that the `h=` of **every** signature whose `d=`
+  (in ASCII by `asciiDomain`, a trailing dot dropped) is in that organisation names, matched to a result or not; at
+  least one of them must match a passing result (`header.d`, or `header.i`'s domain or a parent of it, plus `header.b`
+  when given). Monotone, argued at the top of the file: the real signature is always among those intersected, so
+  nothing added or altered can make it not count. Nothing at all when any signature can't be read (a tag twice, over
+  16 KB), lacks `d=`, `h=` or `b=`, has a `d=` that isn't a host name or has no organisation, or matches a result that
+  didn't pass; or when a header line is neither a field nor a fold (`headerBlockReadable`: postal-mime stops reading
+  fields there). Tag names are kept case-sensitive (RFC 6376); header names are compared trimmed through one lookup
+  shared with `auth-results.ts` (`fieldName`, `topAuthenticationResults`), so `To :`, `From :` and
+  `Authentication-Results :` count. At most 16 signatures. Gmail's large messages keep every header when rebuilt
+  (`gmail/payload.ts`), so the same holds there. Tests: `test/unit/signed-recipients.test.ts` (22: each attack the four
+  reviews ran, through the parser too, and a monotone property over about 1,400 messages).
 - A message the parser refuses becomes a short note instead of failing the sync.
 - **Thread keys (IMAP):** the first id in References, else In-Reply-To, else the own Message-ID (`mid:<id>`);
   with no ids, a hash of From, To, Date and Subject. A client that keeps only In-Reply-To deep in a

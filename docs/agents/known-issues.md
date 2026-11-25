@@ -29,20 +29,24 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   that it is the brand it imitates. It shows no logo (its sender isn't let in), and "Skipped Screening: a security
   alert" says why it is there. A list of brands' own domains, or holding back mail whose links lead elsewhere, would
   narrow it; neither is built. (2) **Platform notices that carry a user's words.** Refused: everything at google.com
-  and microsoft.com and their subdomains but their account-security senders, and every address at paypal.*,
-  venmo.com, square.com, squareup.com, stripe.com and sharepointonline.com (their real alerts wait in Screening, the
-  accepted cost); tenant subdomains of help desks and tools. **Assumed, not verified here:** that Google's account
-  alerts come from `no-reply@accounts.google.com` and Microsoft's from
-  `account-security-noreply@accountprotection.microsoft.com`, as their help pages say (remembered, not fetched in this
-  work); that their other products' notices come from those two domains (Microsoft's Teams also sends from addresses
-  under the `.microsoft` top-level domain, which isn't listed); and how other platforms' notices are headed. No real header samples were read: the tests build them. A platform not on the lists that writes a user's
+  and microsoft.com and their subdomains but Microsoft's account team, and every address at paypal.*, venmo.com,
+  square.com, squareup.com, stripe.com and sharepointonline.com (their real alerts wait in Screening, the accepted
+  cost); tenant subdomains of help desks and tools. Google's own account alerts wait too: a genuine, signed one from
+  its accounts sender can carry an app name an attacker typed (Kaspersky's DKIM replay through Google OAuth), and no
+  Google page names that sender. **Verified:** Microsoft's account team's sender,
+  `account-security-noreply@accountprotection.microsoft.com` (https://support.microsoft.com/en-us/help/13967, by the
+  final security review). **Assumed:** that Google's and Microsoft's other products' notices come from those two
+  domains (Microsoft's Teams also sends from addresses under the `.microsoft` top-level domain, which isn't listed),
+  and how other platforms' notices are headed. No real header samples were read: the tests build them. A platform not on the lists that writes a user's
   words in mail addressed to the person, with no List-Id and no Reply-To elsewhere, still passes when the model
   agrees (another file share or calendar, a marketplace's message, a code-hosting site's notice without a List-Id).
   (3) **Replays:** a copy sent on by Bcc, or with a To or Cc added on top, doesn't pass (the field naming the inbox must
   be given once and signed by the sender's aligned DKIM signature; checked against real parsing, with made-up
-  signatures). Not every replay: a sender who signs a field naming someone else is beyond it, and the check relies on
-  Gmail's result naming the passing signature's domain and first characters (`header.d` or `header.i`, `header.b`).
-  Mail authenticated by SPF alone (no DKIM) never passes, also with a forged signature copying another domain's. (4) **Once through, a thread is judged again** when anyone not let in writes into it, but mail from someone
+  signatures). The check is monotone (`mail/src/message/signed-recipients.ts` argues it, a test adds every hostile
+  field alone and in pairs at every place): every signature of the From address's organisation bounds what counts,
+  so none can be made not to count. Not every replay: a sender who signs a field naming someone else is beyond it, and
+  the check relies on Gmail's own result being the topmost Authentication-Results. Mail authenticated by SPF alone
+  (no DKIM) never passes, also with a forged signature copying another domain's. (4) **Once through, a thread is judged again** when anyone not let in writes into it, but mail from someone
   let in into it changes nothing. (5) **The evidence words are English only** ("sign in", "order", "booking"): a German
   "Bestellung" or a French "connexion" waits in Screening. (6) **Mail sent to an alias or a forwarding address** never
   skips Screening, codes included: To or Cc must name the inbox's own address (a `+tag` and Gmail's dots aside).
@@ -51,11 +55,15 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   is untried:** no real model has answered it; the fake answers by words. (10) On IMAP only codes pass, as before
   2026-11-25; a server without the Public Suffix List lets nothing through on Gmail.
 - **A summary request can still carry an unusual address** (server, older than 2026-11-25; open). `withoutAddresses`
-  (`server/src/ai/prompt.ts`) takes out addresses of letters, digits and `._%+'=-` before an @ and a dotted domain of
-  letters, digits and hyphens. A quoted local part (`"Ann Lee"@mail.example`) and a domain written as an address
-  literal (`ann@[192.0.2.10]`) aren't taken out, nor the part before a second @ (`a@b@mail.example` leaves `a@`). Mail
-  rarely writes them; the sender's own address never goes in a summary request either way. Widening the scan would
-  take them out.
+  (`server/src/ai/addresses.ts`) takes out addresses of letters, digits, marks and `._%+'=-` before an at sign ("@" or
+  "＠") and a domain of any number of labels of any length, dotted by ".", "。", "．" or "｡". A quoted local part
+  (`"Ann Lee"@mail.example`) and a domain written as an address literal (`ann@[192.0.2.10]`) aren't taken out, nor the
+  part before a second @ (`a@b@mail.example` leaves `a@`). Mail rarely writes them; the sender's own address never
+  goes in a summary request either way. Widening the scan would take them out.
+- **Text in Thai, Japanese or Chinese can lose up to 256 letters before an address** (server, 2026-11-25; a quality
+  limit, by design). With no space before an address, the letters run into its local part; a run of up to 256 is taken
+  out whole with the address (mail allows only 64, but a longer local part is still taken whole to that length), and
+  past that only its last 64. So a summary request may miss the words right before an address in such text.
 - **The sender rules match exactly, and may never fire for colleagues** (server, 2026-11-25; open). A colleague at a
   subdomain of the inbox's domain (`eu.work.example` for `me@work.example`), a second domain the company owns, or
   another inbox's alias (Gmail's dots and `+` tags, a "send mail as" address) isn't let in by them. A colleague must be
