@@ -275,7 +275,8 @@ server, and its status.
   on in the client's project (`attention.gmailApiOff`, after the final review of 2026-11-25); `needs_sign_in` for one
   connected by hand, the Gmail API's words naming the person's own client; anything else may pass, Gmail's `daily_quota`
   included) and makes the row's next state (`afterFailure` over the attempt's start and end, the start its end less
-  its length on `Clock.monotonic`, so a machine asleep mid-attempt is a gap; `afterSuccess`): at once
+  its length on `Clock.monotonic`, so a sleep mid-attempt joins the gap before it, a new run only past the stale
+  time; `afterSuccess`): at once
   with a reason; a refused sign-in or the host's setup kept through failures that may pass; after `not_syncing`,
   `provider_error` at once; else `provider_error` once the run (from the first failed attempt's start) has gone ten
   minutes across two attempts, an attempt begun longer than the stale time after the last one ended starting it again.

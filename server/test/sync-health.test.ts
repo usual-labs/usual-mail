@@ -205,7 +205,7 @@ describe("a sync that keeps failing", () => {
     heard.stop();
   });
 
-  test("nor does it sleeping during an attempt: the attempt's length is the time the machine was awake", async () => {
+  test("nor does it sleeping for hours during an attempt: the attempt's length is the time the machine was awake", async () => {
     t = await makeServer();
     const s = t;
     let lidCloses = false;
@@ -226,6 +226,28 @@ describe("a sync that keeps failing", () => {
     for (let minute = 1; minute <= 10; minute++) await s.tick(MINUTE);
     assert.equal((await listed(s)).statusReason, "provider_error", "ten minutes of failing once awake");
     heard.stop();
+  });
+
+  test("but a hang while awake is failing time: the failure after it, a poll later, is said", async () => {
+    t = await makeServer();
+    const s = t;
+    let hangs = false;
+    slow(s, () => {
+      // Twelve minutes awake inside the attempt, under the watch's fifteen, so only the failures say anything.
+      if (!hangs) return;
+      hangs = false;
+      s.clock.advance(12 * MINUTE);
+    });
+    const { mailbox } = await s.connect({ address: "me@acme.example" });
+    const heard = listen(s);
+    mailbox.failSync = "Connection timed out";
+    hangs = true;
+    await s.tick(MINUTE);
+    assert.deepEqual([(await listed(s)).status, changes(heard.events)], ["ok", []], "one failure alone");
+    // The next poll's failure: the run began with the hung attempt, thirteen minutes before.
+    await s.tick(MINUTE);
+    heard.stop();
+    assert.deepEqual(changes(heard.events), [["needs_attention", "provider_error"]]);
   });
 });
 

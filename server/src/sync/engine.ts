@@ -182,8 +182,8 @@ export class SyncEngine {
     const ctx = this.#ctx;
     const inbox = await getInbox(ctx, inboxId);
     if (!inbox || inbox.paused || this.#closing.has(inboxId)) return;
-    // A failure's run counts from here, so a long hang before it is failing time, not a gap (health.ts). Its length is
-    // on the monotonic clock: a machine asleep mid-attempt (a Mac's lid closed) is a gap, never failing time.
+    // A failure's run counts from here: a hang is failing time. The attempt's length is on the monotonic clock, so a
+    // sleep mid-attempt joins the gap before it, which starts a new run only past the stale time (health.ts).
     const began = this.#monotonic();
     try {
       await this.#checkGoogleClient(inbox);

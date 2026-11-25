@@ -182,8 +182,9 @@ new mail are on the contract's main page.
   attempts at least. The run counts from the start of the first failed attempt after the last good sync, so a long
   hang before a failure is failing time; an attempt that begins more than `notSyncingAfterMs` after the last one ended
   (the server stopped, its machine asleep) starts the run again. An attempt's start is its end less its length on a
-  clock that doesn't run while the machine sleeps, so a machine asleep during an attempt is a gap too, not failing
-  time. After `not_syncing`, a failed attempt is
+  clock that doesn't run while the machine sleeps, so time asleep during an attempt falls in the gap before it: like
+  any gap, it starts the run again only when longer than `notSyncingAfterMs`, and a shorter sleep counts as failing,
+  as it would between attempts. After `not_syncing`, a failed attempt is
   `provider_error` at once. `statusDetail` is the provider's words.
 - **`not_syncing`:** no sign of life of an open inbox for `notSyncingAfterMs` (the larger of 15 minutes and five poll
   intervals) while the server ran: no attempt finished, good or failed, no batch was stored, no first sync said how

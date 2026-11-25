@@ -74,6 +74,12 @@ and the notes:
 - **Make a teach prompt's rule before marking the prompt answered** (`answerTeach`, 2026-11-24): a rule refused today
   consumes the prompt (known-issues.md).
 
+- **Leave a machine's sleep out of a failing run exactly** (the review of 2026-11-25): an attempt's start is its end
+  less its monotonic length, so a sleep during it joins the gap before it, and a gap starts a new run only past
+  `notSyncingAfterMs`; a shorter sleep, mid-attempt or between attempts, still counts toward the ten minutes' grace.
+  Subtracting the time slept (the wall clock's length less the monotonic one's, kept on the row) from the run would
+  leave it out exactly. Not needed yet: each sleep that short adds less than the stale time to a run.
+
 - **Let a pause cut the batch being fetched short** (2026-11-23, after the review's pause fix): a pause answers at
   once, but the batch in hand is still fetched in the background, up to about two and a half minutes of Gmail on Node,
   with the old provider open and its quota spent (known-issues.md). An `AbortSignal` in `SyncOptions` that the engine
