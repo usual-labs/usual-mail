@@ -53,6 +53,11 @@ struct SettingsView: View {
             .scrollContentBackground(.hidden)
             .scrollIndicators(.never)
             .font(Theme.sans(SettingsType.body))
+            #if os(iOS)
+                // The first section's title as far below the pane's top as the others are below the section before
+                // (the owner's words of 2026-11-25: "the sections title should have more top padding").
+                .contentMargins(.top, SettingsType.firstSectionRoom, for: .scrollContent)
+            #endif
     }
 
     /// One section: its title (and `trailing` at the title's right, as the usage's period), its rows, and under them
@@ -151,6 +156,8 @@ enum SettingsType {
         static let note: CGFloat = 13
         static let header: CGFloat = 13
         static let headerInk = Theme.secondary
+        /// Above the first section, on top of the form's own few points.
+        static let firstSectionRoom: CGFloat = 20
     #else
         static let body: CGFloat = 12
         static let note: CGFloat = 10

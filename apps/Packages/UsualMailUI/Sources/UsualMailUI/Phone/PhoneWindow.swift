@@ -171,8 +171,13 @@
         /// How far under the content's foot it fades to nothing: the row's height.
         static var fade: CGFloat { 44 }
 
+        /// The radius of its top corners: the system's inset cards' and buttons' inside it (Settings' sections), so
+        /// the pane and what it holds round alike (the owner's words of 2026-11-25: "increase the content pane border
+        /// radius, so it matches the other buttons and cards within the page"; it was 16).
+        static var radius: CGFloat { 26 }
+
         var body: some View {
-            let shape = UnevenRoundedRectangle(topLeadingRadius: 16, topTrailingRadius: 16)
+            let shape = UnevenRoundedRectangle(topLeadingRadius: Self.radius, topTrailingRadius: Self.radius)
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .mask {

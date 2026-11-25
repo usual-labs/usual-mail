@@ -111,6 +111,10 @@ points since 2026-11-25, below).
 - **Without a pointer** (`Pointer.exists` false): a row's time always shows, and so does a seen notification's tick.
   A long press on a row shows the Mac's right-click menu (the same `contextMenu`).
 - **Pages:** the card's side margin is `Theme.pageInset`, 16 on the iPhone (the concept's) and the Mac's 24.
+- **The card's top corners** are 26 points (`PhoneCard.radius`; 16 until 2026-11-25), as the system's inset cards and
+  buttons inside it round (the owner's words: "increase the content pane border radius, so it matches the other
+  buttons and cards within the page"). Settings' first section title has 20 points more above it
+  (`SettingsType.firstSectionRoom`), as far below the card's top as the other titles are below their section before.
 - **Settings' Blocked tab:** Unblock is a secondary button in the middle of its row (owner's words of 2026-11-24,
   "like a button. not primary though, secondary"): since 2026-11-25 the system's bordered button, a finger's size here
   and small on the Mac (`BlockedRow`), as Settings became the system's grouped form (apps.md, Settings).
