@@ -84,8 +84,7 @@
                         UndoStrip()
                         WindowBar(
                             nav: $nav, screeningCount: screeningCount, namesSettingsTabs: false, compact: true,
-                            back: back, act: { action, threadID in act(action, on: threadID) },
-                            leaveSettings: { withAnimation(Motion.move) { nav.leaveSettings() } })
+                            back: back, act: { action, threadID in act(action, on: threadID) })
                     }
                     .padding(.horizontal, PhoneLayout.barMargin)
                 }

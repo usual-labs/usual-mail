@@ -6,9 +6,8 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
 - `SwipeActionTests` (UI, 2026-11-25): Home's swipes on the iPhone, left marking seen and right snoozing unless
   Settings says otherwise; seen following New and Seen (read, or unread again), snooze asking when first, reply
   later, pin and archive doing what the mail page's buttons do, the way back for a mail already there.
-- `PhoneTests` (UI) also holds, since 2026-11-25, Settings' row on the iPhone (its back button, then the tabs at the
-  right) and `BarFit` measuring the row as `TopBar` draws it; `StacksTests` Settings' back going to the stack it was
-  opened from, and doing nothing elsewhere.
+- `PhoneTests` (UI) also holds, since 2026-11-25, `BarFit` measuring the row as `TopBar` draws it, beside Settings'
+  tabs centred on the iPhone only.
 - `SyncRetryTests` (UI, 2026-11-25, the review's): `SyncNoticeDispatch` opens the dashboard, moves the window or asks
   the server, and only Try again asks it, a refusal in words; `SyncRetry` busy while asking, "Asked your server to
   sync." until the inbox changes, it goes, or 30 seconds pass, a change while asking ending it once the server

@@ -144,30 +144,6 @@ struct StacksTests {
         #expect(on(.settings).place == .settings && on(.toReply).place == .toReply)
     }
 
-    @Test func settingsBackGoesToWhereSettingsWasOpenedFrom() {
-        // The iPhone's Settings has a back button (the owner's words of 2026-11-25): to the stack it was opened from,
-        // as it was left.
-        var nav = Navigation()
-        nav.mailPlace = .tab(.receipts)
-        nav.open("thr_1")
-        nav.press(.settings)
-        #expect(nav.place == .settings && nav.settingsReturnTitle == "Receipts")
-        nav.leaveSettings()
-        #expect(nav.place == .tab(.receipts) && nav.reading == "thr_1")
-        // From search over Pinned: search is left on going to Settings, so back is to Pinned.
-        var pinned = on(.pinned)
-        pinned.openSearch()
-        pinned.press(.settings)
-        #expect(pinned.settingsReturnTitle == "Pinned")
-        pinned.leaveSettings()
-        #expect(pinned.place == .pinned)
-        // Anywhere but Settings it does nothing.
-        let before = on(.toReply)
-        var elsewhere = before
-        elsewhere.leaveSettings()
-        #expect(elsewhere == before)
-    }
-
     @Test func settingsHoldsNoMail() {
         var nav = on(.settings)
         nav.open("thr_1")

@@ -80,16 +80,20 @@ struct PhoneTests {
                 #expect(
                     TopBar.items(place: place, reading: reading, compact: true)
                         == TopBar.items(place: place, reading: reading))
+                #expect(!TopBar.centres(place: place, compact: true))
             }
         }
     }
 
-    @Test func settingsHasABackButtonOnTheIPhoneOnly() {
-        // The owner's words of 2026-11-25: "move the bottom glass tabs to right and on left put an back button". The
-        // iPhone's row is the back button, a gap, then the five tabs at the right; the Mac's has no back button.
+    @Test func settingsTabsSitInTheMiddleOnTheIPhoneOnly() {
+        // The iPhone's row has Settings' five tabs with no gap before them and no back button, centred (the owner's
+        // words of 2026-11-25: "bring back the settings tabs to center and remove the back button"); the Mac's keeps
+        // the gap, which puts them at the right.
         let tabs = SettingsTab.allCases.map(TopBar.Item.settings)
-        #expect(TopBar.items(place: .settings, reading: false, compact: true) == [.leave, .gap] + tabs)
+        #expect(TopBar.items(place: .settings, reading: false, compact: true) == tabs)
+        #expect(TopBar.centres(place: .settings, compact: true))
         #expect(TopBar.items(place: .settings, reading: false) == [.gap] + tabs)
+        #expect(!TopBar.centres(place: .settings, compact: false))
     }
 
     @Test func theRowIsMeasuredAsItIsDrawn() {

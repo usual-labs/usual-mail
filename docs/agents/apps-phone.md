@@ -76,11 +76,11 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   top row (`ControlSize`, `PhoneLayout.barMargin`; owner's words of 2026-11-25, "make the bottom glass tabs and
   controls bigger"). The chosen tab is named only when the row fits it (`BarFit`, measured in Geist at that size
   against the row's width): on a 402-point screen "Notifications" fits; where it doesn't, the chosen tab is its lit
-  icon alone. On Settings the row is a back button at its left, the arrow alone, to the stack Settings was opened from
-  (`Navigation.leaveSettings`, `beforeSettings`), and the five tabs at its right (owner's words of 2026-11-25: "move
-  the buttom glass tabs to right and on left put an back button"; they sat in the middle since 2026-11-24); its
-  chosen tab is lit, named only when it fits, which it doesn't beside the back button at 44 points. Snooze and more
-  open upwards as popovers.
+  icon alone. On Settings the five tabs sit in the middle of the row, not at its right as on the Mac (`TopBar.centres`;
+  owner's words of 2026-11-24, "only in iphone"); for a while on 2026-11-25 a back button sat at the row's left with
+  the tabs at its right, at the owner's word, then went at their next ("bring back the settings tabs to center and
+  remove the back button"); Settings is left from the switcher's menu. Its chosen tab is lit and named when it fits
+  (on a 402-point screen even "Appearance" does). Snooze and more open upwards as popovers.
 - **Home's swipes** (owner's words of 2026-11-25): a row swiped left marks it seen (read: it moves from New to Seen),
   or a seen one unseen; swiped right, it snoozes, asking when with the menu's times. Each way is a setting in
   Settings' Appearance tab, "Swiping a mail" (`SwipeAction`, `SwipeSettings`: seen or unseen, snooze, reply later,

@@ -16,7 +16,7 @@ import UsualMailKit
 /// - To reply, Pinned, Snoozed and the Inbox page: a quiet title capsule with the page's icon and name where the tabs
 ///   are, not a button; with a mail open, it becomes the back to the list, as a chosen tab does, the mail's actions
 ///   popping in;
-/// - Settings: only its five tabs (on the iPhone after its back button);
+/// - Settings: only its five tabs;
 /// - search, over any stack: a capsule back to where the person was ("← Pinned"), and with a mail open from the
 ///   results, back to them ("← Search").
 /// Whichever bar is `hidden` blurs out: its words and icons out of focus, its glass fading.
@@ -24,10 +24,9 @@ import UsualMailKit
 /// On the iPhone the same row sits at the foot of the card (`compact`, the owner's concept of 2026-11-20: the tabs and
 /// controls "come down from the top"), with what a narrow screen and a finger ask for: capsules 44 points high
 /// (`ControlSize`); a back button is the arrow alone once a mail is open, so the mail's five buttons fit; To reply,
-/// Pinned, Snoozed and the Inbox page show no title capsule, as the switcher above the card names them; Settings has a
-/// back button, the arrow alone, to the stack it was opened from, and its tabs at the right (the owner's words of
-/// 2026-11-25); the chosen tab is named only when the row fits it (`BarFit`), else it is its lit icon alone; and the
-/// snooze and more menus open upwards as popovers.
+/// Pinned, Snoozed and the Inbox page show no title capsule, as the switcher above the card names them; Settings' tabs
+/// sit in the middle of the row, not at its right; the chosen tab is named only when the row fits it (`BarFit`), else
+/// it is its lit icon alone; and the snooze and more menus open upwards as popovers.
 struct TopBar: View {
     @Binding var place: Place
     let screeningCount: Int
@@ -45,9 +44,6 @@ struct TopBar: View {
     var compact = false
     /// On the iPhone, the row's width, so a chosen tab is named only when it fits (`BarFit`); nil names it always.
     var room: CGFloat? = nil
-    /// On the iPhone's Settings, where its back button goes ("Home"), and going there.
-    var leaveTitle = ""
-    var leave: () -> Void = {}
     /// The moment the mail's buttons are drawn for: whether it still waits to come back (`BarAction.button`).
     var now = Date()
     let back: () -> Void
@@ -73,11 +69,11 @@ struct TopBar: View {
                     case .back: backButton
                     case .title: titleCapsule
                     case .settings(let tab): settingsSlot(tab, names: names)
-                    case .leave: leaveButton
                     }
                 }
             }
         }
+        .frame(maxWidth: TopBar.centres(place: place, compact: compact) ? .infinity : nil)
         .frame(height: ControlSize.height)
         .opacity(hidden ? 0 : 1)
         .allowsHitTesting(!hidden)
@@ -114,7 +110,7 @@ struct TopBar: View {
             return screeningCount > 0 ? "\(screeningCount)" : nil
         case .back: return backTitle(reading ? place.title : returnTitle)
         case .title: return reading ? backTitle(place.title) : place.title
-        case .action, .gap, .leave: return nil
+        case .action, .gap: return nil
         }
     }
 
@@ -131,8 +127,6 @@ struct TopBar: View {
         case title
         /// One of Settings' tabs, at the right of its row.
         case settings(SettingsTab)
-        /// On the iPhone's Settings, back to the stack it was opened from.
-        case leave
 
         var id: Self { self }
     }
@@ -141,15 +135,15 @@ struct TopBar: View {
     /// five mail actions. With a mail open from Screening: the screening capsule, a gap, let in, block and more. On To
     /// reply, Pinned, Snoozed and the Inbox page: the title capsule, and with a mail open, the five mail actions after
     /// it. On Settings: a gap, then its five tabs, at the right. On search: its capsule back, and with a mail open, the
-    /// five mail actions after it. `compact`, the iPhone's: no title capsule until a mail is open, and Settings' back
-    /// button before the gap.
+    /// five mail actions after it. `compact`, the iPhone's: no title capsule until a mail is open, and Settings' tabs
+    /// with no gap, as the row centres them (`centres`).
     static func items(place: Place, reading: Bool, compact: Bool = false) -> [Item] {
         let actions = reading ? BarAction.mailActions.map(Item.action) : []
         if compact, !reading, [.toReply, .pinned, .snoozed, .inbox].contains(place) { return [] }
         switch place {
         case .settings:
             let tabs = SettingsTab.allCases.map(Item.settings)
-            return (compact ? [.leave, .gap] : [.gap]) + tabs
+            return compact ? tabs : [.gap] + tabs
         case .search:
             return [.back, .gap] + actions
         case .toReply, .pinned, .snoozed, .inbox:
@@ -161,6 +155,14 @@ struct TopBar: View {
         case .tab, .screening:
             return Tab.allCases.map(Item.tab) + [.gap, .screening]
         }
+    }
+
+    /// Whether the row's items sit in its middle rather than from its left: Settings' tabs on the iPhone (the owner's
+    /// words of 2026-11-24, "in settings page, make the bottom tabs centered. only in iphone", and again on 2026-11-25,
+    /// "bring back the settings tabs to center and remove the back button"). The Mac keeps them at the right, past the
+    /// gap.
+    static func centres(place: Place, compact: Bool) -> Bool {
+        compact && place == .settings
     }
 
     // MARK: Capsules
@@ -203,15 +205,6 @@ struct TopBar: View {
         .tooltip(title == nil ? tab.title : nil)
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    /// The iPhone's Settings' back button, the arrow alone at the row's left: to the stack Settings was opened from.
-    private var leaveButton: some View {
-        Button(action: leave) {
-            capsule(.leave, icon: .back, title: nil, tinted: true)
-        }
-        .buttonStyle(PlainControlStyle())
-        .accessibilityLabel("Back to \(leaveTitle)")
     }
 
     /// One capsule of glass, `ControlSize.height` high: an icon that changes in a blur (the chosen tab's, turning to the arrow), and a

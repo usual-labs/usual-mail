@@ -31,9 +31,8 @@ extension Place {
 /// what each stack holds, and search over it. Each stack keeps its state while the app runs, so coming back to one
 /// finds it as it was left: the mail stack its profile, its page (a tab or Screening) and its open mail; To reply,
 /// Pinned, Snoozed and the Inbox page their open mail; Settings its tab. No stack has a way back to another: their rail
-/// buttons and the switcher are the way between them. Search is one exception: it opens over any stack, leaving
-/// that stack as it was, and its capsule goes back to it ("← Pinned"). Settings on the iPhone is the other: its row's
-/// back button goes to the stack it was opened from (`leaveSettings`).
+/// buttons and the switcher are the way between them. Search is the one exception: it opens over any stack, leaving
+/// that stack as it was, and its capsule goes back to it ("← Pinned").
 struct Navigation: Equatable, Sendable {
     /// The stack showing, under search too.
     private(set) var destination: Destination
@@ -64,9 +63,6 @@ struct Navigation: Equatable, Sendable {
     private var openMail: [Destination: String] = [:]
     /// Search, while it shows over the stack.
     private(set) var search: SearchOver?
-    /// The stack Settings was last opened from, which its back button on the iPhone goes to (the owner's words of
-    /// 2026-11-25: "when in settings page ... on left put an back button so user can go back"); the mail stack at first.
-    private(set) var beforeSettings = Destination.mail
 
     /// Search over a stack: the mail read from its results, if one is.
     struct SearchOver: Equatable, Sendable {
@@ -92,10 +88,7 @@ struct Navigation: Equatable, Sendable {
     var place: Place { search == nil ? stackPlace : .search }
 
     /// The stack's own page, under search too.
-    var stackPlace: Place { page(of: destination) }
-
-    /// A stack's own page: the mail stack's tab or Screening, each other stack's one page.
-    private func page(of destination: Destination) -> Place {
+    var stackPlace: Place {
         switch destination {
         case .mail: mailPlace
         case .toReply: .toReply
@@ -105,9 +98,6 @@ struct Navigation: Equatable, Sendable {
         case .settings: .settings
         }
     }
-
-    /// Settings' back button's name: where it goes ("Home", "Pinned").
-    var settingsReturnTitle: String { page(of: beforeSettings).title }
 
     /// The thread open in the card: search's, while it shows, else the stack's.
     var reading: String? {
@@ -143,19 +133,11 @@ struct Navigation: Equatable, Sendable {
         }
     }
 
-    /// Goes to a stack as it was left, leaving search. Going to Settings, it remembers the stack it came from.
+    /// Goes to a stack as it was left, leaving search.
     mutating func go(to destination: Destination) {
         search = nil
         accountsSignIn = nil
-        if destination == .settings, self.destination != .settings { beforeSettings = self.destination }
         self.destination = destination
-    }
-
-    /// Settings' back button on the iPhone: the stack it was opened from, as it was left; leaving search over it too.
-    /// Nothing elsewhere.
-    mutating func leaveSettings() {
-        guard destination == .settings else { return }
-        go(to: beforeSettings)
     }
 
     /// A profile in the switcher: the mail stack on it, at the page it last had. Another profile closes the mail open
