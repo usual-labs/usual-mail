@@ -60,6 +60,40 @@ describe("recipient fields the sender's signature vouches for", () => {
   });
 });
 
+describe("the final security review's attacks (2026-11-25)", () => {
+  const forged = (h: string, b: string) => `v=1; a=rsa-sha256; d=brand.example; s=s1; h=${h}; bh=abc=; b=${b}`;
+
+  it("a real signature padded past the limit isn't skipped, so a forged one copying its first characters can't decide", () => {
+    const padded = `v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:subject; bh=abc=; b=AbCd1234wxyz${" ".repeat(17_000)}rest`;
+    const attack = signed(["Cc", "me@inbox.example"], ["DKIM-Signature", forged("from:to:cc:subject", "AbCd1234forged")], ["DKIM-Signature", padded], ["To", "attacker@elsewhere.example"]);
+    assert.deepEqual(attack, []);
+    const control = signed(["DKIM-Signature", signature("from:to:subject")], ["To", "me@inbox.example"]);
+    assert.deepEqual(control, ["to"], "the same message unpadded and unforged");
+  });
+
+  it("DMARC passed by SPF, the only passing DKIM signature another domain's: a forged brand signature copying its b= doesn't fit", () => {
+    const spfOnly = "mx.google.com; dkim=pass header.i=@attacker.example header.s=k header.b=ATTK1234; spf=pass smtp.mailfrom=brand.example; dmarc=pass (p=REJECT) header.from=brand.example";
+    const result = signedRecipients(fields(
+      ["Authentication-Results", spfOnly],
+      ["DKIM-Signature", "v=1; a=rsa-sha256; d=attacker.example; s=k; h=from:subject; bh=abc=; b=ATTK1234real"],
+      ["DKIM-Signature", forged("from:to:subject", "ATTK1234copy")],
+      ["To", "me@inbox.example"],
+    ), "brand.example", GMAIL);
+    assert.deepEqual(result, []);
+  });
+
+  it("any signature without d=, h= or b=, or with a tag name in the wrong case, leaves nothing", () => {
+    const control = ["DKIM-Signature", signature("from:to")] as [string, string];
+    assert.deepEqual(signed(control, ["DKIM-Signature", "v=1; d=brand.example; h=from:to"], ["To", "x@y.example"]), [], "no b=");
+    assert.deepEqual(signed(control, ["DKIM-Signature", "v=1; d=relay.example; b=xyz"], ["To", "x@y.example"]), [], "no h=, even another domain's");
+    assert.deepEqual(signed(["DKIM-Signature", "v=1; D=brand.example; h=from:to; b=AbCd1234wxyz"], ["To", "x@y.example"]), [], "D= is no d=");
+  });
+
+  it("a field named with spaces before its colon is counted: a signed To plus an added one is To twice", () => {
+    assert.deepEqual(signed(["To", "me@inbox.example"], ["DKIM-Signature", signature("from:to:subject")], ["To ", "attacker@elsewhere.example"]), []);
+  });
+});
+
 describe("through the parser", () => {
   const raw = (extra: string[]) => [
     `Authentication-Results: ${RESULT}`,
@@ -82,5 +116,19 @@ describe("through the parser", () => {
     assert.deepEqual(doubled.signedRecipients, [], "To given twice");
     const unasked = await parseMessage(raw(["To: me@inbox.example"]), { ownAddresses: [] });
     assert.equal(unasked.signedRecipients, undefined);
+  });
+
+  it("To with a space before its colon, added on top of a signed one, leaves nothing", async () => {
+    const spaced = await parseMessage(raw(["To: me@inbox.example", "To : attacker@elsewhere.example"]), { ownAddresses: [], authentication: GMAIL });
+    assert.deepEqual(spaced.signedRecipients, []);
+  });
+
+  it("a padded real signature and a forged one with a Cc added: nothing", async () => {
+    const lines = raw(["Cc: me@inbox.example", "To: attacker@elsewhere.example"]).split("\r\n");
+    lines.splice(1, 1, `DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:subject:date; bh=abc=; b=AbCd1234wxyz${" ".repeat(17_000)}rest`,
+      "DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:cc:subject:date; bh=abc=; b=AbCd1234forged");
+    const parsed = await parseMessage(lines.join("\r\n"), { ownAddresses: [], authentication: GMAIL });
+    assert.equal(parsed.fromCheck?.result, "verified");
+    assert.deepEqual(parsed.signedRecipients, []);
   });
 });
