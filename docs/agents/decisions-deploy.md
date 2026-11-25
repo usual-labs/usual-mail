@@ -162,16 +162,15 @@ State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the che
 - **0.1.0, released by the owner:** the repository went public, `1881044` set the version, and the release `v0.1.0`
   published `ghcr.io/usual-labs/usual-mail` as `0.1.0`, `0.1` and `latest`, for amd64 and arm64. On GitHub, the
   workflow's manual run (the `check` job, which publishes nothing) and the release's run both succeeded; the
-  release's second event (`published`) was skipped, as the `tags` job's `if` means. The GHCR package is private
-  until the owner makes it public.
+  release's second event (`published`) was skipped, as the `tags` job's `if` means.
+- **The package is public since 2026-11-24:** the owner made it public after 0.1.0; it is linked to the repository
+  (its Packages page), and each release's image pulls without signing in.
 - **The version is written by hand in many places:** each `package.json` and lockfile, and four source files
   (`server/src/version.ts`, `cli/src/version.ts`, `mcp/src/server.ts` and `mcp/src/ui/view-script.ts`). Only the
-  CLI's version is tested against its `package.json`. A release bumps them all first, in a commit of its own, and the
-  tag goes on that commit.
+  CLI's version is tested against its `package.json`. A release bumps them all in a commit of its own; the tag goes on
+  the release's last commit, which is that commit unless fixes follow it.
 
 ## What waits for the owner
 
-- Making the GHCR package public (and allowed by the organisation's package settings), then checking it is linked to
-  the repository and pulls without signing in.
 - A Railway template made in Railway's dashboard, and its address in the README's button.
 - Trying a real VPS, Coolify, Render and Railway now that the image is published.

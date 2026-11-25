@@ -38,11 +38,8 @@ and the notes:
   links. Setting it true (one line) shows all three; check the docs path matches the published layout.
 - Keep `THIRD_PARTY_NOTICES.md` current: anything taken from elsewhere, and the npm table when a part's production
   packages change (it was written from the lockfiles of 2026-11-23).
-- **Make the package public** (the owner's decision): 0.1.0 published `ghcr.io/usual-labs/usual-mail` on
-  2026-11-24, but the package is private, so `compose.caddy.yaml` and `compose.coolify.yaml` (which only pull) can't
-  start for anyone else yet; then check it is linked to the repository and pulls without signing in.
-- Now that 0.1.0 is out: make the Railway template and put its address in the README's button, and try a real VPS,
-  Coolify, Render and Railway ([decisions-deploy.md](decisions-deploy.md)).
+- Now that the image is published and public (since 2026-11-24): make the Railway template and put its address in
+  the README's button, and try a real VPS, Coolify, Render and Railway ([decisions-deploy.md](decisions-deploy.md)).
 - Have the guides' wording checked against the Mac app once more when its onboarding is wired in (the self-hosting
   guide follows `apps-onboarding.md` as of 2026-11-17).
 

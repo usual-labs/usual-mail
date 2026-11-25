@@ -22,7 +22,7 @@ account on 2026-11-23 (below, "Implemented today").
 Coolify, then Render and Railway buttons; home servers later): an entry point that runs the image on volumes owned by
 root, `compose.caddy.yaml`, `compose.coolify.yaml`, `render.yaml`, a workflow that publishes the image to GHCR, and
 [docs/deploy.md](../deploy.md); tried in Docker Desktop on this Mac only. The image is published to GHCR from 0.1.0
-(2026-11-24), still private there until the owner makes the package public; no host has run it yet
+(2026-11-24), public there since that day and pulled without signing in; no host has run it yet
 ([decisions-deploy.md](decisions-deploy.md)).
 **On 2026-11-24 the owner got a password** (the owner's decisions that day): the first visitor to an unclaimed server
 sets it and owns the server, unless the host names `USUAL_MAIL_OWNER_EMAIL`, which Google must prove; the dashboard
