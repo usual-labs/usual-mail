@@ -56,10 +56,27 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   2026-11-25; a server without the Public Suffix List lets nothing through on Gmail.
 - **A summary request can still carry an unusual address** (server, older than 2026-11-25; open). `withoutAddresses`
   (`server/src/ai/addresses.ts`) takes out addresses of letters, digits, marks and `._%+'=-` before an at sign ("@" or
-  "＠") and a domain of any number of labels of any length, dotted by ".", "。", "．" or "｡". A quoted local part
-  (`"Ann Lee"@mail.example`) and a domain written as an address literal (`ann@[192.0.2.10]`) aren't taken out, nor the
-  part before a second @ (`a@b@mail.example` leaves `a@`). Mail rarely writes them; the sender's own address never
-  goes in a summary request either way. Widening the scan would take them out.
+  "＠") and a domain of two or more labels of any length, dotted by ".", "。", "．" or "｡". Not taken out, or not
+  whole: a quoted local part (`"Ann Lee"@mail.example`); an address literal (`ann@[192.0.2.10]`); a single-label host
+  (`ann@localhost`); a domain with `_` in it (in its first label nothing is taken out, in a later one the part from
+  the `_` stays: `a@mail.b_c.example` leaves `_c.example`); a local part with `/` or `&` in it (what comes before
+  stays: `first/ann@mail.example` leaves `first/`); the part before a second @ (`a.b@c@mail.example` leaves `a.b@`);
+  and an address written right after another's domain, joined by "." or "-" (`x@a.example.y@d.example` leaves
+  `@d.example`). Mail rarely writes them; the sender's own address never goes in a summary request either way.
+  Widening the scan would take them out.
+- **Recipient fields many real senders' signatures don't vouch for** (mail, 2026-11-25; open, by design until real
+  headers are read). The screening gate needs the To or Cc naming the inbox to be signed by every signature of the
+  sender's organisation (`signedRecipients`), so these never skip Screening: Microsoft 365's usual `h=`, which omits
+  To and Cc (maybe also the Microsoft account team's mail the gate exempts by name); a second signature by an email
+  service's subdomain of the sender's organisation without To; a sender rotating keys, whose old signature fails
+  while the new one passes (a result that didn't pass, named by `header.b`, leaves nothing); and mail forwarded, or
+  sent to an alias or a list, whose To isn't the inbox. None of this is seen on real mail: the Mac server keeps only
+  parsed fields and the `from_check` verdict (17 of its 20 latest machine-sent messages `verified`, 3 `unverified`,
+  reason not stored), so there is no evidence yet of Gmail's `header.b`, its line ends or Microsoft 365's `h=`.
+- **Gmail might hand over line ends other than it received** (mail, 2026-11-25; unverified). `headerBlockReadable`
+  refuses a stray CR or mixed line ends, assuming Gmail's raw form gives the bytes as received; if Gmail normalises
+  them only when it serves the raw form, a message Gmail itself read one way could read another here. A cross-check
+  against Gmail's metadata form (its header list) on real mail would settle it.
 - **Text in Thai, Japanese or Chinese can lose up to 256 letters before an address** (server, 2026-11-25; a quality
   limit, by design). With no space before an address, the letters run into its local part; a run of up to 256 is taken
   out whole with the address (mail allows only 64, but a longer local part is still taken whole to that length), and

@@ -113,7 +113,10 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   placed, a signature matching a failed result, every malformed header line; an unmatched signature of the
   organisation still bounding the answer; and a monotone property: about 1,400 messages, each hostile field alone and
   in pairs at every place below Gmail's result, never adding a field). `ai-addresses` (12): names with marks,
-  full-width at signs and dots, long domains, joined addresses and two-unit characters at a cut.
+  full-width at signs and dots, long domains, joined addresses and two-unit characters at a cut. Mail's
+  `header-reading` (11, on raw bytes, the fifth review): a lone LF read as a blank line, a stray CR, mixed line ends,
+  the 2 MiB limit and the early stop, sixteen signatures and a seventeenth, a top-level header the large-message
+  rebuild drops (through `fromFullForm`), and Gmail's result with unquoted "/" and "=".
 - **Speed** (`test/linear.ts`): 20 bodies of 1 MB, each run in a worker thread that is terminated at 10 seconds, since
   a slow pattern blocks the event loop and node:test's own timeout can't fire: the gate's check (`screening-gate`), and
   the requests, snippets, a model's answers, names, List-Ids and pictures' addresses (`ai-linear`), each under 3 s

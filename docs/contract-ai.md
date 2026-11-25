@@ -562,7 +562,9 @@ conservative on purpose, so what it misses waits in Screening rather than a stra
   address's organisation, and every DKIM signature in the message whose `d=` is in that organisation, matched to a
   result or not, names the field in its `h=`; one of them must match a passing result. A message giving To or Cc
   twice, with any signature that can't be read, lacks `d=`, `h=` or `b=`, has a `d=` with no organisation or matches
-  a result that didn't pass, or with a header line that is neither a field nor a fold, has none. The check is
+  a result that didn't pass, or with a header block that doesn't read the same to every parser (a line that is
+  neither a field nor a fold, a stray CR or mixed line ends, no blank line within 2 MiB), or a top-level header Gmail's
+  large-message rebuild left out, has none. The check is
   monotone: anything added to the headers or altered in them only takes fields away). This stops a copy sent on by
   Bcc and a replay with a
   To or Cc added on top (the second security review: a real signed alert to the attacker, with `Cc: victim` added,

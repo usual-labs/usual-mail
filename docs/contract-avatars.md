@@ -44,7 +44,9 @@ for the message's From:
    `repeated`). The header is read strictly, since Gmail writes parts the sender chooses into it (the envelope sender in
    its SPF comment and `smtp.mailfrom`): **a quote anywhere inside a comment, a quoted value holding `;`, `(` or `)`, or
    a DKIM or DMARC result carrying an envelope (`smtp.*`) property makes it unreadable**, which proves nothing (the
-   security review of 2026-11-19). The checker's name is compared whole. IMAP inboxes have no checker the server
+   security review of 2026-11-19). An unquoted value may hold "/" and "=" written right against it (base64 in
+   `header.b`, an SRS address in `smtp.mailfrom`; since 2026-11-25 these no longer make the result unreadable), but
+   never across a space or a comment, so it can't reach another property. The checker's name is compared whole. IMAP inboxes have no checker the server
    trusts yet: initials.
 4. **The mail is an organisation's**: machine-sent (`automated`: list headers, bulk, no-reply) or in a filed category
    (newsletter, invoice, receipt, notification, one-time code). A person writing from their company's domain is a
