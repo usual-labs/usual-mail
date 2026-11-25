@@ -893,6 +893,20 @@ proof's parser sound, and agreed that invoices never skip and with the separate 
   a request can't be told from an alert at it; more tenant platforms. What is assumed about real headers is said so.
 - **While its sender isn't let in, a thread that skipped Screening keeps to its kind's categories,** whoever asks again.
 
+**The final security review, the same day** (NO-GO on two flaws in reading signed recipients, GO once fixed; its
+790-input 1 MB fuzz found nothing slower than 551 ms):
+
+- **No signature is ever skipped:** a message with any DKIM signature that can't be read, or lacks `d=`, `h=` or `b=`,
+  has no signed field (a real signature padded past the length limit was skipped, so a forged one decided).
+- **A signature fits a pass only by its exact domain,** plus `header.b`'s first characters when Gmail prints them (a
+  forged brand signature copying another domain's passing `b=` fitted, so SPF-only mail passed).
+- **Header names are counted trimmed** (`To :` is a To), and DKIM tag names kept case-sensitive.
+- **Address removal reads each @ once:** a long run of letters before an address keeps its words and loses the
+  address, and a cut inside such a run that could split an address goes back to just before it (both leaked in this
+  branch's first fix); a long run with no address near the cut keeps its words.
+- **google.com and microsoft.com are refused whole** for every kind but a code, but for their account-security
+  senders, since each product there carries its users' words under one proof.
+
 Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
 mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").
 

@@ -174,11 +174,14 @@ batch's `progress`.
   only when `fromCheck` is verified. Which of To and Cc the sender's own DKIM signature vouches for
   (`message/signed-recipients.ts`): none when the message gives To or Cc twice (postal-mime merges a second field
   into the first, so an added one would otherwise read as the sender's); else each field given once that every
-  aligned DKIM signature matching a pass in Gmail's trusted result names in its `h=` (a signature matched by the first
-  characters Gmail prints, `header.b`, else by its domain; the intersection, so a signature added later only takes a
-  field away; tags read whitespace-free, a tag twice or over 16 KB unreadable, at most 16 signatures). Gmail's large
+  aligned DKIM signature matching a pass in Gmail's trusted result names in its `h=` (a signature fits a pass only
+  when the result names exactly its domain, `header.d` or else `header.i`'s, and, when Gmail prints `header.b`, it
+  starts with it; the intersection, so a signature added later only takes a field away). None is ever skipped: any
+  signature that can't be read (a tag twice, over 16 KB) or lacks `d=`, `h=` or `b=` leaves no field (the final
+  security review: a real signature padded past the limit was skipped and a forged one decided). Tag names are kept
+  case-sensitive (RFC 6376), header names are counted trimmed (`To :` is a To). At most 16 signatures. Gmail's large
   messages keep every header when rebuilt (`gmail/payload.ts`), so the same holds there. Tests:
-  `test/unit/signed-recipients.test.ts` (8).
+  `test/unit/signed-recipients.test.ts` (14: each attack the reviews ran, through the parser too).
 - A message the parser refuses becomes a short note instead of failing the sync.
 - **Thread keys (IMAP):** the first id in References, else In-Reply-To, else the own Message-ID (`mid:<id>`);
   with no ids, a hash of From, To, Date and Subject. A client that keeps only In-Reply-To deep in a
