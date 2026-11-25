@@ -3,6 +3,19 @@
 What each pass ran and saw, newest first, split out of [mail.md](mail.md). Commands and the Docker notes are in
 mail.md, "Run and check".
 
+- **0.1.3's freeze fix, after its review (2026-11-26, `hotfix-0.1.3`):** mail `npm test`: tsc clean; 653 tests, 601
+  passed, 29 skipped, 23 failed, every failure in "IMAP on Dovecot", as before. New: `test/unit/linear.test.ts` (25,
+  each in a worker stopped at its limit, readers timed apart and each held under 3 s: 17 HTML shapes at the 2,000,000
+  characters a parser reads, five of them at 1 MB too, and three times the cap; message ids of 1 MB of ">" and a whole
+  message's four id fields; the rebuild's Content-Transfer-Encoding of 1 MB of "("), `test/unit/html-depth.test.ts`
+  (8) and property tests of `stripBrackets` and a picture's width against the patterns they replace. Each fix's test
+  failed with that fix undone (the old bracket pattern, the old width pattern, no depth bound, no CDATA rewrite before
+  the bound, the old comment pattern, no stand-in for a dropped tag, raw-text elements dropped), but the tracker
+  removal's: its old cost, 1.3 s at most at the cap, stays under 3 s. Times at 1 MB and at the cap, slowest reader:
+  1 MB of `<b>` 58 and 82 ms (42.6 s before), closing tags that close nothing at the deepest 168 and 310 ms, style
+  blocks at the deepest 640 and 1,165 ms (the CSS filter reading each block), tracking pixels 48 and 84 ms. A
+  comparison of 0.1.2's readers with these (12,407 outputs) found no difference ([mail.md](mail.md), "Safe HTML").
+
 - **IMAP's temporary login refusals and Gmail's error kinds (2026-11-25, the server review of 0.1.2):** mail
   `npm run check`: tsc clean; 618 tests, 566 passed, 29 skipped, 23 failed, the same Dovecot failures as before
   ([known-issues.md](known-issues.md)). New: `test/unit/imap-login-errors.test.ts` (a wrong password is

@@ -348,16 +348,21 @@ built under `ctx.lock`, so no pattern reading mail may scan back and forth. Addr
 `ai/addresses.ts` (re-exported by `prompt.ts`): each at sign, "@" or "＠", read once; its domain, any number of
 labels of any length dotted by ".", "。", "．" or "｡", letters, digits and marks; its local part back from it, the whole
 run when at most 256 long, else its last 64. `cutWithoutAddresses` cuts the text to its budget first, with room for
-one address, back to where none is split. A subject goes to every job cut to `SUBJECT_LIMIT` (1,000). Tests:
-`ai-linear` (24 bodies of 1 MB, each in a worker stopped at 10 s, `test/linear.ts`) and `ai-addresses`.
+one address, back to where none is split. A subject goes to every job cut to `SUBJECT_LIMIT` (1,000). Tags in what
+a model reads (`readableHtml`) start where HTML starts one ("<" then a letter, "/", "!" or "?") and run to their nearest
+">", comments from "<!--" to "-->", each found by a forward scan: a lone "<" in text stays, and a "<" inside an
+attribute leaves no piece of the tag; the gate's `plainText` reads tags as before 0.1.3, each from any "<" to the
+nearest ">". A model's amount answer loses its leading and trailing separators by a scan from each end
+(`parseAmount`). Tests: `ai-linear` (25 bodies of 1 MB, each in a worker stopped at 10 s, `test/linear.ts`),
+`ai-addresses` and `ai-text`.
 
 - **A search asked in a sentence** (2026-11-20, `search/ask-words.ts`, server-search.md): the sentence alone, as
   `{ "question" }` in the data block (`AI_ASK_FIELD_WORDS`, `AI_SENT_WORDS.ask`), with today's date and weekday in
   the instructions. Nothing from the mailbox; `test/search-ask.test.ts` fails if a sender's name, an inbox's name,
   address or id, or the key is in the request. On the summarize job's model, counted in the usage as `ask`.
-- **Categorize:** the subject; the newest incoming message's sender name and address, its List-Id and whether it
-  looks machine-sent; that message's text as a model reads it (`modelText`, below), at most 4,000 characters.
-- **Summarize:** the subject and the thread's messages newest first, each with its sender's name ("someone" when
+- **Categorize:** the subject, cut to `SUBJECT_LIMIT` (1,000 characters); the newest incoming message's sender name
+  and address, its List-Id and whether it looks machine-sent; that message's text as a model reads it (`modelText`, below), at most 4,000 characters.
+- **Summarize:** the subject, cut to `SUBJECT_LIMIT` (1,000 characters), and the thread's messages newest first, each with its sender's name ("someone" when
   they gave none or their name holds an address, `summarizeSender`; "you" for the mailbox's own), the day it was sent
   (`sent`, `sentDay`: weekday and date in the server's zone), each text as a model reads it (`modelText`), at most
   8,000 characters of text in all, with every address in the subject and the text replaced with `[address]`

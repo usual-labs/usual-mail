@@ -45,6 +45,15 @@ and the notes:
 
 ## Ideas
 
+- **Ask htmlparser2 to keep its open elements in push order** (mail, 2026-11-26, from 0.1.3's freeze fix). Its
+  `Parser` adds each open element at the front of an array (`stack.unshift`, `Parser.js:299` in 12.0.0) and finds a
+  closing tag's element with `indexOf` (`:346`), so a tag costs as much as the elements open around it; 0.1.3 bounds
+  the HTML before any parser reads it (`mail/src/message/html-depth.ts`, 256 open elements) instead of patching the
+  library. Kept at the end (`push`, `pop`, `lastIndexOf`) with a count of each name open, every tag would cost the
+  same; offering that upstream, with 1 MB of `<b>` (42.6 s) as the test, would let the bound go one day. sanitize-html
+  2.18.2 has two more of the same kind it could take: `stack.some` over every open element for each style block's text,
+  and `exclusiveFilter`'s copy of everything written so far (0.1.3 no longer uses it).
+
 - **Remake the iPhone's tour clips once its top row settles** (2026-11-25): `tour-phone-*.mp4` show the top row as it
   was (search at the left, the switcher in the middle, settings at the right) and the 32-point controls; since then the
   switcher moved to the left with Settings in its menu, search to the right, and the controls grew to 44. Left alone

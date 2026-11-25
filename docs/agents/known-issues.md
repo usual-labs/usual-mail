@@ -4,6 +4,25 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
+- **Linear only where they run** (server, mail and core, 2026-11-26, the sweep behind 0.1.3's freeze fix; open by
+  choice). These patterns take more than linear time on a crafted string of their own, but every caller hands them
+  one that is short: the thousands separator `\B(?=(\d{3})+(?!\d))` (core's `ai-words.ts` and `first-sync.ts`, the
+  server's `payment.ts` and `search/doc.ts`), always on a number written out; the IPv4 tail and zone of an address
+  (`client-address.ts`, `cloudflare/web/addresses.ts`, `node/pictures/address.ts`), on one header line or an address
+  `net` has read; `=+$` on base64 (`secrets.ts`, `util.ts`), the operator's key or `btoa`'s output; the owner's email
+  pattern, after a 254-character limit that stops valibot's pipe first; `withoutSender` (`event-lines.ts`) on an
+  event's "about" line, one line of at most its limit by then; the link pattern in `checkReference`, on 120
+  characters; `shortenSummary`'s trim, on the limit; the sticky domain pattern in `ai/addresses.ts`, tried only right
+  after an at sign and stopped by the next. The fake models' patterns run in tests only. A caller handing any of
+  them a long string would bring the cost back; the sweep (a pumping test of every pattern literal) finds them again.
+  Also bounded rather than linear: sanitize-html looks through every open element for each style block's text, at
+  most 256 deep (about 0.6 s a megabyte for 2 MB of style blocks inside 256 open elements, most of it the CSS filter
+  reading each block); and htmlparser2's own stack still costs each tag as much as the elements open around it, now
+  at most 256 ([improvement-ideas.md](improvement-ideas.md) has the upstream fix). HTML past 2,000,000 characters is
+  cut before it's read: a message with more HTML than that and a text part shows the text part whole, one without
+  shows text made from the first 2,000,000, and if what was kept sanitizes under the 1,000,000 characters the server
+  shows, that HTML is shown without saying it was cut (it takes over a megabyte of markup the sanitizer drops).
+
 - **Syncing can fall behind without a warning in three ways** (server, found 2026-11-25 by the review of the apps'
   warning; open). Fixed in 0.1.2 (the owner's "Yes, fix it", [contract](../contract-sync.md#when-an-inbox-needs-attention)):
   every failed sync used to set `needs_attention`, a brief network error too, so the apps' notice flashed and Gmail's
@@ -632,29 +651,46 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
 
 ## Fixed
 
-- **Reading a message could take minutes under the server's lock** (server, found 2026-11-25 by a security review of
-  the screening work; fixed in 0.1.3, `hotfix-0.1.3`). Patterns that can scan to the end of the text from many places
-  ran in quadratic time, and a message is read under `ctx.lock` with the AI's due flags still set, so a crafted mail
-  would stall sync and the API and be read again after a restart: taking addresses out of every summary,
-  payment-details and event request (`prompt.ts`'s address pattern ran on the whole text before the cut: 128 KB without
-  an "@" took 55 s, about an hour at 1 MB); the snippet's markdown link (`[](mailto:` over 1 MB took 68 s, in every
-  snippet, the search index and the start-up rebuild); `readableHtml`'s and `plainText`'s tag strip (80,000 "<" took
-  2.4 s) and style or script block strip (many unclosed `<style`); `cleanText`'s punctuation after a link (a link and
-  40,000 ")" took 0.7 s); the snippet's tag and angle-link patterns; the checks of a model's answers (an unclosed tag);
-  a party's name (a run of commas in a sender's name, read again for each suffix taken off); the status line's trim; a
-  List-Id (`<` repeated); the shipped tracker list on a picture's address of any length; and the one-time code check
-  (each code against every word that names one). Now: addresses are found from each at sign, read once
-  (`ai/addresses.ts`; marks, full-width at signs and ideographic dots count, a domain of any length goes whole), after
-  the text and subject are cut to their limits without splitting an address; tags stop at the next "<", blocks are
-  taken out by a forward scan, punctuation after a link is read from its end, runs of spaces and commas are read from
-  their start, a party's name is read to 200 characters, an address is matched against the tracker list to 2,048, and
-  codes and words are paired in one ordered pass. A subject sent to any AI job is at most 1,000 characters (core's
-  `SUBJECT_LIMIT`, in the words shown before saving a key). Only change in output beyond those: a lone "<" in text no
-  longer swallows the text up to the next tag. Tests run each of 24 bodies of 1 MB in a worker stopped at 10 seconds
-  (`test/linear.ts`: a slow pattern blocks the event loop, so node:test's own timeout can't fire) through the requests
-  and snippets, a model's answers, names, List-Ids and pictures, and the code check (`ai-linear`), all well under a
-  second; `ai-addresses` checks what is taken out. Known small leaks remain: a quoted local part, an address literal,
-  the part before a second @.
+- **Reading a message could take minutes under the server's lock** (server and mail, found 2026-11-25 by security
+  reviews of the screening work and of the first 0.1.3 build; fixed in 0.1.3, `hotfix-0.1.3`). A message is read
+  under `ctx.lock`, and one that fails or stalls isn't stored, so it is read again on every sync and after a restart:
+  a crafted mail stalled sync and the API for minutes to hours. What 0.1.3 fixes, each with what it cost before:
+  - *The server's readers of text and answers* (`server/src/ai/`): taking addresses out of every summary,
+    payment-details and event request (128 KB without an "@" took 55 s; now each at sign is read once,
+    `ai/addresses.ts`, after the text and subject are cut without splitting an address); the snippet's markdown link
+    (`[](mailto:` over 1 MB, 68 s); the tag strips of `readableHtml`, `plainText` and the snippet (80,000 "<", 2.4 s)
+    and the style or script block strip; punctuation after a link (a link and 40,000 ")", 0.7 s); the snippet's
+    angle links; the checks of a model's answers (an unclosed tag); a party's name (a run of commas); the status
+    line's trim; a List-Id; the tracker list on a long picture address; the one-time code check (each code against
+    every word); and a model's amount answer with separators between its digits (`parseAmount`; bounded in practice
+    by the 4,000 tokens a model may answer). A subject sent to any AI job is at most 1,000 characters (core's
+    `SUBJECT_LIMIT`, in the words shown before saving a key).
+  - *Mail's readers of headers* (`mail/src/`): `stripBrackets` for Message-ID, In-Reply-To, References and each
+    attachment's Content-ID, on Gmail and IMAP (256 KB of ">" in a Message-ID took 25.6 s in `parseMessage`); the
+    large-message rebuild reading a forwarded message's Content-Transfer-Encoding (`withoutComments`, a run of "(").
+  - *Mail HTML in htmlparser2 12.0.0*, which puts each open element at the front of an array (`Parser.js:299`) and
+    searches it at each closing tag (`:346`), inside the sanitizer and `htmlToText` at `parseMessage`, `remotePictures`
+    and `presentPictures` (each time a message is opened): 1 MB of `<b>` took 42.6 s, about an hour at 10 MB. Now
+    `boundedHtml` (`mail/src/message/html-depth.ts`) cuts the HTML to 2,000,000 characters and drops opening tags past
+    256 open elements before any parser reads it ([mail.md](mail.md), "Safe HTML"); 1 MB of `<b>` takes about 50 ms.
+  - *The picture pass*: `pixels`, reading an `<img>`'s width or height, took time cubic in a run of spaces (2,000 took
+    1.3 s); removing a tracker copied everything written so far once per picture (sanitize-html's `exclusiveFilter`,
+    1.3 s at most for 2 MB of tracking pixels, 0.3 s at the 1,000,000 characters the pass reads).
+
+  How it was found: a pumping test of every regular expression literal in `mail/src`, `core/src` and `server/src`
+  (399 patterns, each on a prefix, a run of 2,000 and of 8,000 of one character or pair, and a suffix, flagged when
+  the time grows faster than the length), and each reader of mail HTML on crafted shapes at 1 MB, 2 MB and 6 MB.
+  What changed in output: nothing for HTML within the bounds (the 12,407 comparisons in [mail.md](mail.md)); deeper
+  HTML loses the tags past 256 open elements, not their content; HTML past 2,000,000 characters is cut there; in what
+  a model reads and in snippets a tag starts where HTML starts one and runs to its nearest ">", comments are read as
+  comments, so a lone "<" in text no longer swallows the text up to the next tag and a "<" inside an attribute leaves
+  no piece of one ([server-ai.md](server-ai.md), "In linear time"); the screening gate's `plainText` reads tags as
+  before. Tests: the server's `ai-linear` (25 bodies of 1 MB through the requests and snippets, a model's answers,
+  names, List-Ids and pictures, and the code check) and mail's `linear.test.ts` (17 HTML shapes at the cap, 5 of
+  them at 1 MB too, each reader timed apart; message ids of 1 MB of ">"; the rebuild), each in a worker stopped at
+  its limit; `html-depth.test.ts`; each fix's test failing with that fix undone, but the tracker removal's (its old
+  cost stays under the tests' 3 s). Still open: the patterns below in "Linear only where they run", and the address
+  leaks in [server-ai.md](server-ai.md) (a quoted local part, an address literal, the part before a second @).
 - **The owner password's re-review follow-ups** (server, 2026-11-24, `owner-claim-fix`; each with a test that fails on
   the code before). (1) A hundred wrong passwords or codes from everyone locked signing in for everyone: ten IPv4
   addresses or ten /64s (even in one /48) were enough; now a /48 counts at thirty and the ceiling is a thousand (Open,

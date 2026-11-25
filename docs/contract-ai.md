@@ -171,14 +171,14 @@ to the company that runs the model, or that provider itself). These words are `A
 `core/src/ai-words.ts`, built from the same numbers and field names the server builds its requests with
 (`AI_SENT_FIELD_WORDS`); the server's tests fail if a request carries a field they don't name.
 
-- **To categorize it:** the subject (at most 1,000 characters); the newest incoming message's sender name and address, its List-Id and whether
-  it looks machine-sent; and that message's text (made from its HTML when it has no text part or only a short stub of
-  one), with each link cut to its site and invisible characters, padding and long divider lines taken out, at most
-  4,000 characters.
-- **To summarize it:** the subject (at most 1,000 characters), and the text of the thread's messages from the newest back, with links cut to
-  their site and invisible characters taken out, at most 8,000 characters in all, each with its sender's name
-  ("someone" when the sender gave none, "you" for your own) and the day it was sent (its weekday and date where the
-  server runs). Any email address in the subject or the text is replaced with [address], so no address is sent.
+- **To categorize it:** the subject (at most 1,000 characters); the newest incoming message's sender name and
+  address, its List-Id and whether it looks machine-sent; and that message's text (made from its HTML when it has no
+  text part or only a short stub of one), with each link cut to its site and invisible characters, padding and long
+  divider lines taken out, at most 4,000 characters.
+- **To summarize it:** the subject (at most 1,000 characters), and the text of the thread's messages from the newest
+  back, with links cut to their site and invisible characters taken out, at most 8,000 characters in all, each with
+  its sender's name ("someone" when the sender gave none, "you" for your own) and the day it was sent (its weekday and
+  date where the server runs). Any email address in the subject or the text is replaced with [address], so no address is sent.
   Never for a one-time code. For a receipt or an invoice the same is sent, and in place of a summary the AI is asked
   who the money goes to or came from, how much, whether it is paid, will be charged or is to be paid, whether it is a
   refund, when it is due or charged and what it was for. For a notification the same is sent, and with the summary

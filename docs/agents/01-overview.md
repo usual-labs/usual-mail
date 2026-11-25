@@ -402,11 +402,14 @@ owner's request. The stop fixes after them (2026-11-24) say 0.1.1 wherever `1881
 0.1.2 (2026-11-25, on `ios-ui-tweaks`, not tagged or pushed yet) bumps the same places and the README's status line,
 for the apps' warning on an inbox that stopped syncing and the server's side of it (`Inbox.statusReason`, a grace for
 failures that may pass, a watch on syncs that never finish; [server.md](server.md)).
-0.1.3 (2026-11-25, on `hotfix-0.1.3`, not tagged or pushed yet) bumps the same places and the README's status line,
-for a crafted message freezing the server: every pattern that reads mail now runs in time linear in its length,
-addresses are taken out of summary requests by `server/src/ai/addresses.ts`, and a subject sent to the AI is cut to
-1,000 characters ([server-ai.md](server-ai.md), [known-issues.md](known-issues.md), "Reading a message could take
-minutes").
+0.1.3 (2026-11-25 and 26, on `hotfix-0.1.3`, not tagged or pushed yet) bumps the same places and the README's status
+line, for crafted mail that froze the server while it was read. The server's readers of a message's text and of a
+model's answers, mail's readers of message ids and of a forwarded message's transfer encoding, and the picture pass's
+size and tracker reading run in time linear in what they read; HTML is cut to 2,000,000 characters and 256 open
+elements before htmlparser2 reads it (`mail/src/message/html-depth.ts`); addresses are taken out of summary requests
+by `server/src/ai/addresses.ts`; and a subject sent to the AI is cut to 1,000 characters. A few patterns are linear
+only because their callers hand them short strings ([known-issues.md](known-issues.md), "Linear only where they run",
+and "Reading a message could take minutes" under Fixed; [mail.md](mail.md), [server-ai.md](server-ai.md)).
 
 ## Layout
 

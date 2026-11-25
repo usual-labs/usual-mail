@@ -27,7 +27,7 @@ against `FakeGmail` only.
 | `src/imap/` | Folder discovery, cursor and refs, scanning, sync, write-back, the moves it made itself (`own-moves.ts`), SMTP sending, IDLE watching, the connection |
 | `src/gmail/` | REST client with token refresh, quota and backoff, labels, cursor, sync, write-back and sending; reading messages (`messages.ts`), the full form for large messages (`full.ts`, rebuilt as MIME in `payload.ts`), attachments (`attachments.ts`, streamed by `download.ts`) |
 | `src/testing/` | `@usualmail/mail/testing`: the contract suite, `syncAll` and `applyTracked`, a fake of Gmail's API (its full form in `fake-gmail/payload.ts`), a fake of Google's sign-in (`FakeGoogle`), test message builders |
-| `test/unit/` | MIME fixtures, sanitizer against hostile HTML (the inputs and the check shared in `hostile-html.ts`), the picture pass, headers and thread keys, cursors, label state, limits, composer |
+| `test/unit/` | MIME fixtures, sanitizer against hostile HTML (the inputs and the check shared in `hostile-html.ts`), the picture pass, headers and thread keys, cursors, label state, limits, composer; the HTML's bound (`html-depth.test.ts`) and speed tests that run each reader in a worker stopped at its limit (`linear.ts`, `linear.test.ts`) |
 | `test/imap/` | Contract, IMAP cases, sync order and connection tests against hoodiecrow in process; contract and scenarios against GreenMail and Dovecot in Docker |
 | `test/gmail/` | Contract and Gmail cases against the fake API; `fake-google.test.ts` holds the sign-in fake to Google's documentation; `large.test.ts` and `large-faults.test.ts` (helpers and the 30 MB message in `large-message.ts`) the large-message path ([mail-gmail-large.md](mail-gmail-large.md)) |
 
@@ -154,7 +154,8 @@ batch's `progress`.
   limit), when it reads the position from the same rebuild ([mail-gmail-large.md](mail-gmail-large.md)). `inline` is
   true for a picture with a Content-ID inside the message.
   File names lose path parts and direction-override characters.
-- `messageId`, `inReplyTo` (first id), `references`: without angle brackets. `listId`: lower case.
+- `messageId`, `inReplyTo` (first id), `references`: without angle brackets (`stripBrackets` reads the closing run
+  from its start: from every ">" of a long run, `>+$` read to its end, 25.6 s for 256 KB; 0.1.3). `listId`: lower case.
 - `automated`: Auto-Submitted other than "no"; Precedence bulk, list, junk or auto_reply; any List-* header;
   X-Autoreply, X-Autorespond or Feedback-ID; a multipart/report; an empty Return-Path; or a no-reply sender.
 - `outgoing`: the message is in Sent (the IMAP folder, Gmail's `SENT` label), nothing else. A From naming the
@@ -193,6 +194,18 @@ batch's `progress`.
   written as it was checked, without its comments. Every `<` in a style block becomes `\3c `. (Until 2026-11-18
   regular expressions stopped at a function's first `)` and stripped comments inside strings.)
 - Tests: 62 hostile inputs, each output parsed again and checked against the allow-list.
+- **Bounded before any parser reads it** (`html-depth.ts`, 0.1.3; [known-issues.md](known-issues.md), "Reading a
+  message could take minutes"). htmlparser2 12 puts each open element at the front of an array and searches it at
+  every closing tag, so a tag costs as much as the elements open around it (1 MB of `<b>` took 42.6 s). `boundedHtml`,
+  which `sanitizeHtml` (on the HTML as sanitize-html parses it, `<![CDATA[` written as `<!&#91;CDATA[` first) and
+  `htmlToText` call, cuts the HTML to `MAX_PARSED_HTML` (2,000,000 characters, never inside a character written as
+  two) and reads it once with htmlparser2's own parser, dropping each opening tag that would make more than
+  `MAX_HTML_DEPTH` (256) elements open: its content and every closing tag stay, and `<!>` stands in for it so the text
+  on either side can't join into a tag. Void and raw-text elements (script, style, title, textarea, xmp, iframe,
+  noembed, noframes, plaintext) are never dropped. Ordinary mail comes back unchanged: 12,407 comparisons with 0.1.2's
+  readers (the fixtures, the hostile inputs, crafted mail with 30 nested tables and 120 levels of quoted replies, and
+  3,000 random tag soups, each through the sanitizer, the text, both picture passes and `parseMessage`) gave the same
+  output. What follows the cut is read by no parser: neither the stored HTML nor text made from it has it.
 - `position: fixed` and similar layout tricks stay. The apps should render mail with scripts off.
 
 **The picture pass** (2026-11-18; the contract's [pictures from the web](../contract-pictures.md)). Reading a
@@ -207,7 +220,9 @@ to the same allow-list:
   with a user name or that isn't an address is held without asking.
 - `show` puts the hook's address in (refused, and held instead, if it is itself on the web); `hold` takes the
   address away (an `<img>` keeps its place and alt text, a `background` attribute goes, CSS becomes `none`);
-  `remove` takes an `<img>` out whole (sanitize-html's `exclusiveFilter`), or as `hold` elsewhere.
+  `remove` takes an `<img>` out whole, or acts as `hold` elsewhere: the `<img>` is written as nothing but a class new
+  to each pass and taken out of what the sanitizer wrote (sanitize-html's `exclusiveFilter`, used before 0.1.3, copied
+  everything written so far once per picture removed).
 - Fonts from the web go: a declaration in `@font-face` that loads from the web is dropped without asking.
 - A CSS value that hides an address on the web behind escapes is dropped, not rewritten. **The last check**
   (`servableCss`, token by token) runs on every served declaration and again on each whole attribute and block: it
@@ -220,7 +235,8 @@ to the same allow-list:
   attributes again (`parseStyleAttributes: false`); the CSS filter writes them as `name:value;…`.
 - `tiny` (`isTinyOrHidden`): hidden by its own style (`display:none`, `visibility:hidden`, `opacity:0`, a zero
   maximum size), or declared at most 1×1 (one side at most 1 with the other not given, or a side of 0). Styles from
-  a block or a class aren't seen. `srcset`, `<picture>`'s sources and `poster` never reach the pass: the sanitizer
+  a block or a class aren't seen. A length is trimmed before it's read (`pixels`): with three runs of spaces side by
+  side, its pattern took time cubic in the spaces of a `width` (2,000 took 1.3 s; 0.1.3). `srcset`, `<picture>`'s sources and `poster` never reach the pass: the sanitizer
   drops them when the message is read.
 
 ## IMAP with SMTP

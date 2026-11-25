@@ -3,6 +3,11 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **0.1.3's freeze fix, after its review (2026-11-26, `hotfix-0.1.3`):** both type checks clean; `npm test` 1,182
+  tests (1,176 pass, 6 skipped, 0 fail); `npm run check:cloudflare` 91 of 91. New: the reviewer's tag fragments in
+  `ai-text` (a "<" inside an attribute or a comment, a lone "<" in text, the gate's `plainText` as before), and
+  `ai-linear`'s 25th body (an amount with separators between its digits, which timed out at 10 s with the old trim).
+  `npm run check` wasn't run: it rebuilds `dist/server.mjs`, which the owner's Mac server runs from.
 - **The server review of 0.1.2's findings (2026-11-25):** both type checks clean; `npm test` 1,083 tests (1,077 pass,
   6 skipped, 0 fail), new `test/sync-health-stalls.test.ts` (4: a twenty-minute first-sync batch settled by the next,
   a hang ending in `provider_error` with no `ok` between, the lock's second look, a 30-minute write-back backlog), each
