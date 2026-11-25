@@ -1,54 +1,45 @@
 import SwiftUI
 import UsualMailKit
 
-/// Settings' About tab: the wordmark and the owner's manifesto (onboarding's, `WelcomeStep.manifesto`), the links (the
-/// website now; the source code once the repository is public, `ProjectLinks.isPublished`), and the versions of this
-/// app and of the server (its API's too), or that the sample has no server.
+/// Settings' About tab, in sections: the wordmark and the owner's manifesto (onboarding's, `WelcomeStep.manifesto`);
+/// Links, a row each (the website; the source code once the repository is public, `ProjectLinks.isPublished`); and
+/// Versions, a row each for this app and the server (its API's too), or that the sample has no server.
 struct AboutTab: View {
     @Environment(MailStore.self) private var store
 
     var body: some View {
         SettingsView.page {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(verbatim: "Usual Mail")
-                    .font(Theme.wordmark(20))
-                    .foregroundStyle(Theme.ink)
-                Text(verbatim: WelcomeStep.manifesto)
-                    .font(Theme.sans(12))
-                    .lineSpacing(4)
-                    .foregroundStyle(Theme.body)
-                    .frame(maxWidth: 440, alignment: .leading)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .textSelection(.enabled)
+            SettingsView.group(nil) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(verbatim: "Usual Mail")
+                        .font(Theme.wordmark(22))
+                        .foregroundStyle(Theme.ink)
+                    Text(verbatim: WelcomeStep.manifesto)
+                        .font(Theme.sans(SettingsType.body))
+                        .lineSpacing(4)
+                        .foregroundStyle(Theme.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                }
+                .padding(.vertical, 6)
             }
             SettingsView.group("Links") {
                 ForEach(AboutWords.links(published: ProjectLinks.isPublished), id: \.url) { link in
                     Link(destination: link.url) {
-                        HStack(spacing: 6) {
-                            Text(verbatim: link.title)
-                                .foregroundStyle(Theme.ink)
+                        LabeledContent {
                             Text(verbatim: link.shown)
                                 .foregroundStyle(Theme.secondary)
-                                .underline()
+                        } label: {
+                            Text(verbatim: link.title)
+                                .foregroundStyle(Theme.ink)
                         }
-                        .font(Theme.sans(12))
                     }
                     .pointer()
                 }
             }
             SettingsView.group("Versions") {
-                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 4) {
-                    ForEach(versions, id: \.label) { line in
-                        GridRow {
-                            Text(verbatim: line.label)
-                                .font(Theme.sans(12))
-                                .foregroundStyle(Theme.ink)
-                            Text(verbatim: line.value)
-                                .font(Theme.sans(12))
-                                .foregroundStyle(Theme.secondary)
-                                .textSelection(.enabled)
-                        }
-                    }
+                ForEach(versions, id: \.label) { line in
+                    SettingsView.row(line.label, value: line.value)
                 }
             }
         }

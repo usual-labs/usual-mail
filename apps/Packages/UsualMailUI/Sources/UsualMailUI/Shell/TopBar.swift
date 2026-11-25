@@ -92,8 +92,8 @@ struct TopBar: View {
     private var selectedTab: Tab? { place.tab }
 
     /// The screening capsule's ends and the room between its icon and its count, a little less than the others'.
-    static let screeningInset: CGFloat = 10
-    static let screeningSpacing: CGFloat = 4
+    nonisolated static let screeningInset: CGFloat = 10
+    nonisolated static let screeningSpacing: CGFloat = 4
 
     /// A back button's name: none on the iPhone, where the arrow alone leaves room for the mail's buttons.
     private func backTitle(_ title: String) -> String? { compact && reading ? nil : title }

@@ -225,9 +225,8 @@ struct AppearanceTests {
         #expect(background.tone?.isLight(under: railButton, in: window) == true)
     }
 
-    @Test func thePreviewTakesTheWindowsShape() {
-        #expect(AppearanceTab.previewSize(window: CGSize(width: 1512, height: 982)) == CGSize(width: 200, height: 130))
-        #expect(AppearanceTab.previewSize(window: CGSize(width: 820, height: 560)) == CGSize(width: 200, height: 137))
-        #expect(AppearanceTab.previewSize(window: .zero) == CGSize(width: 200, height: 130))
+    @Test func thePreviewIsASmallSquare() {
+        // The owner's words of 2026-11-25: "the background image is so big and consuming all page, make it square".
+        #expect(AppearanceTab.previewSide > 0 && AppearanceTab.previewSide <= 96)
     }
 }

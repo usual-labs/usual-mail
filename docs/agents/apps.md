@@ -235,25 +235,38 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   (`SettingsTab.swift`; icons user-account, ai-magic, paint-board, user-block-01, information-circle from the
   Hugeicons free set); the chosen one lit with icon and name, the others named once the card is its full 700 wide
   (windows from about 840), icons with tooltips below; the tab remembered for the session in `Navigation`. No tab
-  title; group titles, rows and one quiet line where needed; one file per tab, `SettingsView.swift` a small shell.
+  title; one file per tab, `SettingsView.swift` a small shell. Since 2026-11-25 (the owner's words: "the settings
+  pages are not structured both in mac and iphone, I mean the titles and items are not balanced and have no good data
+  architecture. also the buttons and controls in iphone should be mobile friendly and should be different than mac
+  os") each tab is a grouped `Form` of sections (`SettingsView.page`, `group(_:footer:)`): a section's title over its
+  rows, a row a name at the left and its value or control at the right (`SettingsView.row`), actions as the
+  system's buttons (`SettingsView.action`; Disconnect in red, alone), and the explanations as the section's footer.
+  The system draws it each platform's way: on the Mac as System Settings, grouped boxes at the app's 12 points; on
+  the iPhone inset rows a finger can press at 15 points (`SettingsType`), full-size switches, menus and whole-row
+  buttons. Seen on the sample in both preview copies the same day.
   - **Accounts** (`AccountsTab.swift`): the inboxes, each with its icon picker (`InboxIconPicker.swift`, the contract's
     fourteen icons; a save waits for the server, a refusal shows in red), name, address, state ("Needs you" and the
     reason in red, and the notice over the lists, above; while a first sync runs, core's "Fetching your mail · 120 of 340", `InboxWords.status`) and, for
     Gmail, "Sign in with Google again…"; "Add a Gmail account…" (the shared sheet,
     `Shell/AddGmail.swift`); the paired server, its password (`ServerPassword.swift`, 2026-11-24: "Password set …" or
     "No password yet", and "Set a password…"/"Change the password…" opening two secure fields inline, saved with
-    `PUT /v1/owner/password`, hidden when `GET /v1/owner` can't be read; over plain http to a local network it says to
+    `PUT /v1/owner/password`; since 2026-11-25 a Password row, "Set 24 Nov 2026" or "Not set", "Not known" when
+    `GET /v1/owner` can't be read; over plain http to a local network it says to
     set the password from a device on https, the server's machine or Tailscale) and "Disconnect from this server…"
     at the foot. It doesn't set the AI key; if it ever does, it must first show the server's disclosure, as
     onboarding does.
-  - **AI** (`AITab.swift`, `AIUsageSection.swift`, `UsageTable.swift`): Service (each job's model), State with how
-    many wait, and Usage: "Today · 7 days · 30 days", one table of requests, tokens and cost per job ("not reported",
-    "at least …"), asked of the server while Settings is open, at most every 5 seconds, hidden until it answers.
+  - **AI** (`AITab.swift`, `AIUsageSection.swift`, `UsageTable.swift`): Service (the connection, then a row per job
+    with its model), Status with how many wait, and Usage: the period in the system's segmented control ("Today", "7
+    days", "30 days"), on the Mac one table of requests, tokens and cost per job, on the iPhone a row per job and one
+    for the total ("not reported", "at least …"), asked of the server while Settings is open, at most every 5
+    seconds, hidden until it answers.
   - **Appearance** (`AppearanceTab.swift`, `Shell/Background.swift`, `BackgroundPicture.swift`), an app setting on
     this Mac: "Choose a picture…" (the system picker; the sandbox's user-selected read-only entitlement) copies it at
     once into Application Support/UsualMail/Background, its first frame, at most 3840 px on the long side, JPEG or
     PNG; an undecodable file is refused in words and nothing changes. "Use the default" removes the copy. "Soften the
-    background" (off by default): a 10-point blur and 12% black. A small preview. `WallpaperTone` is rebuilt from the
+    background" (off by default): a 10-point blur and 12% black. A small square preview, 96 points on the Mac and 88
+    on the iPhone (the owner's words of 2026-11-25: "make it square"; it had followed the window's shape, 200 wide,
+    and on the iPhone ran down the page). `WallpaperTone` is rebuilt from the
     picture and the softening; a busy picture's worst case is about 3.1:1, so the corner note gets a stronger halo.
   - **Blocked** (`BlockedTab.swift`; kit `BlockedSenderList`, `MailStore+Senders.swift`, `APIClient+Senders.swift`):
     the server's blocked senders in the profile, newest block first: initials, name and address, the inbox under all

@@ -2,9 +2,10 @@ import SwiftUI
 import UsualMailDesign
 import UsualMailKit
 
-/// Settings' Accounts tab: the inboxes (each with its icon, `InboxIconPicker`, and for Gmail signing in with Google
-/// again), "Add a Gmail account…" (the rail's plus's sheet, `AddGmailSheet`), then the server this Mac is paired with,
-/// its password (`ServerPassword`) and, at the foot, disconnecting from it. Opened from the notice on an inbox that
+/// Settings' Accounts tab, in three sections: Inboxes, each with its icon (`InboxIconPicker`), name, address and how it
+/// stands, and for Gmail signing in with Google again, then "Add a Gmail account…" (`AddGmailSheet`; on the iPhone the
+/// one way to add one, as its switcher's menu has none); Server, its address and its password (`ServerPassword`); and
+/// disconnecting from it, in red, alone at the foot. Opened from the notice on an inbox that
 /// stopped syncing (`SyncNotice`), it scrolls to that Gmail inbox and signs it in with Google again at once.
 struct AccountsTab: View {
     let session: AppSession
@@ -52,16 +53,16 @@ struct AccountsTab: View {
                 if store.lists.inboxes.isEmpty {
                     SettingsView.words("No inboxes yet.")
                 }
-                SettingsView.link("\(AddGmailSheet.title)…") { addingGmail = true }
+                SettingsView.action("\(AddGmailSheet.title)…", icon: "plus") { addingGmail = true }
             }
             SettingsView.group("Server") {
-                SettingsView.words(session.credentials?.server.displayName ?? "Not paired")
+                SettingsView.row("Address", value: session.credentials?.server.displayName ?? "Not paired")
                 ServerPassword()
             }
-            Button("Disconnect from this server…") { confirming = true }
-                .pointer()
-                .font(Theme.sans(12))
-                .disabled(session.credentials == nil || session.isDisconnecting)
+            SettingsView.group(nil, footer: [SettingsWords.disconnecting]) {
+                SettingsView.action("Disconnect from this server…", destructive: true) { confirming = true }
+                    .disabled(session.credentials == nil || session.isDisconnecting)
+            }
         }
         .animation(Motion.move, value: signingIn)
         .sheet(isPresented: $addingGmail) {
@@ -74,9 +75,7 @@ struct AccountsTab: View {
         .confirmationDialog("Disconnect from this server?", isPresented: $confirming) {
             Button("Disconnect", role: .destructive) { Task { await session.disconnect() } }
         } message: {
-            Text(
-                "Your server forgets this Mac, and this Mac forgets its sign-in and the mail it keeps. To use it again, pair it with a new code."
-            )
+            Text(verbatim: SettingsWords.disconnecting)
         }
     }
 }
@@ -91,23 +90,25 @@ private struct InboxRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 // The button is 24 wide for its hover circle; the icon keeps its place.
                 InboxIconPicker(inbox: inbox, choice: icon)
                     .padding(-4)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: inbox.name)
-                        .font(Theme.sans(12))
+                        .font(Theme.sans(SettingsType.body))
                         .foregroundStyle(Theme.ink)
                     if inbox.address != inbox.name {
                         Text(verbatim: inbox.address)
-                            .font(Theme.sans(10))
+                            .font(Theme.sans(SettingsType.note))
                             .foregroundStyle(Theme.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                 }
                 Spacer(minLength: 12)
                 Text(InboxWords.status(inbox))
-                    .font(Theme.sans(10))
+                    .font(Theme.sans(SettingsType.note))
                     .foregroundStyle(inbox.status == .needsAttention ? UsualColor.danger : Theme.time)
             }
             if inbox.status == .needsAttention, let detail = inbox.statusDetail, !detail.isEmpty {
@@ -122,7 +123,7 @@ private struct InboxRow: View {
                 if signingIn == inbox.id {
                     GoogleSignInStep(inboxId: inbox.id, title: "Sign in with Google again", startsAtOnce: true)
                 } else {
-                    SettingsView.link("Sign in with Google again…", size: 10) { signingIn = inbox.id }
+                    SettingsView.link("Sign in with Google again…", size: SettingsType.note) { signingIn = inbox.id }
                 }
             }
         }
@@ -143,4 +144,18 @@ enum InboxWords {
         case .unknown(let raw): raw
         }
     }
+}
+
+/// Settings' words that name the device they show on: "this Mac" or "this iPhone".
+enum SettingsWords {
+    #if os(iOS)
+        static let device = "this iPhone"
+    #else
+        static let device = "this Mac"
+    #endif
+
+    /// What disconnecting does, under its button and in its question.
+    static let disconnecting =
+        "Your server forgets \(device), and \(device) forgets its sign-in and the mail it keeps. To use it again, pair "
+        + "it with a new code."
 }

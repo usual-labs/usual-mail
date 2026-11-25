@@ -111,9 +111,9 @@ points since 2026-11-25, below).
 - **Without a pointer** (`Pointer.exists` false): a row's time always shows, and so does a seen notification's tick.
   A long press on a row shows the Mac's right-click menu (the same `contextMenu`).
 - **Pages:** the card's side margin is `Theme.pageInset`, 16 on the iPhone (the concept's) and the Mac's 24.
-- **Settings' Blocked tab:** Unblock is the light button (`LightButtonLabel`, the secondary one beside a step's dark
-  button) in the middle of its row, not the Mac's link at the row's top (owner's words of 2026-11-24, "like a button.
-  not primary though, secondary", the iPhone only; `BlockedRow`).
+- **Settings' Blocked tab:** Unblock is a secondary button in the middle of its row (owner's words of 2026-11-24,
+  "like a button. not primary though, secondary"): since 2026-11-25 the system's bordered button, a finger's size here
+  and small on the Mac (`BlockedRow`), as Settings became the system's grouped form (apps.md, Settings).
 - **First run:** the cards are as wide as the screen leaves (`onboardingCard`), pairing's wordmark sits below the
   status bar, and its fields don't capitalise. The cards sit at the foot of the screen, not in its middle (owner's
   words of 2026-11-24; `OnboardingLayout.cardsAtFoot`): pairing's 24 from the screen's foot, and the screen keeps the

@@ -2,33 +2,41 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UsualMailKit
 
-/// Settings' Appearance tab, an app setting on this Mac (`Background`): a small preview of the window's background in
-/// the window's shape, "Choose a picture…" (the system's picker, pictures only; the app copies it at once, so the
-/// sandbox's access to the file isn't needed again), "Use the default", and "Soften the background". On the iPhone
-/// also what swiping a mail does (`SwipeSettings`).
+/// Settings' Appearance tab, settings of this device (`Background`), in sections: Background, a small square preview of
+/// the background as the window shows it (the owner's words of 2026-11-25: "the background image is so big and
+/// consuming all page, make it square") beside "Choose a picture…" (the system's picker, pictures only; the app copies
+/// it at once, so the sandbox's access to the file isn't needed again) and "Use the default"; Soften, its switch; and on
+/// the iPhone, what swiping a mail does (`SwipeSettings`).
 struct AppearanceTab: View {
     var background = Background.shared
     @Environment(\.windowSize) private var window
     @State private var picking = false
 
-    /// The preview's width; its height follows the window's shape.
-    static let previewWidth: CGFloat = 200
+    /// The preview's side.
+    #if os(iOS)
+        static let previewSide: CGFloat = 88
+    #else
+        static let previewSide: CGFloat = 96
+    #endif
 
     var body: some View {
         SettingsView.page {
-            SettingsView.group("Background") {
-                HStack(alignment: .top, spacing: 16) {
+            SettingsView.group(
+                "Background",
+                footer: ["The picture stays on \(SettingsWords.device). It isn't sent to your server or anywhere else."]
+            ) {
+                HStack(alignment: .center, spacing: 16) {
                     preview
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 8) {
-                            SettingsView.link("Choose a picture…") { picking = true }
+                            Button("Choose a picture…") { picking = true }
                                 .disabled(background.isImporting)
                             if background.isImporting {
-                                ProgressView().controlSize(.mini)
+                                ProgressView().controlSize(.small)
                             }
                         }
                         if background.isCustom {
-                            SettingsView.link("Use the default") { background.useDefault() }
+                            Button("Use the default") { background.useDefault() }
                                 .disabled(background.isImporting)
                                 .transition(.blurReveal)
                         }
@@ -37,20 +45,23 @@ struct AppearanceTab: View {
                                 .transition(.blurReveal)
                         }
                     }
+                    .buttonStyle(.bordered)
+                    .tint(Theme.ink)
+                    .pointer()
+                    Spacer(minLength: 0)
                 }
-                SettingsView.note("The picture stays on this Mac. It isn't sent to your server or anywhere else.")
+                .padding(.vertical, 4)
             }
-            SettingsView.group("Soften") {
+            SettingsView.group(
+                "Soften", footer: ["A slight blur and dim behind the window, so the words over it read more easily."]
+            ) {
                 Toggle(
                     "Soften the background",
                     isOn: Binding(get: { background.softened }, set: { background.setSoftened($0) })
                 )
                 .toggleStyle(.switch)
-                .controlSize(.mini)
-                .font(Theme.sans(12))
                 .foregroundStyle(Theme.ink)
                 .pointer()
-                SettingsView.note("A slight blur and dim behind the window, so the words over it read more easily.")
             }
             #if os(iOS)
                 SwipeSettings()
@@ -64,22 +75,15 @@ struct AppearanceTab: View {
         }
     }
 
-    /// The background as the window shows it, softening included, at the window's aspect.
+    /// The background as the window shows it, softening included, cut to a square.
     private var preview: some View {
-        let size = Self.previewSize(window: window)
+        let side = Self.previewSide
         let windowWidth = window.width > 0 ? window.width : 1512
-        return BackgroundImage(background: background, scale: size.width / windowWidth)
-            .frame(width: size.width, height: size.height)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.hairline))
+        return BackgroundImage(background: background, scale: side / windowWidth)
+            .frame(width: side, height: side)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.hairline))
             .accessibilityElement()
             .accessibilityLabel(background.isCustom ? "Your picture" : "The default wallpaper")
-    }
-
-    /// The preview's size: `previewWidth` wide, as tall as the window's shape makes it; the design's window
-    /// (1512 × 982) before it is measured.
-    static func previewSize(window: CGSize) -> CGSize {
-        let shape = window.width > 0 && window.height > 0 ? window : CGSize(width: 1512, height: 982)
-        return CGSize(width: previewWidth, height: (previewWidth * shape.height / shape.width).rounded())
     }
 }
