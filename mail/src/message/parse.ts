@@ -29,6 +29,11 @@ export interface ParseContext {
    * proved about the From domain (`fromCheck`). Only a provider whose checker the server trusts gives it.
    */
   authentication?: AuthenticationOptions;
+  /**
+   * A header of the message was left out before it came here (Gmail's large-message rebuild drops one whose name it
+   * can't write back, gmail/payload.ts): no recipient field is then read as vouched for by the sender's signature.
+   */
+  headersIncomplete?: boolean;
 }
 
 /** Header dates more than this far after the time of receipt are treated as wrong. */
@@ -84,7 +89,7 @@ export async function parseMessage(raw: Uint8Array | string, context: ParseConte
     // Which of To and Cc the sender's own signature vouches for: only once the From domain is proved, and none when a
     // line of the header block is neither a field nor a fold (the parser read no fields past it).
     if (message.fromCheck.result === "verified") {
-      message.signedRecipients = headerBlockReadable(raw) ? signedRecipients(email.headers, message.fromCheck.domain, context.authentication) : [];
+      message.signedRecipients = !context.headersIncomplete && headerBlockReadable(raw) ? signedRecipients(email.headers, message.fromCheck.domain, context.authentication) : [];
     }
   }
   return message;

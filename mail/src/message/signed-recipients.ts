@@ -126,39 +126,45 @@ function fits(entry: AuthenticationResult, domain: string, signature: string): b
   return named && (shown === undefined || signature.startsWith(shown));
 }
 
-/** A field's first line: a name of visible ASCII but ":" (spaces may come before the colon), then the colon. */
-const FIELD_LINE = /^[\x21-\x39\x3b-\x7e]+[ \t]*:/;
+/** The most of a message read for its header block: no real one is longer. Past it, the block counts as unreadable. */
+const HEADER_BLOCK_LIMIT = 2 * 1024 * 1024;
+const LF = 10;
+const CR = 13;
 
 /**
- * Whether every line of the message's header block is a field or the fold of one. A parser stops reading fields at
- * the first line that is neither (no colon, a space inside a name, a byte that isn't visible ASCII), and everything
- * after it becomes body: a forged signature and an added Cc above such a line, the real signature below it, would read
- * as the only ones (the final review's attack). Linear in the block's length; the block ends at the first empty line.
+ * Whether the message's header block reads the same to every parser: every line, up to and including the blank line
+ * that ends it, is a field (a name of visible ASCII but ":", spaces allowed before the colon, then the colon) or the
+ * fold of one, and every line ends the same way (all CRLF, or all LF) with no CR anywhere else. A parser stops reading
+ * fields at the first line that is neither (no colon, a space inside a name, a byte that isn't visible ASCII), and
+ * postal-mime ends lines at a lone LF, so `X-C: z\n\r\n` reads to it as a blank line where a CRLF reader sees none: a
+ * forged signature and an added Cc above either, the real signature below, would read as the only ones (the fourth
+ * and fifth reviews' attacks). Walks the raw bytes or characters line by line, stopping at the first line that fails
+ * or at the blank line, and reads at most 2 MiB: a block that doesn't end by then counts as unreadable.
  */
 export function headerBlockReadable(raw: Uint8Array | string): boolean {
-  const text = typeof raw === "string" ? raw : latin1(raw);
-  const end = text.search(/\r?\n\r?\n/);
-  const block = end < 0 ? text : text.slice(0, end);
-  for (const line of block.split(/\r?\n/)) {
-    if (line === "" || line[0] === " " || line[0] === "\t") continue;
-    if (!FIELD_LINE.test(line)) return false;
+  const code = typeof raw === "string" ? (i: number) => raw.charCodeAt(i) : (i: number) => raw[i]!;
+  const length = Math.min(raw.length, HEADER_BLOCK_LIMIT + 2);
+  const lineOk = (from: number, to: number): boolean => {
+    for (let i = from; i < to; i++) if (code(i) === CR) return false;
+    if (from === to || code(from) === 0x20 || code(from) === 0x09) return true;
+    let i = from;
+    for (let c = code(i); i < to && c >= 0x21 && c <= 0x7e && c !== 0x3a; c = code(++i));
+    if (i === from) return false;
+    while (i < to && (code(i) === 0x20 || code(i) === 0x09)) i++;
+    return i < to && code(i) === 0x3a;
+  };
+  let ending = 0;
+  for (let start = 0; ;) {
+    let end = start;
+    while (end < length && code(end) !== LF) end++;
+    if (end >= length) return raw.length <= HEADER_BLOCK_LIMIT && lineOk(start, raw.length);
+    const crlf = end > start && code(end - 1) === CR;
+    const kind = crlf ? 2 : 1;
+    if (ending === 0) ending = kind;
+    else if (ending !== kind) return false;
+    const stop = crlf ? end - 1 : end;
+    if (stop === start) return true;
+    if (!lineOk(start, stop)) return false;
+    start = end + 1;
   }
-  return true;
-}
-
-/** The header block's bytes as one character each, for reading names: no byte is lost or merged. */
-function latin1(bytes: Uint8Array): string {
-  const end = Math.min(bytes.length, findBlockEnd(bytes));
-  let out = "";
-  for (let at = 0; at < end; at += 8192) out += String.fromCharCode(...bytes.subarray(at, Math.min(end, at + 8192)));
-  return out;
-}
-
-/** Where the header block ends in the bytes (its blank line), or their length. */
-function findBlockEnd(bytes: Uint8Array): number {
-  for (let at = 0; at + 1 < bytes.length; at++) {
-    if (bytes[at] !== 10) continue;
-    if (bytes[at + 1] === 10 || (bytes[at + 1] === 13 && bytes[at + 2] === 10)) return at + 1;
-  }
-  return bytes.length;
 }

@@ -250,14 +250,31 @@ function resultOf(tokens: Token[]): AuthenticationResult | null {
     if (properties.length >= LIMITS.properties) return null;
     const name = word();
     if (!name || !/^[A-Za-z0-9][A-Za-z0-9_-]*(?:\.[A-Za-z0-9_-]+)?$/.test(name) || !is("=")) return null;
-    const value = tokens[at++];
-    if (!value || (value.kind !== "word" && value.kind !== "quoted")) return null;
-    let text = value.text;
-    // A quoted local part followed at once by "@domain": `"first last"@brand.example`.
-    const next = tokens[at];
-    if (value.kind === "quoted" && next?.kind === "word" && !next.spaced && next.text.startsWith("@")) {
-      text = `"${value.text}"${next.text}`;
+    const value = tokens[at];
+    let text: string;
+    if (value?.kind === "quoted") {
       at++;
+      text = value.text;
+      // A quoted local part followed at once by "@domain": `"first last"@brand.example`.
+      const next = tokens[at];
+      if (next?.kind === "word" && !next.spaced && next.text.startsWith("@")) {
+        text = `"${value.text}"${next.text}`;
+        at++;
+      }
+    } else {
+      // An unquoted value runs on through "/" and "=" written right against it: base64's "/" in `header.b=Kx/9Yb`, an
+      // SRS or BATV address's "=" in `smtp.mailfrom=msprvs1=…`, which checkers write unquoted. Only tokens with no
+      // space or comment between them join, so a value can't reach the next property, which a space always parts from
+      // it; joined text names no property of its own (2026-11-25: such a value made the whole result unreadable).
+      // It starts with a word, or with "/" right after the "=" (base64 may start so); never with "=", which neither base64
+      // nor an address starts with.
+      const joinable = (token: Token | undefined) => token?.kind === "word" || token?.kind === "/" || token?.kind === "=";
+      if (!(value?.kind === "word" || (value?.kind === "/" && !value.spaced))) return null;
+      text = "";
+      do {
+        const token = tokens[at++]!;
+        text += token.kind === "word" ? token.text : token.kind;
+      } while (joinable(tokens[at]) && !tokens[at]!.spaced);
     }
     properties.push([name.toLowerCase(), text]);
   }

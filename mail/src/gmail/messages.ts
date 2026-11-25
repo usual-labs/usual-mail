@@ -97,7 +97,7 @@ export async function fromFullForm(client: GmailClient, message: FullGmailMessag
   let parsed: ParsedMessage;
   try {
     const { rebuilt, textLeftOut } = await rebuildFull(client, message, { budget: context.limits.largeMessageBytes, serve: false });
-    parsed = await parseOrNote(rebuilt.bytes, parse, message.id, rebuilt.leftOut);
+    parsed = await parseOrNote(rebuilt.bytes, rebuilt.headersDropped ? { ...parse, headersIncomplete: true } : parse, message.id, rebuilt.leftOut);
     if (textLeftOut && parsed.text === undefined && parsed.html === undefined) parsed.text = textLeftOut === "size" ? TEXT_LEFT_OUT : TEXT_NOT_GIVEN;
   } catch (error) {
     // A failure that may pass fails the batch, to be tried again; anything else would fail the same way every time.

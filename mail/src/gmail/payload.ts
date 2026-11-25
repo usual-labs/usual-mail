@@ -59,6 +59,12 @@ export interface Rebuilt {
   partOf(content: Uint8Array): GmailPart | undefined;
   /** For the parser: a marker's real size, Gmail's `body.size`. */
   leftOut: LeftOutSize;
+  /**
+   * Whether a header of the message itself (not of a part inside it) was left out: one whose name can't be written
+   * back as a field (a space in it, "To :" as Gmail may give it) or that isn't text. The parser then reads no recipient
+   * field as the sender's (`ParseContext.headersIncomplete`): the dropped one could be the real To, or a signature.
+   */
+  headersDropped: boolean;
 }
 
 const encoder = new TextEncoder();
@@ -138,6 +144,7 @@ export function rebuildMessage(payload: GmailPart, plan: RebuildPlan = {}): Rebu
       const part = partOf(content);
       return part ? (part.body?.size ?? 0) : undefined;
     },
+    headersDropped: (payload.headers ?? []).some((h) => typeof h.name !== "string" || !NAME.test(h.name) || typeof h.value !== "string"),
   };
 }
 
