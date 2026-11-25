@@ -30,7 +30,7 @@ describe("a model's answers, names, List-Ids and pictures' addresses, on a 1 MB 
   }
 });
 
-describe("the one-time code check and the readers it uses, on a 1 MB body", () => {
+describe("the screening gate's check and the readers it uses, on a 1 MB body", () => {
   for (const name of Object.keys(BODIES)) {
     test(name, { timeout: 15_000 }, async () => {
       const took = await within(10_000, "gate", name);

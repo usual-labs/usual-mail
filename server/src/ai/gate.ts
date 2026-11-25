@@ -7,7 +7,8 @@
 //   platform whose customers share its domain (the rule sender pictures use: `avatarDomain`), and the provider is one
 //   whose checker the server trusts (Gmail);
 // - it looks machine-sent (`ProviderMessage.automated`);
-// - it has the shape of mail sent to this person by that organisation alone (gate-shape.ts);
+// - it has the shape of mail sent to this person by that organisation alone, not a notifier carrying its users' words
+//   (gate-shape.ts);
 // - it shows that kind's evidence (gate-evidence.ts).
 //
 // A one-time code needs only machine-sent mail addressed to the inbox, a code near a word for one, and the proof, which
@@ -74,6 +75,8 @@ export interface GateMessage {
   cc: readonly Address[];
   replyTo: readonly Address[] | null;
   listId: string | null;
+  /** The recipient fields the sender's own signature vouches for (`messages.signedRecipients`); null: not read. */
+  signedRecipients: ReadonlyArray<"to" | "cc"> | null;
 }
 
 /** What the check needs besides the message: the suffix list (null: nothing is proved) and the inbox it came to. */
@@ -118,11 +121,15 @@ export function gateCheck(message: GateMessage, context: GateContext): GateCheck
   const suffixes = context.suffixes;
   // The proved registrable domain, when the checker proved the From address's own domain and it is no public one.
   const home = checked && suffixes ? avatarDomain(message.fromVerified, message.from.email, suffixes) : null;
-  const organisation = home !== null && message.automated
-    && soleSender(message, message.fromVerified!, home, context.inbox.address, suffixes!);
+  // Addressed to the inbox: on Gmail only by a field the sender's own signature vouches for (gate-shape.ts, (c)).
+  const signed = message.signedRecipients ?? [];
+  const addressed = addressedTo(checked
+    ? { to: signed.includes("to") ? message.to : [], cc: signed.includes("cc") ? message.cc : [] }
+    : message, context.inbox.address);
+  const organisation = home !== null && message.automated && soleSender(message, message.fromVerified!, home, addressed, suffixes!);
   const codeProof = home !== null || !checked;
   const mayPass = (kind: ScreeningPass): boolean => (kind === "code"
-    ? codeProof && message.automated && addressedTo(message, context.inbox.address) && holdsCode(read().words)
+    ? codeProof && message.automated && addressed && holdsCode(read().words)
     : organisation && EVIDENCE[kind](read()));
   const codePasses = (category: DecidedCategory) => category === "otp" && mayPass("code");
   return {

@@ -6,7 +6,7 @@
 // through the action engine) and summarizes (not recorded); it never does anything else. Nothing a blocked sender
 // wrote is ever sent: not their message, not the subject they gave a thread, in either job.
 
-import { PAYMENT_CATEGORIES, type AiJob, type Category, type DecidedCategory, type PaymentDetails } from "@usualmail/core";
+import { isScreeningPass, PAYMENT_CATEGORIES, SCREENING_PASS_CATEGORIES, type AiJob, type Category, type DecidedCategory, type PaymentDetails } from "@usualmail/core";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { messages, threads, type InboxRow, type MessageRow, type ThreadRow } from "../db/index.ts";
 import { perform } from "../service/actions.ts";
@@ -239,6 +239,12 @@ function checkAtGate(ctx: Ctx, found: { thread: ThreadRow; inbox: InboxRow; mail
   return gateCheck(read, { suffixes: ctx.avatars?.suffixes ?? null, inbox: found.inbox });
 }
 
+/** Whether a category may be the thread's: any, unless it skipped Screening while its sender isn't let in. */
+async function fitsItsKind(ctx: Ctx, thread: ThreadRow, category: DecidedCategory): Promise<boolean> {
+  if (!await skippedWhileUnknown(ctx, thread)) return true;
+  return isScreeningPass(thread.skippedScreening) && SCREENING_PASS_CATEGORIES[thread.skippedScreening].includes(category);
+}
+
 /**
  * The screening gate's question, when it is worth asking: the gate is judging the thread, the AI's category may be a
  * kind that skips Screening, and the server's own check could hold for the message the model read (gate.ts). Under the
@@ -257,8 +263,9 @@ async function applyCategory(ctx: Ctx, threadId: string, planned: PlannedCategor
   const accepted: DecidedCategory | null = acceptCategory(answer, planned.onlyConversation);
   const found = await loaded(ctx, threadId);
   // Someone may have decided it meanwhile, or it may be done now: then the answer is moot. A thread that skipped
-  // Screening while its sender isn't let in never becomes a conversation: that would put a stranger's mail in Home.
-  if (accepted && found && wantsCategoryNow(found.thread) && !(accepted === "conversation" && await skippedWhileUnknown(ctx, found.thread))) {
+  // Screening while its sender isn't let in keeps to its kind's categories: never a conversation (a stranger's mail in
+  // Home), never an invoice, whoever asks again.
+  if (accepted && found && wantsCategoryNow(found.thread) && await fitsItsKind(ctx, found.thread, accepted)) {
     // A model's answer alone never lifts the screening gate: the server's own check must hold for the message it read,
     // for the kind the model named (or for a code, the AI's `otp`). Otherwise it stays screened, in this category.
     const chosen = asked ? acceptPass(asked.value, asked.request) : null;

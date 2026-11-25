@@ -59,6 +59,7 @@ const WORK = {
     const message = {
       subject: "Order update", text: body, html: body, automated: true, from: { email: "no-reply@service.example" },
       fromVerified: "service.example", to: [{ email: "me@inbox.example" }], cc: [], replyTo: null, listId: null,
+      signedRecipients: ["to" as const],
     };
     const check = gateCheck(message, { suffixes: SHIPPED_SUFFIXES, inbox: { address: "me@inbox.example", provider: "gmail" } });
     for (const kind of ["code", ...askableKinds("notification")] as const) check.mayPass(kind);

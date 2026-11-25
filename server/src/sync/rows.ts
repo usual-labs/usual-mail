@@ -103,6 +103,7 @@ export async function insertMessage(
       // What the provider's own checker proved about the From domain, when the server asked (sender pictures).
       fromCheck: m.fromCheck?.result ?? null,
       fromVerified: m.fromCheck?.result === "verified" ? m.fromCheck.domain : null,
+      signedRecipients: m.fromCheck?.result === "verified" ? m.signedRecipients ?? [] : null,
       placement: m.placement,
       seen: m.seen,
       listed,

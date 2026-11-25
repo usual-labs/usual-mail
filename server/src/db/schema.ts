@@ -247,6 +247,8 @@ export const messages = sqliteTable("messages", {
   fromCheck: text("from_check").$type<FromCheck["result"]>(),
   /** The From domain the checker proved, in ASCII, when `fromCheck` is `verified`. */
   fromVerified: text("from_verified"),
+  /** The recipient fields the sender's own signature vouches for (`ProviderMessage.signedRecipients`); null: not read. */
+  signedRecipients: json<Array<"to" | "cc">>("signed_recipients"),
   /** Where the provider has it, as last read from or written to the provider. */
   placement: json<ProviderPlacement>("placement").notNull(),
   /** The provider's seen flag, as last read or written. */

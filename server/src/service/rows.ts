@@ -110,7 +110,8 @@ export function toThread(row: ThreadRow): Thread {
   }
   if (row.need) thread.need = row.need;
   if (row.reason) thread.reason = row.reason;
-  // Why it is out of Screening while its sender isn't let in; never on a screened thread, whatever the row holds.
+  // Why it is out of Screening while its sender isn't let in; never on a screened thread, whatever the row holds (a
+  // backup: `stateColumns` stores none for a screened state).
   if (!row.screened && isScreeningPass(row.skippedScreening)) thread.skippedScreening = row.skippedScreening;
   if (row.summary) thread.summary = row.summary;
   if (row.payment && (PAYMENT_CATEGORIES as readonly string[]).includes(row.category)) thread.payment = servedPayment(row.payment)!;

@@ -330,6 +330,7 @@ export function stateColumns(state: ThreadState): Partial<ThreadRow> {
     categorizedByActor: state.categorizedBy && state.categorizedBy !== "mailbox" ? state.categorizedByActor ?? null : null,
     screened: state.screened,
     screenedByMailbox: state.screened && state.screenedByMailbox,
+    // A backup: every way a thread is screened already drops the kind with it (`perform`'s gate, `newMailInThread`).
     skippedScreening: state.screened ? null : state.skippedScreening ?? null,
     summary: state.summary,
     done: state.done,

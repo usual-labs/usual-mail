@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "cc3518bb-478c-4e0b-89a7-d44b4f7a5192",
+  "id": "da6c440c-a859-42a8-8a4a-7709a3394b71",
   "prevId": "5bce6db5-0da6-4919-90bf-196db5e9e13f",
   "tables": {
     "actions": {
@@ -1291,6 +1291,13 @@
         },
         "from_verified": {
           "name": "from_verified",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "signed_recipients": {
+          "name": "signed_recipients",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

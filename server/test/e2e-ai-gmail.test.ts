@@ -109,8 +109,11 @@ test("Gmail with the AI: categorized, summarized, labelled, corrected and taught
 
   // A stranger's one-time code: categorized first, never screened, never summarized, never under Screening.
   assert.ok(!labelNames().includes("Usual Mail/Screening"));
-  // Gmail's own checker proved its From domain: nothing skips Screening without that proof.
-  const proved = { "Authentication-Results": "mx.google.com; dkim=pass header.i=@quillpad.example header.s=s1 header.b=AbCd1234; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=quillpad.example" };
+  // Gmail's own checker proved its From domain, and the passing signature (b= starting AbCd1234) signs To.
+  const proved = {
+    "Authentication-Results": "mx.google.com; dkim=pass header.i=@quillpad.example header.s=s1 header.b=AbCd1234; dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=quillpad.example",
+    "DKIM-Signature": "v=1; a=rsa-sha256; c=relaxed/relaxed; d=quillpad.example; s=s1; h=from:to:subject:date; bh=abc=; b=AbCd1234wxyz",
+  };
   const code = await deliver(inbox, "Quillpad <no-reply@quillpad.example>", "Your sign-in code", { body: "Your code is 482 913.", headers: proved });
   assert.deepEqual([code.category, code.screened, code.summary], ["otp", false, undefined]);
   assert.deepEqual(labels("Your sign-in code"), [["UNREAD", "Usual Mail/One-Time Codes"]]);

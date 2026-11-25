@@ -84,7 +84,12 @@ export class MemoryProvider implements MailProvider {
   async sync(cursor: string | null, options?: SyncOptions): Promise<SyncBatch> {
     const batch = await this.mailbox.sync(cursor, this.#since, options?.limit);
     // A checker's word only when the server asked for it, as the real providers do.
-    if (!this.#authentication) for (const message of batch.upserted) delete message.fromCheck;
+    if (!this.#authentication) {
+      for (const message of batch.upserted) {
+        delete message.fromCheck;
+        delete message.signedRecipients;
+      }
+    }
     return batch;
   }
 

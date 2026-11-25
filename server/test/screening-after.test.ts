@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, test } from "node:test";
 import { eq } from "drizzle-orm";
 import { threads } from "../src/db/index.ts";
 import type { ChoiceRequest } from "../src/ai/models.ts";
+import { toThread } from "../src/service/rows.ts";
+import { stateColumns, type ThreadState } from "../src/service/state.ts";
 import type { DeliverInput, MemoryMailbox } from "../src/testing/index.ts";
 import { historyFromKnown, KNOWN, makeServer, type TestServer } from "./helpers.ts";
 
@@ -27,6 +29,7 @@ const SHIPPED = {
   text: "Order #112-3456789 is on its way. It costs €42.00.",
   automated: true,
   fromCheck: proved("fernway.example"),
+  signedRecipients: ["to"],
   threadKey: "fernway-order",
 } satisfies DeliverInput;
 
@@ -148,6 +151,41 @@ describe("mail joining a thread that skipped Screening", () => {
     assert.notEqual(after.category === "conversation" && !after.screened, true, "never a conversation out of Screening");
   });
 
+  test("a joined message that would pass on its own isn't let through by the answer about the earlier one", async () => {
+    const { inbox, mailbox } = await inboxWithAi();
+    let release!: () => void;
+    const waiting = new Promise<void>((resolve) => (release = resolve));
+    t.models.choose = async (request) => {
+      if (!isQuestion(request)) return "receipt";
+      await waiting;
+      return "order";
+    };
+    mailbox.deliver(SHIPPED);
+    await t.server.syncInbox(t.person, inbox.id);
+    for (let i = 0; i < 50 && questions() === 0; i++) await new Promise((r) => setTimeout(r, 5));
+    // The shop's next update, which would pass the check itself, joins while the question about the first is out.
+    mailbox.deliver({ ...SHIPPED, text: "Order #112-3456789 is out for delivery today." });
+    await t.server.syncInbox(t.person, inbox.id);
+    t.models.choose = (request) => (isQuestion(request) ? "order" : "receipt");
+    release();
+    await t.server.whenIdle();
+    const after = await t.threadBySubject(SHIPPED.subject);
+    assert.deepEqual([after.screened, after.skippedScreening], [true, undefined], "never asked about the newest message: still screened");
+  });
+
+  test("asked again, it keeps to its kind's categories: never an invoice", async () => {
+    const { thread } = await skippedOrder();
+    await t.host.db.update(threads).set({ categoryDue: true, categoryAskAgain: true }).where(eq(threads.id, thread.id));
+    answer("invoice");
+    const asked = t.models.sent("choose").length;
+    await t.server.updateAiSettings(t.person, { paused: true });
+    await t.server.updateAiSettings(t.person, { paused: false });
+    await t.server.whenIdle();
+    assert.equal(t.models.sent("choose").length, asked + 1, "asked again, any category allowed");
+    const after = (await t.server.thread(t.person, thread.id)).thread;
+    assert.deepEqual([after.category, after.screened, after.skippedScreening], ["receipt", false, "order"]);
+  });
+
   test("the AI never makes a thread that skipped Screening a conversation", async () => {
     const { thread } = await skippedOrder();
     // As if asked again about it (a stale due flag, or an asking-again): the AI may only move it to `conversation`.
@@ -163,3 +201,27 @@ describe("mail joining a thread that skipped Screening", () => {
     assert.deepEqual([after.category, after.screened, after.skippedScreening], ["receipt", false, "order"]);
   });
 });
+
+describe("a screened thread carries no kind, whatever its row holds (backups behind the screened part's undo)", () => {
+  test("stored: a screened state writes no kind", () => {
+    const state = { ...emptyState(), screened: true, skippedScreening: "order" as const };
+    assert.equal(stateColumns(state).skippedScreening, null);
+    assert.equal(stateColumns({ ...state, screened: false }).skippedScreening, "order");
+  });
+
+  test("served: a screened row shows no kind", async () => {
+    const { thread } = await skippedOrder();
+    const row = (await t.host.db.select().from(threads).where(eq(threads.id, thread.id)).get())!;
+    assert.equal(toThread({ ...row, screened: true }).skippedScreening, undefined);
+    assert.equal(toThread(row).skippedScreening, "order");
+  });
+});
+
+/** A thread's state with nothing set. */
+function emptyState(): ThreadState {
+  return {
+    category: "receipt", categorizedBy: "ai", screened: false, screenedByMailbox: false, summary: null, done: false, stack: null,
+    comeBackAt: null, comeBackIfNoReply: false, comeBackSetAt: null, unread: false, unreadMessageIds: [], readMessageIds: [],
+    trashed: false, need: null, reason: null,
+  };
+}

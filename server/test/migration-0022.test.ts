@@ -1,6 +1,6 @@
-// Migration 0022 (2026-11-25, mail that skips Screening): the kind that let a thread skip Screening while its sender
-// isn't let in. Null on every thread after the upgrade, so no thread says it skipped Screening, a one-time code that
-// did before included; nothing else changes.
+// Migration 0022 (2026-11-25, mail that skips Screening): the recipient fields the sender's signature vouches for, on
+// messages, and the kind that let a thread skip Screening while its sender isn't let in. Null everywhere after the
+// upgrade, so no thread says it skipped Screening, a one-time code that did before included; nothing else changes.
 
 import assert from "node:assert/strict";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
@@ -14,7 +14,7 @@ import { migrate } from "drizzle-orm/libsql/migrator";
 import { schema } from "../src/db/index.ts";
 import { toThread } from "../src/service/rows.ts";
 
-test("adds the kind to threads, empty, and changes nothing else", async () => {
+test("adds the kind to threads and the signed recipients to messages, empty, and changes nothing else", async () => {
   const dir = await mkdtemp(join(tmpdir(), "usual-mail-0022-"));
   try {
     const source = fileURLToPath(new URL("../migrations", import.meta.url));
@@ -39,6 +39,8 @@ test("adds the kind to threads, empty, and changes nothing else", async () => {
       const was = before.rows[i]!;
       assert.deepEqual(Object.fromEntries(Object.entries(row).filter(([key]) => key in was)), { ...was }, "nothing else changed");
     }
+    const columns = await client.execute("SELECT name FROM pragma_table_info('messages') WHERE name = 'signed_recipients'");
+    assert.equal(columns.rows.length, 1, "messages gained signed_recipients");
     const rows = await drizzle(client, { schema }).select().from(schema.threads).all();
     assert.deepEqual(rows.map((row) => toThread(row).skippedScreening), [undefined, undefined]);
     client.close();

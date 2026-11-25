@@ -27,6 +27,7 @@ const SIGN_IN = {
   text: "Click to sign in: https://quillpad.example/magic/abc",
   automated: true,
   fromCheck: proved("quillpad.example"),
+  signedRecipients: ["to"],
 } satisfies DeliverInput;
 
 /** A stranger's security alert. */
@@ -36,6 +37,7 @@ const ALERT = {
   text: "We noticed a new sign-in from a new device on 25 Nov. Was this you?",
   automated: true,
   fromCheck: proved("lumen-bank.example"),
+  signedRecipients: ["to"],
 } satisfies DeliverInput;
 
 /** A stranger's shipping update. */
@@ -45,6 +47,7 @@ const SHIPPED = {
   text: "Order #112-3456789 is on its way. It costs €42.00.",
   automated: true,
   fromCheck: proved("fernway.example"),
+  signedRecipients: ["to"],
   threadKey: "fernway-order",
 } satisfies DeliverInput;
 
@@ -186,7 +189,10 @@ describe("look-alikes stay screened, in the category the AI gave", () => {
       ["sent to someone else", { ...ALERT, subject: "Bcc", to: [{ email: "victim.list@elsewhere.example" }] }],
       ["a List-Id", { ...ALERT, subject: "Listed", listId: "alerts.lumen-bank.example" }],
       ["a Reply-To elsewhere", { ...ALERT, subject: "Replying elsewhere", replyTo: [{ email: "helper@elsewhere.example" }] }],
-      ["a help desk's tenant", { ...ALERT, subject: "Help desk", from: { email: "support@lumen.zendesk.com" }, fromCheck: proved("lumen.zendesk.com") }],
+      ["a Cc added after signing", { ...ALERT, subject: "Cc added", to: [{ email: "attacker@elsewhere.example" }], cc: [{ email: "me@ai.example" }] }],
+      ["To given twice", { ...ALERT, subject: "Doubled", signedRecipients: [] }],
+      ["a document's mention", { ...ALERT, subject: "Mentioned", from: { email: "comments-noreply@docs.google.com" }, fromCheck: proved("docs.google.com") }],
+      ["a help desk's tenant", { ...ALERT, subject: "Help desk", from: { email: "no_reply_sample@ab--cd.zendesk.com" }, fromCheck: proved("ab--cd.zendesk.com") }],
     ] as Array<[string, DeliverInput]>) {
       const thread = await t.receive(inbox, input);
       assert.deepEqual([thread.screened, thread.skippedScreening], [true, undefined], why);

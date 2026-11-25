@@ -10,11 +10,10 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { SCREENING_PASS_CATEGORIES, skippedScreeningLine, type DecidedCategory, type ScreeningPass } from "@usualmail/core";
 import { SHIPPED_SUFFIXES } from "../src/avatars/shipped.ts";
-import { EVIDENCE, holdsLink } from "../src/ai/gate-evidence.ts";
 import { addressedTo, mailboxKey } from "../src/ai/gate-shape.ts";
 import { askableKinds, gateCheck, type GateContext, type GateMessage } from "../src/ai/gate.ts";
 import { acceptPass, NO_PASS, passRequest } from "../src/ai/pass-prompt.ts";
-import { modelText, readingText } from "../src/ai/text.ts";
+import { BODIES, within } from "./linear.ts";
 
 const SUFFIXES = SHIPPED_SUFFIXES!;
 const INBOX = "me@inbox.example";
@@ -25,7 +24,7 @@ const IMAP: GateContext = { suffixes: SUFFIXES, inbox: { address: INBOX, provide
 function mail(subject: string, text: string, extra: Partial<GateMessage> = {}): GateMessage {
   return {
     subject, text, html: null, automated: true, from: { email: "no-reply@service.example" }, fromVerified: "service.example",
-    to: [{ email: INBOX }], cc: [], replyTo: null, listId: null, ...extra,
+    to: [{ email: INBOX }], cc: [], replyTo: null, listId: null, signedRecipients: ["to"], ...extra,
   };
 }
 
@@ -96,7 +95,7 @@ describe("look-alikes stay screened", () => {
   test("a public mail domain or a shared platform, even proved and machine-sent", () => {
     const webmail = mail("New sign-in", "A new sign-in. Was this you?", { from: { email: "no-reply@yahoo.example" }, fromVerified: "yahoo.example" });
     assert.equal(passes("security", webmail), false, "anyone can sign up to it");
-    const platform = mail("New sign-in", "A new sign-in. Was this you?", { from: { email: "writer@substack.com" }, fromVerified: "substack.com" });
+    const platform = mail("New sign-in", "A new sign-in. Was this you?", { from: { email: "no_such_writer@substack.com" }, fromVerified: "substack.com" });
     assert.equal(passes("security", platform), false, "its customers share its domain");
   });
 
@@ -165,22 +164,48 @@ describe("the shape of mail sent to this person by that organisation alone (ever
     assert.equal(passes("security", { ...ALERT, to: [{ email: "attacker@elsewhere.example" }] }), false);
     assert.equal(passes("security", { ...ALERT, to: [] }), false, "undisclosed recipients");
     assert.equal(passes("code", { ...PASSING.code.message, to: [{ email: "someone@elsewhere.example" }] }), false, "codes too");
-    assert.equal(passes("security", { ...ALERT, to: [{ email: "list@elsewhere.example" }], cc: [{ email: "ME@Inbox.Example" }] }), true, "in Cc, any case");
+    const inCc = { ...ALERT, to: [{ email: "list@elsewhere.example" }], cc: [{ email: "ME@Inbox.Example" }] };
+    assert.equal(passes("security", { ...inCc, signedRecipients: ["to", "cc"] }), true, "in a signed Cc, any case");
+  });
+
+  test("(c) on Gmail, only a field the sender's signature vouches for: a replay with a To or Cc added on top", () => {
+    const added = { ...ALERT, to: [{ email: "attacker@elsewhere.example" }], cc: [{ email: INBOX }], signedRecipients: ["to"] as const };
+    assert.equal(passes("security", added), false, "a Cc added after signing");
+    assert.equal(passes("security", { ...ALERT, signedRecipients: [] }), false, "To given twice: nothing vouched for");
+    assert.equal(passes("security", { ...ALERT, signedRecipients: null }), false, "not read");
+    assert.equal(passes("code", { ...PASSING.code.message, signedRecipients: [] }), false, "codes too");
+    assert.equal(passes("code", { ...PASSING.code.message, fromVerified: null, signedRecipients: null }, IMAP), true, "IMAP reads To and Cc as they are");
   });
 
   test("(c) a +tag is the inbox's own address, and so are dots at gmail.com", () => {
     assert.equal(passes("security", { ...ALERT, to: [{ email: "me+bank@inbox.example" }] }), true);
-    assert.equal(mailboxKey("No.Such.Sample+shop@googlemail.com"), "nosuchsample@gmail.com");
-    assert.equal(mailboxKey("no.such.sample@work.example"), "no.such.sample@work.example", "dots count elsewhere");
-    assert.equal(addressedTo({ to: [{ email: "nosuchsample+x@gmail.com" }], cc: [] }, "no.such.sample@gmail.com"), true);
+    assert.equal(mailboxKey("A.b.C+shop@googlemail.com"), "abc@gmail.com");
+    assert.equal(mailboxKey("a.b.c@work.example"), "a.b.c@work.example", "dots count elsewhere");
+    assert.equal(addressedTo({ to: [{ email: "abc+x@gmail.com" }], cc: [] }, "a.b.c@gmail.com"), true);
     assert.equal(addressedTo({ to: [{ email: "not an address" }], cc: [] }, INBOX), false);
   });
 
   test("(d) a help desk's or a tool's tenant on its platform", () => {
-    for (const domain of ["acme.zendesk.com", "acme.atlassian.net", "help.acme.freshdesk.com"]) {
-      const desk = mail("New sign-in to your account", "A new sign-in. Was this you?", { from: { email: `support@${domain}` }, fromVerified: domain });
+    for (const platform of ["zendesk.com", "atlassian.net", "freshdesk.com", "helpscoutapp.com", "service-now.com", "intercom-mail.com", "my.salesforce.com", "gitbook.io", "notion.site"]) {
+      // "ab--cd" is a reserved DNS label (RFC 5891), so no tenant has it.
+      const domain = `ab--cd.${platform}`;
+      const desk = mail("New sign-in to your account", "A new sign-in. Was this you?", { from: { email: `no_reply_sample@${domain}` }, fromVerified: domain });
       assert.equal(passes("security", desk), false, domain);
     }
+  });
+
+  test("(e) notifiers whose mail carries their users' words, sent to the person, no Reply-To", () => {
+    const notice = (email: string, kind: ScreeningPass, subject: string, text: string) => {
+      const domain = email.split("@")[1]!;
+      return passes(kind, mail(subject, text, { from: { email }, fromVerified: domain }));
+    };
+    assert.equal(notice("comments-noreply@docs.google.com", "security", "Sam mentioned you", "Security alert: suspicious activity, was this you?"), false, "a document's mention");
+    assert.equal(notice("drive-shares-dm-noreply@google.com", "account", "Sam shared a file", "Reset your password here: https://x.example/r"), false, "a file shared");
+    assert.equal(notice("calendar-notification@google.com", "booking", "Booking confirmed: call 555 0100", "Your booking is on 3 Dec at 10:30."), false, "an event someone titled");
+    assert.equal(notice("service@paypal.com", "payment", "Sam requested €450.00", "Payment request: €450.00, rent."), false, "a money request");
+    assert.equal(notice("service@intl.paypal.com", "security", "New sign-in", "A new sign-in. Was this you?"), false, "the same address's alerts too");
+    assert.equal(notice("receipts+abc@stripe.com", "order", "Receipt from Sam's shop", "Order #112-3456789: €42.00. Call 555 0100."), false, "a payment service's receipt");
+    assert.equal(notice("no-reply@accounts.google.com", "security", "Security alert", "A new sign-in on Linux. Was this you?"), true, "the provider's own account alerts still pass");
   });
 
   test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {
@@ -249,29 +274,10 @@ describe("the question", () => {
 });
 
 describe("in linear time on a 1 MB body (the check runs under the server's lock)", () => {
-  const MB = 1024 * 1024;
-  const BODIES: Record<string, string> = {
-    "card and stars": `card ${"*".repeat(MB)}`,
-    "order and hyphens": `order ${"-".repeat(MB)}`,
-    "angle brackets": "<".repeat(MB),
-    "unclosed style blocks": "<style ".repeat(MB / 7),
-    "an href and spaces": `href=${" ".repeat(MB)}`,
-    "a link and parentheses": `https://x.example/${")".repeat(MB)}a`,
-    "spaced digits": `1 ${"111 ".repeat(MB / 4)}`,
-    "reference words": "order A1234 ".repeat(MB / 12),
-    "markdown brackets": "[".repeat(MB),
-  };
-  for (const [name, body] of Object.entries(BODIES)) {
-    test(name, () => {
-      const started = performance.now();
-      const check = gateCheck(mail("Order update", body, { html: body }), GMAIL);
-      for (const kind of ["code", ...askableKinds("notification")] as const) check.mayPass(kind);
-      for (const evidence of Object.values(EVIDENCE)) evidence({ words: body, link: true });
-      holdsLink(body, body);
-      modelText(body, null);
-      modelText(null, body);
-      readingText(null, body);
-      const took = performance.now() - started;
+  // Each in a worker that is stopped at 10 seconds, so a slow pattern fails rather than hangs the suite (test/linear.ts).
+  for (const name of Object.keys(BODIES)) {
+    test(name, { timeout: 15_000 }, async () => {
+      const took = await within(10_000, "gate", name);
       assert.ok(took < 3_000, `${name}: ${took.toFixed(0)} ms`);
     });
   }
