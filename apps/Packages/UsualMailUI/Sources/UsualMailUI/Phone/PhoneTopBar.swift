@@ -1,5 +1,6 @@
 #if os(iOS)
     import SwiftUI
+    import UsualMailDesign
     import UsualMailKit
 
     /// The iPhone's top row, over the wallpaper (the owner's concept of 2026-11-20): search on the left, the switcher in
@@ -66,7 +67,9 @@
                 Section {
                     profile(nil, icon: .allInboxes, name: PhoneSwitch.allInboxes, address: nil)
                     ForEach(inboxes) { inbox in
-                        profile(inbox.id, icon: Icon(inbox.icon), name: inbox.name, address: inbox.address)
+                        profile(
+                            inbox.id, icon: Icon(inbox.icon), name: inbox.name, address: inbox.address,
+                            stopped: SyncWarning.stopped(inbox))
                     }
                 }
                 Section {
@@ -87,39 +90,59 @@
                     }
                 }
             } label: {
-                SwitcherLabel(label: label)
+                SwitcherLabel(label: label, warns: PhoneSwitch.warning(inboxes: inboxes) != nil)
             }
             .menuOrder(.fixed)
             .buttonStyle(.plain)
             .accessibilityLabel("Showing \(label.title)")
+            .accessibilityValue(PhoneSwitch.warning(inboxes: inboxes) ?? "")
             .accessibilityHint("Chooses an inbox or a list.")
         }
 
         /// A profile's row: the mail stack on it, from any stack, at the page the mail stack last had. An inbox whose
-        /// name isn't its address shows the address under it. Both are cut to one line (`PhoneSwitch.menuTitle`).
-        private func profile(_ id: String?, icon: Icon, name: String, address: String?) -> some View {
-            row(icon: icon, chosen: nav.profileMark.marks(id)) {
-                chooseProfile(id)
-            } title: {
-                Text(verbatim: PhoneSwitch.menuTitle(name))
-                if let address, !address.isEmpty, address != name {
-                    Text(verbatim: PhoneSwitch.menuTitle(address))
+        /// name isn't its address shows the address under it. Both are cut to one line (`PhoneSwitch.menuTitle`). An
+        /// inbox that stopped syncing has the warning triangle for its icon and "Stopped syncing" under its name
+        /// (`SyncWarning`).
+        private func profile(
+            _ id: String?, icon: Icon, name: String, address: String?, stopped: Bool = false
+        ) -> some View {
+            Group {
+                if let subtitle = PhoneSwitch.menuSubtitle(name: name, address: address, stopped: stopped) {
+                    row(icon: icon, chosen: nav.profileMark.marks(id), warns: stopped) {
+                        chooseProfile(id)
+                    } title: {
+                        Text(verbatim: PhoneSwitch.menuTitle(name))
+                        Text(verbatim: PhoneSwitch.menuTitle(subtitle))
+                    }
+                } else {
+                    row(icon: icon, chosen: nav.profileMark.marks(id), warns: stopped) {
+                        chooseProfile(id)
+                    } title: {
+                        Text(verbatim: PhoneSwitch.menuTitle(name))
+                    }
                 }
             }
-            .accessibilityLabel(Text(verbatim: name))
+            .accessibilityLabel(Text(verbatim: stopped ? "\(name), \(SyncWarning.words.lowercased())" : name))
         }
 
         /// One row of the menu: a plain button, so the system keeps no column for ticks, whose icon is a tick while
-        /// it is what shows (owner's words of 2026-11-24: "change the selected icon to [a] check mark"). Every icon is
-        /// drawn into the same box (`Icon.menuImage`), since the design package's are drawn larger than the app's.
+        /// it is what shows (owner's words of 2026-11-24: "change the selected icon to [a] check mark"), else the
+        /// warning triangle for an inbox that stopped syncing. Every icon is drawn into the same box (`Icon.menuImage`),
+        /// since the design package's are drawn larger than the app's. The texts and the picture are the button's own
+        /// label, not a `Label`'s: from a `Label` the system's menu took the first text only, so no line ever showed
+        /// under a name (seen 2026-11-25).
         private func row<Title: View>(
-            icon: Icon, chosen: Bool, action: @escaping () -> Void, @ViewBuilder title: () -> Title
+            icon: Icon, chosen: Bool, warns: Bool = false, action: @escaping () -> Void,
+            @ViewBuilder title: () -> Title
         ) -> some View {
             Button(action: action) {
-                Label {
-                    title()
-                } icon: {
-                    if chosen { Image(systemName: "checkmark") } else { icon.menuImage }
+                title()
+                if chosen {
+                    Image(systemName: "checkmark")
+                } else if warns {
+                    Icon.warningMenuImage
+                } else {
+                    icon.menuImage
                 }
             }
             .accessibilityAddTraits(chosen ? .isSelected : [])
@@ -141,11 +164,23 @@
             }
             return Image(uiImage: drawn.withRenderingMode(.alwaysTemplate))
         }
+
+        /// The warning triangle for the menu, in the danger colour: drawn as it is, since the menu tints templates.
+        static var warningMenuImage: Image {
+            let configuration = UIImage.SymbolConfiguration(pointSize: 14, weight: .semibold)
+            guard let triangle = UIImage(systemName: SyncWarning.symbol, withConfiguration: configuration) else {
+                return Image(systemName: SyncWarning.symbol)
+            }
+            return Image(uiImage: triangle.withTintColor(UIColor(UsualColor.danger), renderingMode: .alwaysOriginal))
+        }
     }
 
-    /// The switcher's capsule: the icon and name of what shows, and a chevron, in the wallpaper's tone under it.
+    /// The switcher's capsule: the icon and name of what shows, and a chevron, in the wallpaper's tone under it. While
+    /// an inbox has stopped syncing (`warns`), the warning triangle before the chevron, so the menu says it without
+    /// being opened.
     private struct SwitcherLabel: View {
         let label: PhoneSwitch
+        var warns = false
         @Environment(\.railWindow) private var window
         @State private var frame: CGRect = .zero
 
@@ -161,6 +196,10 @@
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .contentTransition(.opacity)
+                if warns {
+                    SyncWarningMark(size: 11)
+                        .transition(.blurReveal)
+                }
                 Icon.expand.view(tint: tint ?? Theme.icon)
             }
             .padding(.horizontal, 14)
@@ -172,6 +211,7 @@
             }
             .animation(Motion.reveal, value: tint == nil)
             .animation(Motion.move, value: label)
+            .animation(Motion.reveal, value: warns)
         }
     }
 #endif

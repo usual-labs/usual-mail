@@ -176,7 +176,13 @@
         private var content: some View {
             Pages(
                 session: session, nav: nav, feed: feed, expandedGroups: $expandedGroups, kept: kept, search: search,
-                searchFocus: searchFocus, read: read, leaveSearch: leaveSearch, openAISettings: openAISettings)
+                searchFocus: searchFocus, read: read, leaveSearch: leaveSearch, openAISettings: openAISettings,
+                fixSync: fixSync)
+        }
+
+        /// The sync notice's button: Settings' Accounts tab, signing a Gmail inbox in again at once.
+        private func fixSync(_ action: SyncNotice.Action) {
+            withAnimation(Motion.move) { nav.fixSync(action) }
         }
     }
 #endif

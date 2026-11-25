@@ -192,24 +192,28 @@
             .glassEffect(.clear, in: Self.pillShape)
         }
 
-        /// Each inbox in the order given (`position`), by its id, so one that changes keeps its button.
+        /// Each inbox in the order given (`position`), by its id, so one that changes keeps its button. One that stopped
+        /// syncing carries the warning triangle (`SyncWarning`).
         private var inboxRows: some View {
             ForEach(inboxes) { inbox in
-                profile(inbox.id, icon: Icon(inbox.icon), name: inbox.name)
+                profile(inbox.id, icon: Icon(inbox.icon), name: inbox.name, stopped: SyncWarning.stopped(inbox))
             }
         }
 
-        /// A profile: the mail stack on it, from any stack, at the page the mail stack last had.
-        private func profile(_ id: String?, icon: Icon, name: String) -> some View {
+        /// A profile: the mail stack on it, from any stack, at the page the mail stack last had. Stopped syncing, its
+        /// tooltip and VoiceOver say so too.
+        private func profile(_ id: String?, icon: Icon, name: String, stopped: Bool = false) -> some View {
             let selected = mark.marks(id)
+            let tip = stopped ? "\(name): \(SyncWarning.words.lowercased())" : name
             return Button {
                 chooseProfile(id)
             } label: {
-                ProfileIcon(icon: icon, selected: selected, name: name)
+                ProfileIcon(icon: icon, selected: selected, name: name, stopped: stopped)
             }
             .buttonStyle(PlainControlStyle())
-            .tooltip(look.isOpen ? nil : name, edge: .trailing)
+            .tooltip(look.isOpen ? nil : tip, edge: .trailing)
             .accessibilityLabel(name)
+            .accessibilityValue(stopped ? SyncWarning.words : "")
             .accessibilityAddTraits(selected ? .isSelected : [])
         }
     }
@@ -217,27 +221,42 @@
     /// A profile in the switch: its icon, faint until picked and half-way up under the pointer, and its name beside it
     /// while the rail is open (`RailLabel`), as faint. Picked, the inbox's icon is at full strength, as is the circle for
     /// every inbox, which also takes a dot (`Rail.allInboxesIcon`). The plus draws the same way, never picked. The row
-    /// widens with the rail, cutting the name off while narrow.
+    /// widens with the rail, cutting the name off while narrow. An inbox that stopped syncing carries the warning
+    /// triangle at its icon's top right, at full strength whether picked or not.
     struct ProfileIcon: View {
         let icon: Icon
         let selected: Bool
         let name: String
+        var stopped = false
         @Environment(\.isControlHovered) private var hovered
         @Environment(\.railLook) private var look
 
+        /// The triangle's size, and how far its centre sits right of and above the icon's.
+        static let warningSize: CGFloat = 9
+        static let warningOffset = CGSize(width: 7, height: -6)
+
         var body: some View {
             ZStack(alignment: .leading) {
-                // The circle picked or not: the new drawing crossfades with the old.
-                RailIcon(icon: icon)
-                    .frame(width: RailFit.button, height: RailFit.row)
-                    .id(icon)
-                    .transition(.opacity)
-                RailLabel(title: name)
+                ZStack(alignment: .leading) {
+                    // The circle picked or not: the new drawing crossfades with the old.
+                    RailIcon(icon: icon)
+                        .frame(width: RailFit.button, height: RailFit.row)
+                        .id(icon)
+                        .transition(.opacity)
+                    RailLabel(title: name)
+                }
+                .opacity(selected ? 1 : (hovered ? 0.75 : 0.45))
+                if stopped {
+                    SyncWarningMark(size: Self.warningSize)
+                        .offset(Self.warningOffset)
+                        .frame(width: RailFit.button, height: RailFit.row)
+                        .transition(.blurReveal)
+                }
             }
-            .opacity(selected ? 1 : (hovered ? 0.75 : 0.45))
             .frame(width: look.width, height: RailFit.row, alignment: .leading)
             .clipped()
             .contentShape(Rectangle())
+            .animation(Motion.reveal, value: stopped)
         }
     }
 #endif

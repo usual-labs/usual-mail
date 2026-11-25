@@ -45,6 +45,22 @@ struct PhoneSwitch: Equatable {
         return String(text.prefix(head)) + "…" + String(text.suffix(kept - head))
     }
 
+    /// The line under an inbox's name in the menu: "Stopped syncing" for one that stopped (`SyncWarning`), else its
+    /// address when that isn't its name; nil for neither.
+    static func menuSubtitle(name: String, address: String?, stopped: Bool) -> String? {
+        if stopped { return SyncWarning.words }
+        guard let address, !address.isEmpty, address != name else { return nil }
+        return address
+    }
+
+    /// What the switcher's capsule says while any inbox has stopped syncing, which its triangle shows: "Personal
+    /// stopped syncing", "2 inboxes stopped syncing"; nil while none has.
+    static func warning(inboxes: [Inbox]) -> String? {
+        let stopped = inboxes.filter(SyncWarning.stopped)
+        guard let first = stopped.first else { return nil }
+        return stopped.count == 1 ? "\(first.name) stopped syncing" : "\(stopped.count) inboxes stopped syncing"
+    }
+
     /// Whether the menu ticks `page`: the stack showing, under search too.
     static func ticks(_ page: Place, nav: Navigation) -> Bool {
         nav.stackPlace == page

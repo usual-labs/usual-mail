@@ -3,6 +3,11 @@
 Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps themselves are described in
 [apps.md](apps.md); `apps/scripts/check.sh` runs them all.
 
+- `SyncWarningTests` (UI, 2026-11-25): only `needs_attention` warns; the notice on every list with the inbox's
+  mail and not on Settings, search or an open mail; its words for one inbox (the server's, or a line of its own when
+  there are none), two and three; Gmail's "Sign in again" and the others' "Open Accounts"; `Navigation.accountsSignIn`
+  set by the button and dropped by another tab, stack, search or profile; the iPhone menu's line under the name and
+  the capsule's words.
 - `FirstSyncProgressTests` (Kit, 2026-11-23): `Inbox.firstSync` decoded, written back and brought by `inbox.changed`;
   core's words ("1,200 of 3,400"); fetching while `connecting` or a first sync still running, not while paused or
   needing the person; several inboxes add up those that have a count (one connecting without one, just resumed or
@@ -84,3 +89,13 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
   `FittedLayout`'s heights and the edges' fades. `GoogleClientSetupViewTests` also checks the file note's words and
   that its colour reads at more than 3.5:1 on the card (the old one under 2.5). `GoogleSignInTests` and
   `AnotherGmailTests` expect `.needsClient` for a server without a client.
+
+## Earlier check runs
+
+**Checks run 2026-11-17 on this Mac, on the fifth revision:** `apps/scripts/check.sh` exited 0: lint clean,
+`UsualMailKit` 252 tests in 46 suites (`FifthRevisionModelTests`, `FifthRevisionStoreTests` new; every test that used
+piles, triage, `move` or `/v1/now` rewritten; the stand-in server split into `SampleServer` and
+`SampleServer+Views`; `SenderTests` and the fresh-copy pairing test after the amendment: 256 in 47; with
+`GoogleSignInModelTests` and `GoogleSignInFlowTests`, 266 in 49 on 2026-11-17 evening) and `UsualMailUI` 48 in 10
+(`ExplanationTests`, `MotionTests`, `MailPageTests`, `TopBarTests`, `ScreeningTests` new) passed, the unsigned Mac
+build succeeded with no warnings (`LocalStore.state` now asks for a `Sendable` value, which quietened the last one).

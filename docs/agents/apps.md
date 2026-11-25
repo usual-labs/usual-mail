@@ -293,6 +293,17 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   copy of the wallpaper and works out which part lies under the words in a window of that size; above 0.55 counts as
   light), with a faint shadow of the other colour. They come in a blur reveal and leave when nothing is happening;
   AI problems stay in Home's note.
+- **An inbox that stopped syncing** (`Shell/SyncWarning.swift`, owner's words of 2026-11-25: "lets show a warning to
+  user if an account stopped syncing, in the menu show a warning icon next to that inbox"): status `needs_attention`
+  only; paused and connecting don't warn. The switch carries a red triangle (`exclamationmark.triangle.fill`,
+  `UsualColor.danger`) at the inbox icon's top right, at full strength while the icon is faint; its tooltip and
+  VoiceOver say "stopped syncing". Over every list that shows its mail (the mail stack on that inbox or every inbox;
+  To reply, Pinned, Snoozed and the Inbox page), not on Settings, search or an open mail, a notice tops the card
+  (`Pages`, fixed while the list scrolls): "Personal stopped syncing.", the server's `statusDetail`, and the dark
+  button. A Gmail inbox's is "Sign in again": Settings' Accounts tab, its Google sign-in started at once
+  (`Navigation.accountsSignIn`, dropped on leaving); others' "Open Accounts". Two inboxes are named, more counted,
+  with "Open Accounts". Seen on the sample in a preview copy (`labs.usual.preview`) on 2026-11-25; Gmail's button
+  not run (the sample's stopped inbox is IMAP). `SyncWarningTests`.
 - **The first run** (the onboarding session's `Onboarding/`, described in [apps-onboarding.md](apps-onboarding.md)):
   `MailWindow` shows `OnboardingView(session:)` over the whole window, with no rail or tabs, while
   `Onboarding.isNeeded(store)`: once the server has answered, while it has no inbox, no AI key, or this Mac hasn't
@@ -307,7 +318,7 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   title; group titles, rows and one quiet line where needed; one file per tab, `SettingsView.swift` a small shell.
   - **Accounts** (`AccountsTab.swift`): the inboxes, each with its icon picker (`InboxIconPicker.swift`, the contract's
     fourteen icons; a save waits for the server, a refusal shows in red), name, address, state ("Needs you" and the
-    reason in red; while a first sync runs, core's "Fetching your mail · 120 of 340", `InboxWords.status`) and, for
+    reason in red, and the notice over the lists, above; while a first sync runs, core's "Fetching your mail · 120 of 340", `InboxWords.status`) and, for
     Gmail, "Sign in with Google again…"; "Add a Gmail account…" (the shared sheet,
     `Shell/AddGmail.swift`); the paired server, its password (`ServerPassword.swift`, 2026-11-24: "Password set …" or
     "No password yet", and "Set a password…"/"Change the password…" opening two secure fields inline, saved with
@@ -419,13 +430,7 @@ owner's own server when a capture is done.
 In zsh, pass each launch option as its own words; a variable holding `-UsualMailSample YES` arrives as one argument
 and the app then shows pairing. The app's data lives in its container, `~/Library/Containers/labs.usual.UsualMail`.
 
-**Checks run 2026-11-17 on this Mac, on the fifth revision:** `apps/scripts/check.sh` exited 0: lint clean,
-`UsualMailKit` 252 tests in 46 suites (`FifthRevisionModelTests`, `FifthRevisionStoreTests` new; every test that used
-piles, triage, `move` or `/v1/now` rewritten; the stand-in server split into `SampleServer` and
-`SampleServer+Views`; `SenderTests` and the fresh-copy pairing test after the amendment: 256 in 47; with
-`GoogleSignInModelTests` and `GoogleSignInFlowTests`, 266 in 49 on 2026-11-17 evening) and `UsualMailUI` 48 in 10
-(`ExplanationTests`, `MotionTests`, `MailPageTests`, `TopBarTests`, `ScreeningTests` new) passed, the unsigned Mac
-build succeeded with no warnings (`LocalStore.state` now asks for a `Sendable` value, which quietened the last one).
+Earlier check runs are in [apps-tests.md](apps-tests.md).
 
 ## Structure
 

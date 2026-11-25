@@ -11,6 +11,8 @@ struct SettingsView: View {
     /// The active profile, which the Blocked tab follows: nil, every inbox, as Settings is a stack of its own that no
     /// profile scopes.
     let inboxId: String?
+    /// The Gmail inbox the Accounts tab signs in with Google again as it opens (`Navigation.accountsSignIn`).
+    var accountsSignIn: String? = nil
 
     var body: some View {
         ScrollView {
@@ -28,7 +30,7 @@ struct SettingsView: View {
 
     @ViewBuilder private var page: some View {
         switch tab {
-        case .accounts: AccountsTab(session: session)
+        case .accounts: AccountsTab(session: session, signingIn: accountsSignIn)
         case .ai: AITab()
         case .appearance: AppearanceTab()
         case .blocked: BlockedTab(inboxId: inboxId)

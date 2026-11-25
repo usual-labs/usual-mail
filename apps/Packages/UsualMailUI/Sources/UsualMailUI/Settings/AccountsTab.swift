@@ -4,7 +4,8 @@ import UsualMailKit
 
 /// Settings' Accounts tab: the inboxes (each with its icon, `InboxIconPicker`, and for Gmail signing in with Google
 /// again), "Add a Gmail account…" (the rail's plus's sheet, `AddGmailSheet`), then the server this Mac is paired with,
-/// its password (`ServerPassword`) and, at the foot, disconnecting from it.
+/// its password (`ServerPassword`) and, at the foot, disconnecting from it. Opened from the notice on an inbox that
+/// stopped syncing (`SyncNotice`), it signs that Gmail inbox in with Google again at once.
 struct AccountsTab: View {
     let session: AppSession
     @Environment(MailStore.self) private var store
@@ -13,6 +14,12 @@ struct AccountsTab: View {
     @State private var addingGmail = false
     /// The Gmail inbox being signed in with Google again.
     @State private var signingIn: String?
+
+    /// `signingIn`: the Gmail inbox to sign in with Google again as the tab opens (`Navigation.accountsSignIn`).
+    init(session: AppSession, signingIn: String? = nil) {
+        self.session = session
+        _signingIn = State(initialValue: signingIn)
+    }
 
     var body: some View {
         SettingsView.page {

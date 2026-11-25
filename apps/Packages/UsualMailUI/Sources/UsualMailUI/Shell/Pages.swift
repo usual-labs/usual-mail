@@ -4,6 +4,8 @@ import UsualMailKit
 /// The card's content for where the window is (`Navigation.place`), on the Mac and the iPhone alike: the page of the
 /// stack showing, search over it, or the mail open in either. Outside the mail stack no profile is active
 /// (`Navigation.activeProfile`): To reply, Pinned, Snoozed, the Inbox page and search over them take every inbox.
+/// Over a list that shows mail of an inbox that stopped syncing, the notice that says so (`SyncNotice`), which stays
+/// put while the list scrolls.
 struct Pages: View {
     let session: AppSession
     let nav: Navigation
@@ -23,9 +25,26 @@ struct Pages: View {
     let leaveSearch: () -> Void
     /// Search's offer when asking needs the AI set up.
     let openAISettings: () -> Void
+    /// The sync notice's button (`SyncNotice.Action`).
+    let fixSync: (SyncNotice.Action) -> Void
     @Environment(MailStore.self) private var store
 
     var body: some View {
+        let notice = SyncNotice.notice(for: SyncWarning.shown(nav: nav, inboxes: store.lists.inboxes))
+        VStack(spacing: 0) {
+            if let notice {
+                SyncNoticeView(notice: notice, act: fixSync)
+                    .padding(.horizontal, Theme.page.leading)
+                    .padding(.top, 16)
+                    .transition(.blurReveal)
+            }
+            page
+                .frame(maxHeight: .infinity, alignment: .top)
+        }
+        .animation(Motion.move, value: notice)
+    }
+
+    @ViewBuilder private var page: some View {
         let inboxId = nav.activeProfile
         switch nav.place {
         case .tab(.home):
@@ -98,8 +117,10 @@ struct Pages: View {
                     .transition(.handOver)
             }
         case .settings:
-            SettingsView(session: session, tab: nav.settingsTab, inboxId: inboxId)
-                .transition(.handOver)
+            SettingsView(
+                session: session, tab: nav.settingsTab, inboxId: inboxId, accountsSignIn: nav.accountsSignIn
+            )
+            .transition(.handOver)
         case .search:
             if let reading = nav.reading {
                 ReadingView(threadID: reading)

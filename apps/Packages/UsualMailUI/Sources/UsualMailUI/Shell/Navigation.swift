@@ -50,8 +50,14 @@ struct Navigation: Equatable, Sendable {
     }
     /// The mail stack's profile: one inbox, or nil for every inbox. It scopes only the mail stack (`activeProfile`).
     private(set) var profile: String?
-    /// Settings' tab: Accounts at first, then the last one chosen, while the app runs.
-    var settingsTab = SettingsTab.accounts
+    /// Settings' tab: Accounts at first, then the last one chosen, while the app runs. Another tab drops
+    /// `accountsSignIn`.
+    var settingsTab = SettingsTab.accounts {
+        didSet { if settingsTab != oldValue { accountsSignIn = nil } }
+    }
+    /// The Gmail inbox Settings' Accounts tab signs in with Google again as it opens: the sync notice's "Sign in again"
+    /// (`SyncNotice`). Going anywhere else drops it, so coming back to Accounts later starts nothing.
+    private(set) var accountsSignIn: String?
     /// The mail open in each stack. Settings holds none.
     private var openMail: [Destination: String] = [:]
     /// Search, while it shows over the stack.
@@ -129,6 +135,7 @@ struct Navigation: Equatable, Sendable {
     /// Goes to a stack as it was left, leaving search.
     mutating func go(to destination: Destination) {
         search = nil
+        accountsSignIn = nil
         self.destination = destination
     }
 
@@ -136,6 +143,7 @@ struct Navigation: Equatable, Sendable {
     /// there; search stays, now in that profile, back at its results when its scope changed.
     mutating func choose(profile id: String?) {
         let scope = activeProfile
+        accountsSignIn = nil
         if id != profile {
             profile = id
             openMail[.mail] = nil
@@ -146,6 +154,7 @@ struct Navigation: Equatable, Sendable {
 
     /// ⌘K and the magnifier: search over the stack, at its results; from a mail read from them, back to them.
     mutating func openSearch() {
+        accountsSignIn = nil
         if search == nil {
             search = SearchOver()
         } else {
@@ -162,6 +171,21 @@ struct Navigation: Equatable, Sendable {
     mutating func openSettings(_ tab: SettingsTab) {
         settingsTab = tab
         go(to: .settings)
+    }
+
+    /// Settings' Accounts tab, from the notice on an inbox that stopped syncing; with `signingIn`, that Gmail inbox
+    /// signing in with Google again at once.
+    mutating func openAccounts(signingIn inboxId: String? = nil) {
+        openSettings(.accounts)
+        accountsSignIn = inboxId
+    }
+
+    /// The sync notice's button (`SyncNotice.Action`).
+    mutating func fixSync(_ action: SyncNotice.Action) {
+        switch action {
+        case .signIn(let inboxId): openAccounts(signingIn: inboxId)
+        case .openAccounts: openAccounts()
+        }
     }
 
     /// Opens a thread in the card: in search, or in the stack. Settings has no mail.

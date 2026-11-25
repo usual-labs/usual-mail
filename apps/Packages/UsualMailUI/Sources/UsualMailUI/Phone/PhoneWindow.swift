@@ -74,7 +74,7 @@
                         Pages(
                             session: session, nav: nav, feed: feed, expandedGroups: $expandedGroups, kept: kept,
                             search: search, searchFocus: searchFocus, read: read, leaveSearch: leaveSearch,
-                            openAISettings: openAISettings)
+                            openAISettings: openAISettings, fixSync: fixSync)
                     }
                 }
                 // At the card's foot, over it: the lists scroll under the row and end above it.
@@ -114,6 +114,11 @@
         /// Search's offer when asking needs the AI set up: the Settings stack on its AI tab.
         private func openAISettings() {
             withAnimation(Motion.move) { nav.openSettings(.ai) }
+        }
+
+        /// The sync notice's button: Settings' Accounts tab, signing a Gmail inbox in again at once.
+        private func fixSync(_ action: SyncNotice.Action) {
+            withAnimation(Motion.move) { nav.fixSync(action) }
         }
 
         /// The mail page's back: back to the list; search's capsule: the stack as it was.
