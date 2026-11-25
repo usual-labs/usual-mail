@@ -208,9 +208,9 @@ describe("the shape of mail sent to this person by that organisation alone (ever
     assert.equal(notice("no-reply@google.com", "security", "Security alert", "A new sign-in. Was this you?"), false, "any other Google notifier");
     assert.equal(notice("no-reply@groups.google.com", "account", "Your plan changed", "Your plan has changed."), false, "a Google subdomain's");
     assert.equal(notice("no-reply@teams.microsoft.com", "security", "New sign-in", "A new sign-in. Was this you?"), false, "a Microsoft product's");
-    // The allow list: the account-security senders their help pages name.
-    assert.equal(notice("no-reply@accounts.google.com", "security", "Security alert", "A new sign-in on Linux. Was this you?"), true, "Google's account alerts still pass");
-    assert.equal(notice("account-security-noreply@accountprotection.microsoft.com", "security", "Unusual sign-in activity", "We detected unusual sign-in activity. Was this you?"), true, "Microsoft's account team's too");
+    assert.equal(notice("no-reply@security.google.com", "security", "Security alert", "A new sign-in. Was this you?"), false, "Google's own alerts wait too");
+    // The allow list: Microsoft's account team, as Microsoft names it.
+    assert.equal(notice("account-security-noreply@accountprotection.microsoft.com", "security", "Unusual sign-in activity", "We detected unusual sign-in activity. Was this you?"), true, "Microsoft's account team's alerts pass");
   });
 
   test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {

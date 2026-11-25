@@ -41,20 +41,18 @@ export const TENANT_PLATFORMS: readonly string[] = [
 /**
  * Carriers by domain: every address at it or under it. Google's and Microsoft's whole domains, since each product there
  * sends its own notices (a document's comments, a file shared, a calendar event, a form's answers, a team's chat) under
- * one proof, and only their account-security senders (`ACCOUNT_SECURITY`) are let past (the final security review of
- * 2026-11-25).
+ * one proof (the final security reviews of 2026-11-25). Google's own account alerts included: a genuine, signed alert
+ * from its accounts sender can carry an app name an attacker typed (Kaspersky, "DKIM replay attack through Google
+ * OAuth", https://www.kaspersky.com/blog/dkim-replay-attack-through-google-oauth/53392), so they wait in Screening.
  */
 const CARRIER_DOMAINS: readonly string[] = [
   "google.com", "microsoft.com", "stripe.com", "venmo.com", "square.com", "squareup.com", "sharepointonline.com",
 ];
 /**
- * The account-security senders of those domains, which carry nobody else's words: Google's ("no-reply@accounts.google.com")
- * and Microsoft's account team ("account-security-noreply@accountprotection.microsoft.com"), as their help pages name
- * them (not read again here: docs/agents/known-issues.md).
+ * The one account-security sender let past those domains: Microsoft's account team, which Microsoft names as the sender
+ * of its account security mail (https://support.microsoft.com/en-us/help/13967, checked by the final security review).
  */
-const ACCOUNT_SECURITY: ReadonlySet<string> = new Set([
-  "no-reply@accounts.google.com", "account-security-noreply@accountprotection.microsoft.com",
-]);
+const ACCOUNT_SECURITY: ReadonlySet<string> = new Set(["account-security-noreply@accountprotection.microsoft.com"]);
 /** Carriers by name: every registrable domain whose first label it is (paypal.com, paypal.de, paypal.co.uk). */
 const CARRIER_NAMES: ReadonlySet<string> = new Set(["paypal"]);
 
