@@ -136,7 +136,7 @@ Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; d
   uploading. It needs `DEVELOPMENT_TEAM`, Xcode signed in to that team, and an App Store Connect record for the bundle
   ID. The archive is signed automatically whatever `Config/Local.xcconfig` pins for the Mac's Debug builds.
 - **The icon** (`AppPhone/Assets.xcassets/AppIcon.appiconset`, `ASSETCATALOG_COMPILER_APPICON_NAME` in
-  `Phone.xcconfig`): the tree on its hill, as the website's icons, a 720-pixel square of the wallpaper at 1024
+  `Shared.xcconfig`): the tree on its hill, as the website's icons, a 720-pixel square of the wallpaper at 1024
   (`apps/scripts/make-app-icon.sh`, ImageMagick 7). The wallpaper is a free Unsplash photo under
   the Unsplash License (settled 2026-11-24, [decisions-licence.md](decisions-licence.md)).
 - **The privacy manifest** (`AppPhone/PrivacyInfo.xcprivacy`): no tracking, nothing collected, and `UserDefaults`
@@ -145,8 +145,16 @@ Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; d
   export compliance.
 - Done once, at the owner's "submit for testflight": `--check` exported a signed 0.1.0 (a 10 MB package with the
   icon and both manifests), then the upload was accepted ("Upload succeeded") and App Store Connect showed the build
-  processing. Not yet seen as ready, installed or run from TestFlight. The maintainer's record of it is in the
-  workspace's private notes.
+  processing. The maintainer's record of it is in the workspace's private notes. On 2026-11-25 it was seen
+  installed from TestFlight on the owner's Mac, where macOS runs an iPhone-only app in a phone-sized window
+  (288 × 545 points, which the app can't widen): the owner found onboarding there too narrow.
+- **The Mac app** (2026-11-25, the owner's choice): the same record, since both targets share the bundle ID, so a
+  Mac given a Mac build installs that instead. `testflight.sh --mac` archives the `UsualMail` scheme for
+  `generic/platform=macOS`. The Mac app got the iPhone's icon (`App/Assets.xcassets`, every Mac size from the same
+  square, full-bleed: macOS 26 rounds it, as Finder showed) and its privacy manifest (`App/PrivacyInfo.xcprivacy`).
+  `--mac --check` exported a signed 0.1.0 (a 19 MB `.pkg`, Apple silicon and Intel, sandboxed, Apple Distribution),
+  and the upload of build 202611251025 was accepted ("Upload succeeded", processing) without the macOS platform
+  having been added to the record by hand. Not yet seen ready or installed from TestFlight.
 
 ## How to check
 

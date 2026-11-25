@@ -20,6 +20,8 @@ SWIFT_VERSION = 6.0
 GENERATE_INFOPLIST_FILE = YES
 INFOPLIST_FILE = Config/Info.plist
 INFOPLIST_KEY_LSApplicationCategoryType = public.app-category.productivity
+// The tree on its hill (App/Assets.xcassets for the Mac, AppPhone/'s for the iPhone; scripts/make-app-icon.sh).
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
 // macOS asks before the app reaches a server on the home network.
 INFOPLIST_KEY_NSLocalNetworkUsageDescription = Usual Mail connects to your own mail server on your network.
 

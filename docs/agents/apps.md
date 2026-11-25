@@ -432,12 +432,12 @@ build succeeded with no warnings (`LocalStore.state` now asks for a `Sendable` v
 ```
 apps/
   UsualMail.xcodeproj     hand-written; App is a synchronized group; both packages are local
-  App/, AppPhone/         the Mac's @main app, the iPhone's
+  App/, AppPhone/         the Mac's @main app, the iPhone's; each with its icon and privacy manifest
   Config/                 xcconfigs (Phone.xcconfig: the iPhone's), Info.plist (ATS), Mac entitlements
   Packages/UsualMailKit/  Models/ API/ Events/ Storage/ Store/ Pairing/ Sample/ Resources/sample.json
   Packages/UsualMailUI/   Theme/ Pieces/ Shell/ Phone/ Home/ Reading/ Screening/ Lists/ Onboarding/ Settings/
                           Thread/ Resources/Assets.xcassets
-  scripts/                check.sh, copy-sample.sh, run-mac.sh, testflight.sh and make-app-icon.sh (the iPhone's)
+  scripts/                check.sh, copy-sample.sh, run-mac.sh, testflight.sh (either app) and make-app-icon.sh
 ```
 
 ## Tests worth knowing

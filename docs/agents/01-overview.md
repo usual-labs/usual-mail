@@ -195,8 +195,8 @@ the guided Google set-up of 2026-11-21):**
   ([apps-runs.md](apps-runs.md)); this Mac gives the sessions no pointer or keyboard, so they clicked, typed and
   hovered nothing. **The iPhone app** (2026-11-20, [apps-phone.md](apps-phone.md)) is a second target on the same
   packages: search, the switcher and settings above the card, the tabs at its foot. Tapped through in the simulator on
-  the sample and on the owner's server; build 0.1.0 was uploaded to TestFlight on 2026-11-20 and not yet seen ready or
-  installed on a device.
+  the sample and on the owner's server; build 0.1.0 was uploaded to TestFlight on 2026-11-20 and seen installed on the
+  owner's Mac on 2026-11-25, as an iPhone app; the Mac app's 0.1.0 was uploaded to TestFlight on 2026-11-25.
 
 ## Sign in with Google, the live run (2026-11-17)
 
@@ -351,7 +351,7 @@ write-backs, the owner's code and the pairing limit all passed; its findings wer
   hover (tooltips, the rail opening, a row's time), Ask, Unblock, the background picker, typing in search; the first
   run as built now with a real account (the owner typed the pairing and pressed Sign in with Google on its first
   version, 2026-11-17); the guided Google set-up beyond seeing it at rest. The iPhone app on a device: build 0.1.0 was
-  uploaded to TestFlight on 2026-11-20 and not yet seen ready, installed or run ([apps-phone.md](apps-phone.md)).
+  uploaded to TestFlight on 2026-11-20 and not yet seen on an iPhone ([apps-phone.md](apps-phone.md)).
 - **Not built:** in the apps, the screens for writing mail (reply, compose, drafts), proposals to approve, Handled,
   rules, and inbox settings and new credentials (only Gmail can be added); `UsualMailKit` already has all of these
   (`DraftInput+Compose.swift`, `MailStore+Drafts.swift`, approving, Handled's list, rules, credentials). Also not
