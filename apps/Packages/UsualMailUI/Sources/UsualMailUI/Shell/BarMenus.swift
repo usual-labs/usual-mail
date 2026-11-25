@@ -64,6 +64,60 @@ struct SnoozeMenu: View {
     }
 }
 
+#if os(iOS)
+    /// On the iPhone, snooze's and more's choices as the system's menu, in its type, icons and dividers (the owner's
+    /// words of 2026-11-25: "this menu does not look native"): snooze's times; or why the mail is here as the menu's
+    /// title, then moving it to the feed, the paper trail as a submenu (as an invoice, as a receipt), forward and label
+    /// (not yet), and remove, in red, apart. The Mac keeps its popovers (`SnoozeMenu`, `MoreMenu`).
+    struct PhoneBarMenu: View {
+        let action: BarAction
+        let mail: MailThread
+        let now: Date
+        let choose: (ActionInput) -> Void
+        @Environment(MailStore.self) private var store
+
+        var body: some View {
+            if action == .snooze {
+                ForEach(SnoozeChoice.choices(now: now)) { choice in
+                    item(choice.title, icon: .snoozed) { choose(choice.input) }
+                }
+            } else {
+                Section(WhyWords.line(for: mail, rules: store.lists.rules(inbox: mail.inboxId))) {
+                    if mail.category != .newsletter {
+                        item("Move to feed", icon: .reads) { choose(.categorize(.newsletter)) }
+                    }
+                    Menu {
+                        if mail.category != .invoice {
+                            Button("As an invoice") { choose(.categorize(.invoice)) }
+                        }
+                        if mail.category != .receipt {
+                            Button("As a receipt") { choose(.categorize(.receipt)) }
+                        }
+                    } label: {
+                        Text("Move to paper trail")
+                        Icon.receipts.menuImage
+                    }
+                    // Forwarding comes with writing mail; labels aren't in the server's contract yet.
+                    item("Forward", icon: .forward) {}.disabled(true)
+                    item("Label", icon: .label) {}.disabled(true)
+                }
+                Section {
+                    item("Remove", icon: .remove, destructive: true) { choose(.trash) }
+                }
+            }
+        }
+
+        private func item(
+            _ title: String, icon: Icon, destructive: Bool = false, action: @escaping () -> Void
+        ) -> some View {
+            Button(role: destructive ? .destructive : nil, action: action) {
+                Text(title)
+                icon.menuImage
+            }
+        }
+    }
+#endif
+
 /// One line of a menu: an icon, its words, and a soft highlight under the pointer.
 struct MenuRow: View {
     let icon: Icon?

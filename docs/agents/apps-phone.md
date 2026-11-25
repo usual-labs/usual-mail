@@ -82,7 +82,10 @@ points since 2026-11-25, below).
   owner's words of 2026-11-24, "only in iphone"); for a while on 2026-11-25 a back button sat at the row's left with
   the tabs at its right, at the owner's word, then went at their next ("bring back the settings tabs to center and
   remove the back button"); Settings is left from the switcher's menu. Its chosen tab is lit and named when it fits
-  (on a 402-point screen even "Appearance" does). Snooze and more open upwards as popovers.
+  (on a 402-point screen even "Appearance" does). Snooze and more are the system's menus (`PhoneBarMenu`; the
+  owner's words of 2026-11-25, "this menu does not look native", of the popovers they had been): snooze's times; why
+  the mail is here as the menu's title, Move to feed, "Move to paper trail" a submenu (as an invoice, as a receipt),
+  Forward and Label greyed, and Remove in red, apart. The Mac keeps its popovers. Seen in the simulator.
 - **Home's swipes** (owner's words of 2026-11-25): a row swiped left marks it seen (read: it moves from New to Seen),
   or a seen one unseen; swiped right, it snoozes, asking when with the menu's times. Each way is a setting in
   Settings' Appearance tab, "Swiping a mail" (`SwipeAction`, `SwipeSettings`: seen or unseen, snooze, reply later,

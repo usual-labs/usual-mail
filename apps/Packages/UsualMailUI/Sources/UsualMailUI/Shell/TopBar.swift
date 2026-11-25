@@ -26,7 +26,7 @@ import UsualMailKit
 /// (`ControlSize`); a back button is the arrow alone once a mail is open, so the mail's five buttons fit; To reply,
 /// Pinned, Snoozed and the Inbox page show no title capsule, as the switcher above the card names them; Settings' tabs
 /// sit in the middle of the row, not at its right; the chosen tab is named only when the row fits it (`BarFit`), else
-/// it is its lit icon alone; and the snooze and more menus open upwards as popovers.
+/// it is its lit icon alone; and snooze and more are the system's menus (`PhoneBarMenu`), where the Mac has popovers.
 struct TopBar: View {
     @Binding var place: Place
     let screeningCount: Int
@@ -262,31 +262,36 @@ struct TopBar: View {
             .accessibilityLabel(button.title)
             .accessibilityAddTraits(button.chosen ? .isSelected : [])
         } else {
-            Button {
-                menu = action
-            } label: {
-                capsule(item, icon: action.icon, title: nil, tinted: true)
-            }
-            .buttonStyle(PlainControlStyle())
-            .tooltip(menu == action ? nil : action.title)
-            .accessibilityLabel(action.title)
-            .popover(
-                isPresented: Binding(get: { menu == action }, set: { if !$0 { menu = nil } }),
-                // Under the row on the Mac. On the iPhone the same edge puts it over the row, which is at the foot:
-                // there the edge is the popover's own, where its arrow would be (seen in the simulator, 2026-11-20:
-                // `.top` opened it downwards, off the screen).
-                arrowEdge: .bottom
-            ) {
-                Group {
+            #if os(iOS)
+                // The system's menu on the iPhone (the owner's words of 2026-11-25: "this menu does not look native").
+                Menu {
+                    PhoneBarMenu(action: action, mail: mail, now: now, choose: act)
+                } label: {
+                    capsule(item, icon: action.icon, title: nil, tinted: true)
+                }
+                .menuOrder(.fixed)
+                .buttonStyle(.plain)
+                .accessibilityLabel(action.title)
+            #else
+                Button {
+                    menu = action
+                } label: {
+                    capsule(item, icon: action.icon, title: nil, tinted: true)
+                }
+                .buttonStyle(PlainControlStyle())
+                .tooltip(menu == action ? nil : action.title)
+                .accessibilityLabel(action.title)
+                // Under the row, the app's own popover.
+                .popover(
+                    isPresented: Binding(get: { menu == action }, set: { if !$0 { menu = nil } }), arrowEdge: .bottom
+                ) {
                     if action == .snooze {
                         SnoozeMenu { choice in choose(choice.input) }
                     } else {
                         MoreMenu(mail: mail) { choose($0) }
                     }
                 }
-                // A popover on the iPhone too, not a sheet.
-                .presentationCompactAdaptation(.popover)
-            }
+            #endif
         }
     }
 
