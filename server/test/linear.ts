@@ -4,9 +4,11 @@
 // regression fails the test in seconds. This file is both the helper and the worker's entry.
 
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
-import { holdsCode, looksLikeCode } from "../src/ai/gate.ts";
+import { SHIPPED_SUFFIXES } from "../src/avatars/shipped.ts";
+import { EVIDENCE, holdsLink } from "../src/ai/gate-evidence.ts";
+import { askableKinds, gateCheck, holdsCode } from "../src/ai/gate.ts";
 import { categorizeRequest, detailsRequest, eventRequest, summarizeRequest, withoutAddresses } from "../src/ai/prompt.ts";
-import { modelText, plainText, readingText, snippetText } from "../src/ai/text.ts";
+import { modelText, readingText, snippetText } from "../src/ai/text.ts";
 import { checkEvent } from "../src/ai/event.ts";
 import { withoutRelativeWords, withoutSender } from "../src/ai/event-lines.ts";
 import { checkReference } from "../src/ai/event-reference.ts";
@@ -52,14 +54,19 @@ export const BODIES: Record<string, string> = {
 
 /** What reads a message under the server's lock: the one-time code check, the requests and snippets, the answers. */
 const WORK = {
-  /** The screening gate's check of a one-time code (gate.ts), and the readers it and the requests use. */
+  /** The screening gate's own check (gate.ts) of each kind, its evidence, and the readers it and the requests use. */
   gate(body: string): void {
-    looksLikeCode({ subject: body, text: body, html: body, automated: true });
-    looksLikeCode({ subject: "Your code", text: null, html: body, automated: true });
+    const message = {
+      subject: "Order update", text: body, html: body, automated: true, from: { email: "no-reply@service.example" },
+      fromVerified: "service.example", to: [{ email: "me@inbox.example" }], cc: [], replyTo: null, listId: null,
+    };
+    const check = gateCheck(message, { suffixes: SHIPPED_SUFFIXES, inbox: { address: "me@inbox.example", provider: "gmail" } });
+    for (const kind of ["code", ...askableKinds("notification")] as const) check.mayPass(kind);
+    for (const evidence of Object.values(EVIDENCE)) evidence({ words: body, link: true });
+    holdsLink(body, body);
     holdsCode(body);
     // Codes, then a gap, then the words: no code near any word, so each code met every word before 0.1.3.
     holdsCode(`${" 482913".repeat(body.length / 14)}${" x".repeat(50)}${"code ".repeat(body.length / 10)}`);
-    plainText(null, body);
     modelText(body, null);
     modelText(null, body);
   },

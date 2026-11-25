@@ -1,8 +1,7 @@
 // End to end with the server's AI and IMAP: the real server and the real IMAP provider against an IMAP server in this
 // process, with fake models (no real model is called), through REST only; the mailbox is read with another mail app.
 // Mail arrives and is categorized and summarized, the category's folder holds it, a person's correction is written
-// back and teaches a rule, a stranger's one-time code waits in Screening (IMAP has no checker the server trusts to prove
-// its From domain), the key shows nowhere, and a second server
+// back and teaches a rule, a stranger's one-time code is never screened, the key shows nowhere, and a second server
 // on the same account reads the categories back from the folders.
 
 import assert from "node:assert/strict";
@@ -79,13 +78,14 @@ test("IMAP with the AI: categorized, summarized, filed, corrected and taught; re
   assert.equal(w.models.sent("choose").length, asked);
   assert.deepEqual(await folderOf("Invoice 8"), ["Usual Mail/Invoices"]);
 
-  // A stranger's one-time code waits in Screening on IMAP: machine-sent with a code in its text, but no checker the
-  // server trusts proved its From domain, and nothing skips Screening without that proof (2026-11-25). Never summarized.
-  const choicesBefore = w.models.sent("choose").length;
+  // A stranger's one-time code never goes to Screening: there is no Screening folder yet, and none is made.
+  assert.ok(!(await folders()).has("Usual Mail/Screening"));
+  // Machine-sent (no-reply) with a code in its text, so the server's own check lets the model's answer lift the gate.
   const code = await deliver(inbox, "Quillpad <no-reply@quillpad.example>", "Your sign-in code", { body: "Your code is 482 913." });
-  assert.deepEqual([code.category, code.screened, code.summary, code.skippedScreening], ["otp", true, undefined, undefined]);
-  assert.deepEqual(await folderOf("Your sign-in code"), ["Usual Mail/Screening"]);
-  assert.equal(w.models.sent("choose").length, choicesBefore + 1, "categorized only: nothing proved, so the gate's question isn't asked");
+  assert.deepEqual([code.category, code.screened, code.summary], ["otp", false, undefined]);
+  assert.deepEqual(await folderOf("Your sign-in code"), ["Usual Mail/One-Time Codes"]);
+  const listed = await host.otherApp((client) => client.list());
+  assert.ok(!listed.some((folder) => folder.path === "Usual Mail/Screening"), "the Screening folder was never made");
   assert.ok(!w.models.requests.some((r) => r.kind === "write" && subjectOf(r.request.data) === "Your sign-in code"));
 
   // Another stranger is screened in the AI's category; IMAP's Screening folder keeps no category, the server does.
@@ -116,7 +116,7 @@ test("IMAP with the AI: categorized, summarized, filed, corrected and taught; re
   assert.deepEqual(await read("Invoice 7"), ["invoice", "mailbox", false, false], "the person's correction survived as its folder");
   assert.deepEqual(await read("Invoice 8"), ["invoice", "mailbox", false, false]);
   assert.deepEqual(await read("Invoice 9"), ["notification", "mailbox", false, false]);
-  assert.deepEqual(await read("Your sign-in code"), ["unknown", undefined, true, false], "screened; the Screening folder keeps no category");
+  assert.deepEqual(await read("Your sign-in code"), ["otp", "mailbox", false, false]);
   assert.deepEqual(await read("Pricing?"), ["unknown", undefined, true, false], "screened; the Screening folder keeps no category");
   assert.deepEqual(await read("Earlier conversation"), ["unknown", undefined, false, false], "a conversation reads back as undecided");
   assert.equal(w.models.requests.length, 0);

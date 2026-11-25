@@ -45,7 +45,7 @@ export function passInstructions(id: string): string {
  * `input` is what the categorize request carried.
  */
 export function passRequest(model: string, input: CategorizeInput, category: DecidedCategory, id: string): ChoiceRequest | null {
-  const kinds = askableKinds(category).filter((kind): kind is Exclude<ScreeningPass, "code"> => kind !== "code");
+  const kinds = askableKinds(category);
   if (kinds.length === 0) return null;
   return {
     model,

@@ -1,15 +1,16 @@
 // Mail from a sender who isn't let in that skips Screening (docs/contract.md, "Rules and learning"; the owner's decision
-// of 2026-11-25), through the whole server on fake models: the AI categorizes, then is asked once which kind it is only
-// when the server's own check could let it through; the thread lands in its category's list, says why
-// (`skippedScreening`), is written back to its category's label and never to Screening, and its sender still isn't
-// let in. Look-alikes stay screened without the question; the AI off or failing leaves them screened as before.
+// of 2026-11-25), through the whole server on fake models and a Gmail mailbox: the AI categorizes, then is asked once
+// which kind it is only when the server's own check could let it through; the thread lands in its category's list,
+// says why (`skippedScreening`), is written back to its category's label and never to Screening, and its sender still
+// isn't let in. Look-alikes stay screened without the question; the AI off or failing leaves them screened as before,
+// and so does mail the gate didn't hold for an answer. What happens after a thread skipped it: screening-after.test.ts.
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import type { ChoiceRequest } from "../src/ai/models.ts";
 import { failure } from "../src/index.ts";
 import type { DeliverInput } from "../src/testing/index.ts";
-import { historyFromKnown, makeServer, type TestServer } from "./helpers.ts";
+import { HOUR, historyFromKnown, makeServer, type TestServer } from "./helpers.ts";
 
 let t: TestServer;
 beforeEach(async () => {
@@ -57,7 +58,7 @@ function answer(category: string, kind: string | null = null): void {
 }
 
 async function inboxWithAi(ai = true) {
-  const { inbox, mailbox } = await t.connect({ address: "me@ai.example", history: [historyFromKnown] });
+  const { inbox, mailbox } = await t.connect({ address: "me@ai.example", history: [historyFromKnown], mailbox: { kind: "gmail" } });
   if (ai) await t.aiOn();
   return { inbox, mailbox };
 }
@@ -110,6 +111,33 @@ describe("a kind that skips Screening", () => {
   });
 });
 
+describe("one-time codes on each provider", () => {
+  const CODE = { ...SIGN_IN, subject: "Your code", text: "Your verification code is 482913." } satisfies DeliverInput;
+
+  test("on Gmail a code whose From domain the checker didn't prove never falls back", async () => {
+    const { inbox } = await inboxWithAi();
+    answer("otp");
+    for (const fromCheck of [{ result: "unverified" }, { result: "other_checker" }, { result: "repeated" }, { result: "no_header" }] as const) {
+      const thread = await t.receive(inbox, { ...CODE, subject: `Code, ${fromCheck.result}`, fromCheck });
+      assert.deepEqual([thread.category, thread.screened], ["otp", true], fromCheck.result);
+    }
+  });
+
+  test("on IMAP, which has no checker, a code passes as before: machine-sent, addressed to the inbox, a code", async () => {
+    const { inbox } = await t.connect({ address: "me@imap.example", history: [historyFromKnown] });
+    await t.aiOn();
+    answer("otp");
+    const { fromCheck: _none, ...unproved } = CODE;
+    const thread = await t.receive(inbox, unproved);
+    assert.deepEqual([thread.category, thread.screened, thread.skippedScreening], ["otp", false, "code"]);
+    const blind = await t.receive(inbox, { ...unproved, subject: "Code by Bcc", to: [{ email: "someone@elsewhere.example" }] });
+    assert.equal(blind.screened, true, "not addressed to the inbox");
+    answer("notification", "security");
+    const alert = await t.receive(inbox, { ...ALERT, fromCheck: undefined });
+    assert.equal(alert.screened, true, "nothing else passes on IMAP");
+  });
+});
+
 describe("look-alikes stay screened, in the category the AI gave", () => {
   test("a From domain the provider's checker didn't prove, a person's mail, a public mail domain: not even asked", async () => {
     const { inbox } = await inboxWithAi();
@@ -151,6 +179,21 @@ describe("look-alikes stay screened, in the category the AI gave", () => {
     assert.equal(mailbox.messages().find((m) => m.subject === ALERT.subject)!.placement.screened, true, "written under Screening");
   });
 
+  test("the shape of mail sent to this person alone: an alert sent on by Bcc, one with a List-Id, one replying elsewhere", async () => {
+    const { inbox } = await inboxWithAi();
+    answer("notification", "security");
+    for (const [why, input] of [
+      ["sent to someone else", { ...ALERT, subject: "Bcc", to: [{ email: "victim.list@elsewhere.example" }] }],
+      ["a List-Id", { ...ALERT, subject: "Listed", listId: "alerts.lumen-bank.example" }],
+      ["a Reply-To elsewhere", { ...ALERT, subject: "Replying elsewhere", replyTo: [{ email: "helper@elsewhere.example" }] }],
+      ["a help desk's tenant", { ...ALERT, subject: "Help desk", from: { email: "support@lumen.zendesk.com" }, fromCheck: proved("lumen.zendesk.com") }],
+    ] as Array<[string, DeliverInput]>) {
+      const thread = await t.receive(inbox, input);
+      assert.deepEqual([thread.screened, thread.skippedScreening], [true, undefined], why);
+    }
+    assert.equal(questions(), 0, "none of them was worth asking");
+  });
+
   test("an invoice never skips Screening, and isn't asked about", async () => {
     const { inbox } = await inboxWithAi();
     answer("invoice", "payment");
@@ -166,6 +209,30 @@ describe("the gate's order with the AI off or failing", () => {
     const thread = await t.receive(inbox, SIGN_IN);
     assert.deepEqual([thread.category, thread.screened, thread.skippedScreening], ["unknown", true, undefined]);
     assert.equal(t.models.requests.length, 0);
+  });
+
+  test("mail the gate didn't hold stays in Screening when the AI answers later: the AI turned on afterwards", async () => {
+    const { inbox, mailbox } = await inboxWithAi(false);
+    const thread = await t.receive(inbox, ALERT);
+    assert.equal(mailbox.messages().find((m) => m.subject === ALERT.subject)!.placement.screened, true, "under Screening");
+    answer("notification", "security");
+    await t.aiOn();
+    const after = (await t.server.thread(t.person, thread.id)).thread;
+    assert.deepEqual([after.category, after.screened, after.skippedScreening], ["notification", true, undefined], "categorized, still screened");
+    assert.equal(questions(), 0, "not asked: nothing could pass");
+    assert.ok(!mailbox.applied.some((op) => op.op === "place" && !op.screened), "never moved out of Screening");
+  });
+
+  test("a categorize that failed and is tried again doesn't lift the gate either", async () => {
+    const { inbox, mailbox } = await inboxWithAi();
+    t.models.failures.push(failure("unavailable"));
+    const thread = await t.receive(inbox, ALERT);
+    assert.deepEqual([thread.category, thread.screened], ["unknown", true]);
+    answer("notification", "security");
+    await t.tick(2 * HOUR);
+    const after = (await t.server.thread(t.person, thread.id)).thread;
+    assert.deepEqual([after.category, after.screened, after.skippedScreening], ["notification", true, undefined]);
+    assert.ok(!mailbox.applied.some((op) => op.op === "place" && !op.screened), "never moved out of Screening");
   });
 
   test("the question failing leaves it screened in its category, written back under Screening", async () => {
@@ -205,46 +272,5 @@ describe("the gate's order with the AI off or failing", () => {
     const after = await t.threadBySubject(ALERT.subject);
     assert.deepEqual([after.category, after.screened, after.skippedScreening], ["notification", false, "security"]);
     assert.ok(!mailbox.applied.some((op) => op.op === "place" && op.screened), "never placed under Screening");
-  });
-});
-
-describe("after it skipped Screening", () => {
-  test("undoing the AI's decision puts it back in Screening, without the kind", async () => {
-    const { inbox, mailbox } = await inboxWithAi();
-    answer("notification", "security");
-    const thread = await t.receive(inbox, ALERT);
-    const record = (await t.server.handled(t.person, { includeSilent: true })).items.find((item) => item.thread.id === thread.id)!.record;
-    const undone = await t.server.undo(t.person, record.id);
-    assert.deepEqual([undone.threads[0]!.category, undone.threads[0]!.screened, undone.threads[0]!.skippedScreening], ["unknown", true, undefined]);
-    await t.server.whenIdle();
-    assert.equal(mailbox.messages().find((m) => m.subject === ALERT.subject)!.placement.screened, true, "written back under Screening");
-  });
-
-  test("its sender writing into it again lets nobody in, and the AI isn't asked to move it to Home", async () => {
-    const { inbox } = await inboxWithAi();
-    answer("receipt", "order");
-    const thread = await t.receive(inbox, SHIPPED);
-    assert.equal(thread.skippedScreening, "order");
-    const asked = t.models.sent("choose").length;
-    answer("conversation");
-    const joined = await t.receive(inbox, { ...SHIPPED, subject: "Your order has shipped", text: "Hi, a person here: can you call us back?" });
-    assert.equal(joined.id, thread.id, "the same thread");
-    assert.deepEqual([joined.category, joined.screened, joined.skippedScreening], ["receipt", false, "order"]);
-    assert.equal(t.models.sent("choose").length, asked, "no categorize request for mail joining it");
-    // Still not let in: the shop's sale is screened.
-    answer("newsletter");
-    const sale = await t.receive(inbox, { from: SHIPPED.from, subject: "Winter sale", automated: true, fromCheck: SHIPPED.fromCheck });
-    assert.equal(sale.screened, true);
-  });
-
-  test("letting the sender in afterwards changes nothing about it but who may write", async () => {
-    const { inbox } = await inboxWithAi();
-    answer("notification", "security");
-    const thread = await t.receive(inbox, ALERT);
-    await t.server.allowSender(t.person, { inboxId: inbox.id, address: ALERT.from.email });
-    answer("newsletter");
-    const next = await t.receive(inbox, { ...ALERT, subject: "Lumen's news" });
-    assert.equal(next.screened, false, "let in now");
-    assert.equal((await t.server.thread(t.person, thread.id)).thread.screened, false);
   });
 });

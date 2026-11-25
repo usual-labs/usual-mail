@@ -1,10 +1,14 @@
 // Senders let in for good when their mail arrives, without the AI (docs/contract.md, "Letting a sender in"; the
 // owner's decision of 2026-11-25): another inbox connected on this server, and a colleague at the inbox's own domain
-// when that domain isn't a public mail domain or a shared platform's. Both only when the mailbox provider's checker
-// proved the From domain (`ProviderMessage.fromCheck`): anyone can write any From. The inbox's own address is never let
-// in by this, as by no other way but `allow_sender` (`markKnown`). Runs under `ctx.lock`.
+// when that domain isn't a public mail domain or a shared platform's. Both only when the mailbox provider's checker,
+// one the server trusts (Gmail's), proved the From domain (`ProviderMessage.fromCheck`): anyone can write any From. A
+// colleague is a person: mail that looks machine-sent or carries a List-Id isn't let in by the domain (a group that
+// rewrites outsiders' posts as "X via info@work.example", a help desk or marketing tool sending as the company; the
+// security review of 2026-11-25). The inbox's own address is never let in by this, as by no other way but
+// `allow_sender` (`markKnown`). Runs under `ctx.lock`.
 
 import { isPublicMailDomain, isSharedPlatform, type ProviderMessage } from "@usualmail/core";
+import { trustsChecker } from "../ai/gate.ts";
 import { asciiHost } from "../avatars/host.ts";
 import { inboxes, type InboxRow } from "../db/index.ts";
 import type { Ctx } from "../service/context.ts";
@@ -23,11 +27,12 @@ export function serverAddresses(ctx: Ctx): () => Promise<Set<string>> {
 }
 
 /**
- * Whether the message's sender is one of the person's own, proved: another inbox on this server, or someone at this
- * inbox's own domain when it is no public mail domain. Never the inbox's own address, never the mailbox's own mail.
+ * Whether the message's sender is one of the person's own, proved: another inbox on this server, or a person (not
+ * machine-sent, no List-Id) at this inbox's own domain when it is no public mail domain. Never the inbox's own address,
+ * never the mailbox's own mail.
  */
 export async function provedOwnSender(ctx: Ctx, inbox: InboxRow, message: ProviderMessage, addresses: () => Promise<Set<string>>): Promise<boolean> {
-  if (message.outgoing || message.fromCheck?.result !== "verified") return false;
+  if (message.outgoing || !trustsChecker(inbox.provider) || message.fromCheck?.result !== "verified") return false;
   const email = message.from.email.toLowerCase();
   const domain = domainOf(email);
   // The checker proved exactly the From address's own domain.
@@ -35,7 +40,7 @@ export async function provedOwnSender(ctx: Ctx, inbox: InboxRow, message: Provid
   const own = inbox.address.toLowerCase();
   if (email === own) return false;
   if ((await addresses()).has(email)) return true;
-  if (domain !== domainOf(own)) return false;
+  if (domain !== domainOf(own) || message.automated || message.listId) return false;
   const registrable = ctx.avatars?.suffixes.registrableDomain(domain) ?? null;
   return registrable !== null && !isPublicMailDomain(registrable) && !isSharedPlatform(domain);
 }

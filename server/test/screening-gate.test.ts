@@ -1,21 +1,35 @@
-// The server's own check at the screening gate (src/ai/gate.ts, gate-evidence.ts; docs/contract-ai.md, "Mail is
-// untrusted input to a model"): for each kind of mail that may skip Screening, mail that passes, and look-alikes that
-// don't: a From domain the provider's checker didn't prove, mail written by a person, a public mail domain or a shared
-// platform, no link, no evidence, and a kind the AI's category can't be. Pure: no server.
+// The server's own check at the screening gate (src/ai/gate.ts, gate-shape.ts, gate-evidence.ts; docs/contract-ai.md,
+// "A model's answer at the screening gate"): for each kind of mail that may skip Screening, mail that passes, and
+// look-alikes that don't: a From domain the provider's checker didn't prove, mail written by a person, a public mail
+// domain or a shared platform, no link, no evidence, a kind the AI's category can't be; and the shape of mail sent to
+// this person by that organisation alone (no List-Id, Reply-To at home, addressed to the inbox, no tenant platform),
+// which a platform carrying someone else's words or a replayed alert doesn't have. IMAP's codes pass without proof.
+// Every pattern stays fast on a 1 MB body. Pure: no server.
 
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { SCREENING_PASS_CATEGORIES, skippedScreeningLine, type DecidedCategory, type ScreeningPass } from "@usualmail/core";
 import { SHIPPED_SUFFIXES } from "../src/avatars/shipped.ts";
-import { askableKinds, mayPass, screeningPass, worthAsking, type GateMessage } from "../src/ai/gate.ts";
+import { EVIDENCE, holdsLink } from "../src/ai/gate-evidence.ts";
+import { addressedTo, mailboxKey } from "../src/ai/gate-shape.ts";
+import { askableKinds, gateCheck, type GateContext, type GateMessage } from "../src/ai/gate.ts";
 import { acceptPass, NO_PASS, passRequest } from "../src/ai/pass-prompt.ts";
+import { modelText, readingText } from "../src/ai/text.ts";
 
 const SUFFIXES = SHIPPED_SUFFIXES!;
+const INBOX = "me@inbox.example";
+const GMAIL: GateContext = { suffixes: SUFFIXES, inbox: { address: INBOX, provider: "gmail" } };
+const IMAP: GateContext = { suffixes: SUFFIXES, inbox: { address: INBOX, provider: "imap" } };
 
-/** Machine-sent mail from a service whose domain the provider's checker proved. */
+/** Machine-sent mail from a service whose domain the provider's checker proved, sent to the inbox alone. */
 function mail(subject: string, text: string, extra: Partial<GateMessage> = {}): GateMessage {
-  return { subject, text, html: null, automated: true, from: { email: "no-reply@service.example" }, fromVerified: "service.example", ...extra };
+  return {
+    subject, text, html: null, automated: true, from: { email: "no-reply@service.example" }, fromVerified: "service.example",
+    to: [{ email: INBOX }], cc: [], replyTo: null, listId: null, ...extra,
+  };
 }
+
+const passes = (kind: ScreeningPass, message: GateMessage, context = GMAIL) => gateCheck(message, context).mayPass(kind);
 
 /** One example of each kind that passes. */
 const PASSING: Record<ScreeningPass, { category: DecidedCategory; message: GateMessage }> = {
@@ -28,13 +42,13 @@ const PASSING: Record<ScreeningPass, { category: DecidedCategory; message: GateM
   booking: { category: "notification", message: mail("Your booking is confirmed", "Booking reference: K9XQ2B. Flight from Berlin, 3 Dec at 10:30.") },
   payment: { category: "notification", message: mail("Payment declined", "Your card ending in 4242 was declined for €12.50.") },
 };
+const EACH = Object.entries(PASSING) as Array<[ScreeningPass, (typeof PASSING)[ScreeningPass]]>;
 
-describe("each kind passes with the proof, machine-sent mail and its evidence", () => {
-  for (const [kind, { category, message }] of Object.entries(PASSING) as Array<[ScreeningPass, (typeof PASSING)[ScreeningPass]]>) {
+describe("each kind passes with the proof, machine-sent mail, its shape and its evidence", () => {
+  for (const [kind, { category, message }] of EACH) {
     test(kind, () => {
-      assert.equal(mayPass(kind, message, SUFFIXES), true);
-      const chosen = kind === "code" ? null : kind;
-      assert.equal(screeningPass(category, chosen, message, SUFFIXES), kind);
+      assert.equal(passes(kind, message), true);
+      assert.equal(gateCheck(message, GMAIL).pass(category, kind === "code" ? null : kind), kind);
       assert.ok(SCREENING_PASS_CATEGORIES[kind].includes(category));
     });
   }
@@ -45,100 +59,172 @@ describe("each kind passes with the proof, machine-sent mail and its evidence", 
   });
 
   test("a link counts among the HTML's own links too", () => {
-    const html = mail("Sign in", "", { text: null, html: `<p>Hi,</p><a href="https://service.example/login">Sign in</a>` });
-    assert.equal(mayPass("sign_in", html, SUFFIXES), true);
+    assert.equal(passes("sign_in", mail("Sign in", "", { text: null, html: `<p>Hi,</p><a href="https://service.example/login">Sign in</a>` })), true);
   });
 
   test("words with a hyphen or none between them: sign-in, signin, log-in, login", () => {
     for (const word of ["sign-in", "signin", "log-in", "login"]) {
-      assert.equal(mayPass("sign_in", mail("Hello", `Your ${word} link: https://service.example/x`), SUFFIXES), true, word);
+      assert.equal(passes("sign_in", mail("Hello", `Your ${word} link: https://service.example/x`)), true, word);
     }
+  });
+
+  test("a payment by a card's last digits alone, a booking by its day alone", () => {
+    assert.equal(passes("payment", mail("Card charged", "Your card •••• 4242 was charged.")), true, "no amount, a card");
+    assert.equal(passes("booking", mail("Your appointment", "Your appointment is on 3 Dec.")), true, "no reference or amount, a day");
+    assert.equal(passes("booking", mail("Your appointment", "Your appointment is at 10:30.")), true, "a time");
   });
 });
 
 describe("look-alikes stay screened", () => {
   test("a From domain the provider's checker didn't prove", () => {
-    for (const [kind, { category, message }] of Object.entries(PASSING) as Array<[ScreeningPass, (typeof PASSING)[ScreeningPass]]>) {
+    for (const [kind, { category, message }] of EACH) {
       const unproved = { ...message, fromVerified: null };
-      assert.equal(mayPass(kind, unproved, SUFFIXES), false, kind);
-      assert.equal(screeningPass(category, kind === "code" ? null : kind, unproved, SUFFIXES), null, kind);
-      assert.equal(worthAsking(category, unproved, SUFFIXES), false, `${kind}: not even asked`);
+      assert.equal(passes(kind, unproved), false, kind);
+      assert.equal(gateCheck(unproved, GMAIL).pass(category, kind === "code" ? null : kind), null, kind);
+      assert.equal(gateCheck(unproved, GMAIL).worthAsking(category), false, `${kind}: not even asked`);
     }
   });
 
   test("a proved domain that isn't the From address's own", () => {
-    const other = mail("New sign-in", "A new sign-in. Was this you?", { fromVerified: "mailer.example" });
-    assert.equal(mayPass("security", other, SUFFIXES), false);
+    assert.equal(passes("security", mail("New sign-in", "A new sign-in. Was this you?", { fromVerified: "mailer.example" })), false);
   });
 
   test("mail that looks written by a person", () => {
-    for (const [kind, { message }] of Object.entries(PASSING) as Array<[ScreeningPass, (typeof PASSING)[ScreeningPass]]>) {
-      assert.equal(mayPass(kind, { ...message, automated: false }, SUFFIXES), false, kind);
-    }
+    for (const [kind, { message }] of EACH) assert.equal(passes(kind, { ...message, automated: false }), false, kind);
   });
 
   test("a public mail domain or a shared platform, even proved and machine-sent", () => {
     const webmail = mail("New sign-in", "A new sign-in. Was this you?", { from: { email: "no-reply@yahoo.example" }, fromVerified: "yahoo.example" });
-    assert.equal(mayPass("security", webmail, SUFFIXES), false, "anyone can sign up to it");
+    assert.equal(passes("security", webmail), false, "anyone can sign up to it");
     const platform = mail("New sign-in", "A new sign-in. Was this you?", { from: { email: "writer@substack.com" }, fromVerified: "substack.com" });
-    assert.equal(mayPass("security", platform, SUFFIXES), false, "its customers share its domain");
+    assert.equal(passes("security", platform), false, "its customers share its domain");
   });
 
-  test("a server without the Public Suffix List proves nothing", () => {
-    assert.equal(mayPass("code", PASSING.code.message, null), false);
-    assert.equal(screeningPass("otp", null, PASSING.code.message, null), null);
+  test("a server without the Public Suffix List proves nothing on Gmail", () => {
+    const bare = { ...GMAIL, suffixes: null };
+    for (const [kind, { message }] of EACH) assert.equal(passes(kind, message, bare), false, kind);
   });
 
   test("a sign-in, confirmation or reset without a link", () => {
-    assert.equal(mayPass("sign_in", mail("Sign in to Quillpad", "Open the app to sign in."), SUFFIXES), false);
-    assert.equal(mayPass("email_confirmation", mail("Confirm your email", "Please confirm your email address."), SUFFIXES), false);
-    assert.equal(mayPass("account", mail("Reset your password", "Reset your password in the app."), SUFFIXES), false);
+    assert.equal(passes("sign_in", mail("Sign in to Quillpad", "Open the app to sign in.")), false);
+    assert.equal(passes("email_confirmation", mail("Confirm your email", "Please confirm your email address.")), false);
+    assert.equal(passes("account", mail("Reset your password", "Reset your password in the app.")), false);
   });
 
   test("words that name no kind's evidence", () => {
     const sale = mail("Black Friday: 40% off everything", "Our biggest sale. Shop now at https://service.example/sale");
-    for (const kind of ["sign_in", "email_confirmation", "security", "account", "order", "booking", "payment"] as const) {
-      assert.equal(mayPass(kind, sale, SUFFIXES), false, kind);
-    }
-    assert.equal(mayPass("order", mail("Your order", "Thanks for shopping with us."), SUFFIXES), false, "an order with no number or amount");
-    assert.equal(mayPass("payment", mail("Payment", "About your payment."), SUFFIXES), false, "a payment with no amount or card");
-    assert.equal(mayPass("booking", mail("Your booking", "Thanks for booking with us."), SUFFIXES), false, "a booking with no reference, amount or day");
-    assert.equal(mayPass("code", mail("Your code", "Your code is 4821."), SUFFIXES), false, "four digits isn't a code");
+    for (const kind of askableKinds("notification")) assert.equal(passes(kind, sale), false, kind);
+    assert.equal(passes("order", mail("Your order", "Thanks for shopping with us.")), false, "an order with no number or amount");
+    assert.equal(passes("payment", mail("Payment", "About your payment.")), false, "a payment with no amount or card");
+    assert.equal(passes("booking", mail("Your booking", "Thanks for booking with us.")), false, "a booking with no reference, amount or day");
+    assert.equal(passes("code", mail("Your code", "Your code is 4821.")), false, "four digits isn't a code");
   });
 
   test("an ordinary word isn't a reference: it needs a digit and capitals", () => {
-    assert.equal(mayPass("order", mail("Order update", "Your order confirmation follows soon."), SUFFIXES), false);
-    assert.equal(mayPass("order", mail("Order update", "Your order ab12345 is ready."), SUFFIXES), false, "lower case");
+    assert.equal(passes("order", mail("Order update", "Your order confirmation follows soon.")), false);
+    assert.equal(passes("order", mail("Order update", "Your order ab12345 is ready.")), false, "lower case");
   });
 
   test("a kind the category can't be: never an invoice, and a sign-in link the AI called a newsletter", () => {
-    assert.equal(screeningPass("invoice", "payment", mail("Payment due", "Pay €120.00 by 3 Dec."), SUFFIXES), null);
-    assert.equal(screeningPass("newsletter", "sign_in", PASSING.sign_in.message, SUFFIXES), null);
-    assert.equal(screeningPass("receipt", "security", PASSING.security.message, SUFFIXES), null);
-    assert.deepEqual(askableKinds("invoice"), []);
-    assert.deepEqual(askableKinds("newsletter"), []);
-    assert.deepEqual(askableKinds("conversation"), []);
+    assert.equal(gateCheck(mail("Payment due", "Pay €120.00 by 3 Dec."), GMAIL).pass("invoice", "payment"), null);
+    assert.equal(gateCheck(PASSING.sign_in.message, GMAIL).pass("newsletter", "sign_in"), null);
+    assert.equal(gateCheck(PASSING.security.message, GMAIL).pass("receipt", "security"), null);
+    for (const category of ["invoice", "newsletter", "conversation"] as const) assert.deepEqual(askableKinds(category), [], category);
   });
 
-  test("the model's kind must pass the check too: a security alert with no security words isn't one", () => {
-    assert.equal(screeningPass("notification", "security", PASSING.order.message, SUFFIXES), null);
+  test("the model's kind must pass the check too: an order isn't a security alert", () => {
+    assert.equal(gateCheck(PASSING.order.message, GMAIL).pass("notification", "security"), null);
+  });
+});
+
+describe("the shape of mail sent to this person by that organisation alone (every kind but a code)", () => {
+  const ALERT = PASSING.security.message;
+
+  test("(a) a List-Id: a mention in a project's notifications", () => {
+    const mention = mail("[acme/app] Security alert: new sign-in (#42)", "@you was this you? A new sign-in on the staging box.", {
+      from: { email: "notifications@github.example" }, fromVerified: "github.example", listId: "app.acme.github.example",
+    });
+    assert.equal(passes("security", mention), false);
+    assert.equal(gateCheck(mention, GMAIL).worthAsking("notification"), false, "not even asked");
+  });
+
+  test("(b) a Reply-To elsewhere: a comment on a shared document, a money request", () => {
+    const comment = mail("New comment on Q4 plan", "Security alert: your account shows suspicious activity, was this you? Reply to me.", {
+      from: { email: "comments-noreply@docs.platform.example" }, fromVerified: "docs.platform.example", replyTo: [{ email: "stranger@elsewhere.example" }],
+    });
+    assert.equal(passes("security", comment), false);
+    const request = mail("Sam requested €450.00 from you", "Payment request: €450.00. Note: rent for December, pay today.", {
+      from: { email: "service@pay.example" }, fromVerified: "pay.example", replyTo: [{ email: "sam@stranger.example" }],
+    });
+    assert.equal(passes("payment", request), false);
+    const home = { ...ALERT, replyTo: [{ email: "help@support.service.example" }] };
+    assert.equal(passes("security", home), true, "a Reply-To at the same organisation's own domain is fine");
+  });
+
+  test("(c) not addressed to the inbox: an alert replayed by Bcc, or sent to someone else", () => {
+    assert.equal(passes("security", { ...ALERT, to: [{ email: "attacker@elsewhere.example" }] }), false);
+    assert.equal(passes("security", { ...ALERT, to: [] }), false, "undisclosed recipients");
+    assert.equal(passes("code", { ...PASSING.code.message, to: [{ email: "someone@elsewhere.example" }] }), false, "codes too");
+    assert.equal(passes("security", { ...ALERT, to: [{ email: "list@elsewhere.example" }], cc: [{ email: "ME@Inbox.Example" }] }), true, "in Cc, any case");
+  });
+
+  test("(c) a +tag is the inbox's own address, and so are dots at gmail.com", () => {
+    assert.equal(passes("security", { ...ALERT, to: [{ email: "me+bank@inbox.example" }] }), true);
+    assert.equal(mailboxKey("No.Such.Sample+shop@googlemail.com"), "nosuchsample@gmail.com");
+    assert.equal(mailboxKey("no.such.sample@work.example"), "no.such.sample@work.example", "dots count elsewhere");
+    assert.equal(addressedTo({ to: [{ email: "nosuchsample+x@gmail.com" }], cc: [] }, "no.such.sample@gmail.com"), true);
+    assert.equal(addressedTo({ to: [{ email: "not an address" }], cc: [] }, INBOX), false);
+  });
+
+  test("(d) a help desk's or a tool's tenant on its platform", () => {
+    for (const domain of ["acme.zendesk.com", "acme.atlassian.net", "help.acme.freshdesk.com"]) {
+      const desk = mail("New sign-in to your account", "A new sign-in. Was this you?", { from: { email: `support@${domain}` }, fromVerified: domain });
+      assert.equal(passes("security", desk), false, domain);
+    }
+  });
+
+  test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {
+    assert.equal(passes("code", { ...PASSING.code.message, listId: "codes.service.example", replyTo: [{ email: "x@elsewhere.example" }] }), true);
+  });
+});
+
+describe("an inbox whose provider has no checker (IMAP)", () => {
+  test("a code passes without proof, as before 2026-11-25: machine-sent, addressed to the inbox, a code", () => {
+    const code = { ...PASSING.code.message, fromVerified: null };
+    assert.equal(passes("code", code, IMAP), true);
+    assert.equal(gateCheck(code, IMAP).pass("otp", null), "code");
+    assert.equal(passes("code", { ...code, automated: false }, IMAP), false, "machine-sent");
+    assert.equal(passes("code", { ...code, to: [{ email: "x@elsewhere.example" }] }, IMAP), false, "addressed to the inbox");
+    assert.equal(passes("code", mail("Your code", "Your code is 4821.", { fromVerified: null }), IMAP), false, "a code");
+  });
+
+  test("nothing else passes there, proved or not", () => {
+    for (const [kind, { category, message }] of EACH) {
+      if (kind === "code") continue;
+      assert.equal(passes(kind, message, IMAP), false, kind);
+      assert.equal(gateCheck(message, IMAP).worthAsking(category), false, kind);
+    }
+  });
+
+  test("Gmail's missing or failed proof never falls back", () => {
+    assert.equal(passes("code", { ...PASSING.code.message, fromVerified: null }), false);
   });
 });
 
 describe("whether the question is worth asking", () => {
   test("a code that passes needs no question; a category no kind may be is never asked about", () => {
-    assert.equal(worthAsking("otp", PASSING.code.message, SUFFIXES), false);
-    assert.equal(worthAsking("newsletter", PASSING.security.message, SUFFIXES), false);
+    assert.equal(gateCheck(PASSING.code.message, GMAIL).worthAsking("otp"), false);
+    assert.equal(gateCheck(PASSING.security.message, GMAIL).worthAsking("newsletter"), false);
   });
 
   test("asked when one of the category's kinds shows its evidence", () => {
-    assert.equal(worthAsking("otp", PASSING.sign_in.message, SUFFIXES), true);
-    assert.equal(worthAsking("notification", PASSING.security.message, SUFFIXES), true);
-    assert.equal(worthAsking("receipt", PASSING.order.message, SUFFIXES), true);
+    assert.equal(gateCheck(PASSING.sign_in.message, GMAIL).worthAsking("otp"), true);
+    assert.equal(gateCheck(PASSING.security.message, GMAIL).worthAsking("notification"), true);
+    assert.equal(gateCheck(PASSING.order.message, GMAIL).worthAsking("receipt"), true);
   });
 
   test("not asked when no kind of the category shows evidence", () => {
-    assert.equal(worthAsking("notification", mail("Weekly update", "Here is what happened this week."), SUFFIXES), false);
+    assert.equal(gateCheck(mail("Weekly update", "Here is what happened this week."), GMAIL).worthAsking("notification"), false);
   });
 });
 
@@ -160,4 +246,33 @@ describe("the question", () => {
     assert.equal(acceptPass("code", request), null);
     assert.equal(acceptPass(null, request), null);
   });
+});
+
+describe("in linear time on a 1 MB body (the check runs under the server's lock)", () => {
+  const MB = 1024 * 1024;
+  const BODIES: Record<string, string> = {
+    "card and stars": `card ${"*".repeat(MB)}`,
+    "order and hyphens": `order ${"-".repeat(MB)}`,
+    "angle brackets": "<".repeat(MB),
+    "unclosed style blocks": "<style ".repeat(MB / 7),
+    "an href and spaces": `href=${" ".repeat(MB)}`,
+    "a link and parentheses": `https://x.example/${")".repeat(MB)}a`,
+    "spaced digits": `1 ${"111 ".repeat(MB / 4)}`,
+    "reference words": "order A1234 ".repeat(MB / 12),
+    "markdown brackets": "[".repeat(MB),
+  };
+  for (const [name, body] of Object.entries(BODIES)) {
+    test(name, () => {
+      const started = performance.now();
+      const check = gateCheck(mail("Order update", body, { html: body }), GMAIL);
+      for (const kind of ["code", ...askableKinds("notification")] as const) check.mayPass(kind);
+      for (const evidence of Object.values(EVIDENCE)) evidence({ words: body, link: true });
+      holdsLink(body, body);
+      modelText(body, null);
+      modelText(null, body);
+      readingText(null, body);
+      const took = performance.now() - started;
+      assert.ok(took < 3_000, `${name}: ${took.toFixed(0)} ms`);
+    });
+  }
 });

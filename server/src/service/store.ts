@@ -152,6 +152,15 @@ export async function blockedSenders(ctx: Ctx, inboxId: string): Promise<Set<str
   return new Set(rows.map((row) => row.email));
 }
 
+/**
+ * Whether the thread is out of Screening only because the server's own check let it skip it (`skippedScreening`) and
+ * its sender still isn't let in. Mail written into it lets nobody in, and the AI never moves it to `conversation`.
+ */
+export async function skippedWhileUnknown(ctx: Ctx, row: ThreadRow): Promise<boolean> {
+  if (row.screened || !row.skippedScreening) return false;
+  return !row.sender || await senderStatus(ctx, row.inboxId, row.sender) !== "known";
+}
+
 export async function senderStatus(ctx: Ctx, inboxId: string, email: string): Promise<SenderStatus | null> {
   return (await senderRow(ctx, inboxId, email)).status;
 }

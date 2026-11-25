@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { dataItems, type ChoiceRequest, type TextRequest } from "../src/index.ts";
-import { cleanText, isStubText, modelText, plainText, readableHtml, snippetText, STUB_RATIO, STUB_TEXT } from "../src/ai/text.ts";
+import { cleanText, isStubText, modelText, readableHtml, snippetText, STUB_RATIO, STUB_TEXT } from "../src/ai/text.ts";
 import { historyFromKnown, KNOWN, makeServer, type TestServer } from "./helpers.ts";
 
 describe("cleaning a message's text", () => {
@@ -57,20 +57,12 @@ describe("a stub text part", () => {
   });
 });
 
-describe("the screening gate's own check", () => {
-  test("still reads the message as before: the text part untouched, links whole", () => {
-    assert.equal(plainText("Code: https://x.example/verify?code=482913 ", "<p>ignored</p>"), "Code: https://x.example/verify?code=482913");
-    assert.equal(plainText(null, "<p>A&nbsp;b &zwnj;</p>"), "A b &zwnj;");
-  });
-});
-
 describe("in linear time (0.1.3)", () => {
   test("blocks, tags and links read as before", () => {
     assert.equal(readableHtml("<style>p { color: red }</style><p>Hi</p><script>x()</script><p>there</p>"), "Hi\nthere");
     assert.equal(readableHtml("<style>never closed <p>Hi</p>"), "never closed Hi", "a block never closed stays, as before");
     assert.equal(readableHtml("a < b and <b>bold</b>"), "a < b and bold", "a lone < no longer swallows the text up to the next tag");
     assert.equal(cleanText("See https://x.example/a/b)."), "See https://x.example/…).");
-    assert.equal(plainText(null, "<style>x</style><p>A</p><b>b</b>"), "A\n b");
   });
 
   test("a \"<\" inside an attribute or a comment leaves no piece of a tag; a lone one in the text stays", () => {
@@ -90,12 +82,6 @@ describe("in linear time (0.1.3)", () => {
     assert.equal(modelText(null, `<p>Before</p><!-- note --!><p>Your code is 123456</p>${footer}`), "Before\nYour code is 123456\nThanks\nEnd");
     assert.equal(snippetText(null, "<p>Before</p><!----><p>Shown</p><!-- a -- >still hidden --><p>Too</p>"), "Before Shown Too");
     assert.equal(snippetText(null, "<p>Before</p><!-- never closed <p>After</p>"), "Before After", "one never closed stays, as before");
-  });
-
-  test("the screening gate's check reads tags as before 0.1.3: each from its \"<\" to the nearest \">\"", () => {
-    const html = '<p title="a<b">Kept text</p><img alt="I <3 you"><!-- <b>hidden</b> --><p>after</p>';
-    assert.equal(plainText(null, html), "Kept text\n hidden --> after");
-    assert.equal(plainText(null, "if a < b then <i>so</i>"), "if a so");
   });
 });
 

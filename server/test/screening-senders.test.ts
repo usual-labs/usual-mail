@@ -1,7 +1,8 @@
 // Senders let in for good without the AI (docs/contract.md, "Letting a sender in"; the owner's decision of
 // 2026-11-25): another inbox connected on this server, and a colleague at the inbox's own domain when that domain isn't
-// a public mail domain. Both only when the mailbox provider's checker proved the From domain; a spoofed From, the
-// inbox's own address, a public domain and a subdomain stay screened. With the AI on, off or failing alike.
+// a public mail domain. Both only when Gmail's checker proved the From domain; a spoofed From, the inbox's own address,
+// a public domain, a subdomain and an IMAP inbox stay screened, and a colleague must be a person: a group relaying
+// outsiders' posts as the company, or a tool's machine-sent mail, isn't let in. With the AI on, off or failing alike.
 
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
@@ -21,8 +22,8 @@ const proved = (domain: string) => ({ result: "verified", domain }) as const;
 const COLLEAGUE = { from: { name: "Ann Lee", email: "ann@work.example" }, subject: "Lunch on Friday?", text: "Shall we?", fromCheck: proved("work.example") } satisfies DeliverInput;
 
 async function twoInboxes() {
-  const work = await t.connect({ address: "me@work.example" });
-  const home = await t.connect({ address: "me@home.example" });
+  const work = await t.connect({ address: "me@work.example", mailbox: { kind: "gmail" } });
+  const home = await t.connect({ address: "me@home.example", mailbox: { kind: "gmail" } });
   return { work, home };
 }
 
@@ -78,7 +79,7 @@ describe("a colleague at the inbox's own domain", () => {
   });
 
   test("never at a public mail domain", async () => {
-    const { inbox } = await t.connect({ address: "me@yahoo.example" });
+    const { inbox } = await t.connect({ address: "me@yahoo.example", mailbox: { kind: "gmail" } });
     const thread = await t.receive(inbox, { from: { email: "pat@yahoo.example" }, subject: "Hello from a webmail", text: "Hi.", fromCheck: proved("yahoo.example") });
     assert.equal(thread.screened, true);
   });
@@ -91,10 +92,40 @@ describe("a colleague at the inbox's own domain", () => {
     assert.deepEqual([after.done, after.screened], [true, true]);
   });
 
-  test("filed under Screening by the person's own filter: the filing stands", async () => {
+  test("filed under Screening by the person's own filter: the filing stands, and the colleague isn't let in by it", async () => {
     const { work } = await twoInboxes();
     const thread = await t.receive(work.inbox, { ...COLLEAGUE, placement: { inInbox: false, screened: true } });
     assert.equal(thread.screened, true);
+    assert.equal(work.mailbox.messages().find((m) => m.subject === COLLEAGUE.subject)!.placement.screened, true, "still under Screening");
+    const next = await t.receive(work.inbox, { from: COLLEAGUE.from, subject: "In the inbox, unproved", text: "Hi." });
+    assert.equal(next.screened, true, "not let in: their next mail, unproved, is screened");
+  });
+
+  test("a group relaying an outsider's post as the company isn't let in: it carries a List-Id", async () => {
+    const { work } = await twoInboxes();
+    const relayed = await t.receive(work.inbox, {
+      from: { name: "Stranger via Info", email: "info@work.example" }, subject: "Question via the website", text: "Hello, I have a question.",
+      listId: "info.work.example", fromCheck: proved("work.example"),
+    });
+    assert.equal(relayed.screened, true);
+    const next = await t.receive(work.inbox, { from: { email: "info@work.example" }, subject: "Another post", text: "Hi." });
+    assert.equal(next.screened, true, "the group isn't let in");
+  });
+
+  test("a tool's machine-sent mail as the company isn't a colleague", async () => {
+    const { work } = await twoInboxes();
+    const tool = await t.receive(work.inbox, { from: { email: "no-reply@work.example" }, subject: "Ticket 4821 updated", text: "A customer replied.", automated: true, fromCheck: proved("work.example") });
+    assert.equal(tool.screened, true);
+  });
+});
+
+describe("an inbox whose provider has no checker (IMAP)", () => {
+  test("neither rule lets anyone in, whatever the message says it proved", async () => {
+    const { inbox } = await t.connect({ address: "me@work.example" });
+    await t.connect({ address: "me@home.example" });
+    const colleague = await t.receive(inbox, COLLEAGUE);
+    const own = await t.receive(inbox, { from: { email: "me@home.example" }, subject: "From home", text: "Hi.", fromCheck: proved("home.example") });
+    assert.deepEqual([colleague.screened, own.screened], [true, true]);
   });
 });
 

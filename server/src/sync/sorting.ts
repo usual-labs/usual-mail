@@ -10,7 +10,7 @@ import type { Ctx } from "../service/context.ts";
 import { retireUndo } from "../service/records.ts";
 import { applyRule, firstIncoming, firstMatch } from "../service/rules.ts";
 import { BY_MAILBOX, doneState, NO_COME_BACK, sameIn, type Group, type ThreadState } from "../service/state.ts";
-import { getThread, markKnown, saveThreadState, senderStatus, threadState } from "../service/store.ts";
+import { getThread, markKnown, saveThreadState, senderStatus, skippedWhileUnknown, threadState } from "../service/store.ts";
 import { dateOf } from "./rows.ts";
 
 export interface Sorted {
@@ -155,26 +155,23 @@ async function asFiled(
 }
 
 /**
- * Whether the thread is out of Screening only because the server's own check let it skip it (`skippedScreening`) and
- * its sender still isn't let in. Mail written into it lets nobody in, and the AI doesn't move it to `conversation`.
- */
-export async function skippedWhileUnknown(ctx: Ctx, row: ThreadRow): Promise<boolean> {
-  if (row.screened || !row.skippedScreening) return false;
-  return !row.sender || await senderStatus(ctx, row.inboxId, row.sender) !== "known";
-}
-
-/**
  * Someone else wrote into a thread that already existed. It ends a come-back-if-no-reply wait that is still
  * running, and brings a done thread back unless the writer is blocked or the thread is trashed. Mail older
  * than the thread's newest message (a provider catching up out of order) brings nothing back. Incoming mail that
  * isn't from a blocked sender makes the summary out of date (unless it is a one-time code), and the category too when
- * nobody has decided it or the AI filed it elsewhere than `conversation`. Returns whether the AI has new work.
+ * nobody has decided it or the AI filed it elsewhere than `conversation`. Mail from someone not let in joining a
+ * thread that skipped Screening while its sender isn't let in screens it again, and the gate judges the newest message
+ * (held unwritten while the AI may answer now, `aiNow`): a stranger threaded onto a shop's order mustn't ride its pass.
+ * Returns whether the AI has new work.
  */
-export async function newMailInThread(ctx: Ctx, thread: ThreadRow, message: ProviderMessage, lastBefore: number): Promise<boolean> {
+export async function newMailInThread(ctx: Ctx, thread: ThreadRow, message: ProviderMessage, lastBefore: number, aiNow: boolean): Promise<boolean> {
   const row = await getThread(ctx, thread.id);
   if (!row || row.trashed || row.removed) return false;
   // A blocked sender writing in changes nothing a person sees: no wait ends, nothing comes back, nothing is due.
-  if (await senderStatus(ctx, row.inboxId, message.from.email.toLowerCase()) === "blocked") return false;
+  const standing = await senderStatus(ctx, row.inboxId, message.from.email.toLowerCase());
+  if (standing === "blocked") return false;
+  const skipped = await skippedWhileUnknown(ctx, row);
+  const rejudge = skipped && standing !== "known";
   const date = dateOf(message, ctx.now());
   const state = await threadState(ctx, row);
   let next = state;
@@ -183,21 +180,22 @@ export async function newMailInThread(ctx: Ctx, thread: ThreadRow, message: Prov
     next = { ...next, ...NO_COME_BACK };
   }
   if (row.done && date > lastBefore) next = { ...next, done: false };
-  const changed = (["done", "comeBack"] as Group[]).filter((group) => !sameIn([group], state, next));
+  if (rejudge) next = { ...next, screened: true, screenedByMailbox: false, skippedScreening: null };
+  const changed = (["done", "comeBack", "screened"] as Group[]).filter((group) => !sameIn([group], state, next));
   if (changed.length) {
     await saveThreadState(ctx, row.id, next);
     await retireUndo(ctx, [row.id], changed);
   }
-  // A thread that skipped Screening while its sender isn't let in is never asked again: the AI may only move it to
-  // `conversation`, and that would put a stranger's mail in Home.
-  const recategorize = ((row.category === "unknown" && row.categorizedBy === null)
-    || (row.categorizedBy === "ai" && row.category !== "conversation" && row.category !== "unknown"))
-    && !await skippedWhileUnknown(ctx, row);
+  // Otherwise a thread that skipped Screening while its sender isn't let in is never asked again (someone let in wrote
+  // into it): the AI may only move it to `conversation`, and that would put a stranger's mail in Home.
+  const recategorize = rejudge || (!skipped && ((row.category === "unknown" && row.categorizedBy === null)
+    || (row.categorizedBy === "ai" && row.category !== "conversation" && row.category !== "unknown")));
   const summarize = row.category !== "otp";
   if (!recategorize && !summarize) return false;
   await ctx.db.update(threads).set({
     ...(recategorize && { categoryDue: true }),
     ...(summarize && { summaryDue: true }),
+    ...(rejudge && aiNow && { gatePending: true }),
   }).where(eq(threads.id, row.id));
   return !next.done;
 }

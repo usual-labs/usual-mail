@@ -3,7 +3,7 @@
 // (the audit of 2026-11-19: a third of the messages filled the 4,000 characters, most of them mostly links, invisible
 // padding and divider lines). Each link keeps its scheme and site and loses its path and query; invisible characters
 // go; runs of one divider character become three; spaces and blank lines collapse. The same field as before, with less
-// noise: never the HTML itself. The screening gate's own check (gate.ts) still reads `plainText`, as it always did.
+// noise: never the HTML itself. The screening gate's own check (gate.ts) reads the same, as far as the model read it.
 // A thread's snippet is made from the same reading (`snippetText`), with links, tags and entities gone. Every pattern
 // here runs in time linear in the text (0.1.3, after a security review): a pattern that can scan to the end of the text
 // from many places ("<" a million times) would hold the server's lock for minutes, since the text is read under it.
@@ -12,26 +12,6 @@
 export const STUB_TEXT = 300;
 /** ... and is one when the HTML gives at least this many times as much text. */
 export const STUB_RATIO = 3;
-
-/**
- * A message's text as the screening gate's check reads it, unchanged since before the clean-up: its text part, or
- * text made from its HTML when it has none. Never the HTML itself. Linear since 0.1.3, reading the same.
- */
-export function plainText(text: string | null, html: string | null): string {
-  if (text !== null && text.trim()) return text.trim();
-  if (!html) return "";
-  const lines = withoutBlocks(html).replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6])\s*>/gi, "\n");
-  return withoutTags(lines)
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/[ \t]+/g, " ")
-    .replace(/\n\s*\n+/g, "\n\n")
-    .trim();
-}
 
 /** A text part that is HTML source (some senders put the HTML there too): read as HTML. */
 const HTML_SOURCE = /^\s*<(?:!doctype\s+html|html|head|body|meta|table|div|p|span|center|style)[\s>/]/i;

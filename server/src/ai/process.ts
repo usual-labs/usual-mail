@@ -11,8 +11,8 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { messages, threads, type InboxRow, type MessageRow, type ThreadRow } from "../db/index.ts";
 import { perform } from "../service/actions.ts";
 import type { Ctx } from "../service/context.ts";
-import { blockedSenders, emitThread, getInbox, getThread, saveThreadState, threadState } from "../service/store.ts";
-import { screeningPass, worthAsking } from "./gate.ts";
+import { blockedSenders, emitThread, getInbox, getThread, saveThreadState, skippedWhileUnknown, threadState } from "../service/store.ts";
+import { gateCheck, type GateCheck } from "./gate.ts";
 import { acceptPass, passRequest } from "./pass-prompt.ts";
 import { AiServiceError, type AiAnswer, type AiModels, type AiObjectAnswer, type ChoiceRequest, type ObjectRequest, type TextRequest } from "./models.ts";
 import { checkEvent, combineEvent, type EventChange } from "./event.ts";
@@ -209,8 +209,9 @@ async function planCategorize(ctx: Ctx, threadId: string): Promise<PlannedCatego
   };
   const request = categorizeRequest(model, input, boundaryId(ctx.host.random.bytes(9)));
   // A thread the AI filed elsewhere may only be moved to `conversation` (docs/contract-ai.md), unless it is asked
-  // again about it, once, under today's words (ask-again.ts).
-  const onlyConversation = found.thread.categorizedBy === "ai" && !found.thread.categoryAskAgain;
+  // again about it, once, under today's words (ask-again.ts), or the gate holds it to judge its newest message again
+  // (a stranger wrote into a thread that skipped Screening: sync/sorting.ts).
+  const onlyConversation = found.thread.categorizedBy === "ai" && !found.thread.categoryAskAgain && !judging(found.thread);
   return { request, newestId: newest.id, model, onlyConversation, input };
 }
 
@@ -220,15 +221,34 @@ function atGate(thread: ThreadRow): boolean {
 }
 
 /**
- * The screening gate's question, when it is worth asking: the thread is at the gate, the AI's category may be a kind
- * that skips Screening, and the server's own check could hold for the message the model read (gate.ts). Under the lock.
+ * The gate holds the thread for the AI's answer (`gatePending`): new mail from a stranger, kept unwritten. Only then may
+ * the answer let it skip Screening, so a thread is written back once, never under Screening and out again: mail that
+ * arrived while the AI was off, paused or failing, or whose answer failed, stays screened.
+ */
+function judging(thread: ThreadRow): boolean {
+  return atGate(thread) && thread.gatePending;
+}
+
+/**
+ * The server's own check on the message the model read, when it may let the thread skip Screening: the gate is judging
+ * the thread, and that message is still its newest incoming one (mail that joined meanwhile isn't judged by it).
+ */
+function checkAtGate(ctx: Ctx, found: { thread: ThreadRow; inbox: InboxRow; mail: MessageRow[] }, newestId: string): GateCheck | null {
+  const read = found.mail.at(-1);
+  if (!judging(found.thread) || read?.id !== newestId) return null;
+  return gateCheck(read, { suffixes: ctx.avatars?.suffixes ?? null, inbox: found.inbox });
+}
+
+/**
+ * The screening gate's question, when it is worth asking: the gate is judging the thread, the AI's category may be a
+ * kind that skips Screening, and the server's own check could hold for the message the model read (gate.ts). Under the
+ * lock.
  */
 async function planPass(ctx: Ctx, threadId: string, planned: PlannedCategory, answer: string | null): Promise<ChoiceRequest | null> {
   const accepted = acceptCategory(answer, planned.onlyConversation);
   const found = await loaded(ctx, threadId);
-  if (!accepted || !found || !wantsCategoryNow(found.thread) || !atGate(found.thread)) return null;
-  const read = found.mail.find((message) => message.id === planned.newestId);
-  if (!read || !worthAsking(accepted, read, ctx.avatars?.suffixes ?? null)) return null;
+  if (!accepted || !found || !wantsCategoryNow(found.thread)) return null;
+  if (!checkAtGate(ctx, found, planned.newestId)?.worthAsking(accepted)) return null;
   return passRequest(planned.model, planned.input, accepted, boundaryId(ctx.host.random.bytes(9)));
 }
 
@@ -236,13 +256,13 @@ async function applyCategory(ctx: Ctx, threadId: string, planned: PlannedCategor
   await recordAnswer(ctx, true);
   const accepted: DecidedCategory | null = acceptCategory(answer, planned.onlyConversation);
   const found = await loaded(ctx, threadId);
-  // Someone may have decided it meanwhile, or it may be done now: then the answer is moot.
-  if (accepted && found && wantsCategoryNow(found.thread)) {
+  // Someone may have decided it meanwhile, or it may be done now: then the answer is moot. A thread that skipped
+  // Screening while its sender isn't let in never becomes a conversation: that would put a stranger's mail in Home.
+  if (accepted && found && wantsCategoryNow(found.thread) && !(accepted === "conversation" && await skippedWhileUnknown(ctx, found.thread))) {
     // A model's answer alone never lifts the screening gate: the server's own check must hold for the message it read,
     // for the kind the model named (or for a code, the AI's `otp`). Otherwise it stays screened, in this category.
-    const read = found.mail.find((message) => message.id === planned.newestId);
     const chosen = asked ? acceptPass(asked.value, asked.request) : null;
-    const pass = atGate(found.thread) && read ? screeningPass(accepted, chosen, read, ctx.avatars?.suffixes ?? null) : null;
+    const pass = checkAtGate(ctx, found, planned.newestId)?.pass(accepted, chosen) ?? null;
     await perform(ctx, {
       inbox: found.inbox,
       thread: found.thread,

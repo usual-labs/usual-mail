@@ -1,9 +1,11 @@
-// What the mail itself must show for each kind of mail that may skip Screening (docs/contract-ai.md, "Mail is
-// untrusted input to a model"): a code near a word for one; a link with sign-in, confirm or reset words; security
-// words; an order, booking or tracking reference or an amount; a card's last digits. Words are matched whole and in any
-// case, with a space, a hyphen or nothing between a phrase's words ("sign in", "sign-in", "signin"). Read on the
-// message as the gate reads it: its subject, then its text (or the text made from its HTML), with links whole; a link
-// also counts in the HTML's own links. Pure.
+// What the mail itself must show for each kind of mail that may skip Screening (docs/contract-ai.md, "A model's answer
+// at the screening gate"): a link with sign-in, confirm or reset words; security words; an order, booking or tracking
+// reference or an amount; a card's last digits; a day or time. (A code's is in gate.ts.) Words are matched whole and in
+// any case, with up to three spaces or hyphens or nothing between a phrase's words ("sign in", "sign-in", "signin").
+// Read on the message as the gate reads it (gate.ts: the subject and the text as the model read it, links cut to their
+// site); a link also counts in the stored text or HTML. Every quantifier is bounded, so each pattern runs in linear
+// time on any text (the security review of 2026-11-25: "card " and 80,000 "*" took 7.6 seconds under the server's
+// lock). Pure.
 
 import type { ScreeningPass } from "@usualmail/core";
 import { ISO_4217_MINOR_UNITS } from "./currencies.ts";
@@ -14,9 +16,9 @@ export interface Reading {
   link: boolean;
 }
 
-/** Any of the phrases, whole, in any case, each space in a phrase standing for a space, a hyphen or nothing. */
+/** Any of the phrases, whole, in any case, each space in a phrase standing for up to three spaces or hyphens, or none. */
 function phrases(list: readonly string[]): RegExp {
-  const alternatives = list.map((phrase) => phrase.split(" ").map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[\\s\\u00a0-]*"));
+  const alternatives = list.map((phrase) => phrase.split(" ").map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("[\\s-]{0,3}"));
   return new RegExp(`(?<![\\p{L}\\p{N}])(?:${alternatives.join("|")})(?![\\p{L}\\p{N}])`, "giu");
 }
 
@@ -61,38 +63,42 @@ const REFERENCE_WORD = phrases([
  * A reference: five to thirty capital letters, digits and hyphens with at least one digit, alone (`#112-3456789`,
  * `K9XQ2B`, `1Z999AA10123456784`). Case-sensitive, so an ordinary word isn't one.
  */
-const REFERENCE = /(?<![\p{L}\p{N}])#?(?=[A-Z0-9-]*\d)[A-Z0-9][A-Z0-9-]{4,29}(?![\p{L}\p{N}])/gu;
+const REFERENCE = /(?<![\p{L}\p{N}])#?(?=[A-Z0-9-]{0,29}\d)[A-Z0-9][A-Z0-9-]{4,29}(?![\p{L}\p{N}])/gu;
 /** How far after its word a reference may start, in characters. */
 const REFERENCE_NEAR = 40;
 
 const SYMBOLS = "[$€£¥₹₩₽₺₪]";
 const CODES = `(?<![\\p{L}])(?:${[...ISO_4217_MINOR_UNITS.keys()].join("|")})(?![\\p{L}])`;
-const NUMBER = "\\d{1,3}(?:[.,'\\u00a0 ]\\d{3})+(?:[.,]\\d{1,3})?|\\d+(?:[.,]\\d{1,3})?";
+const NUMBER = "\\d{1,3}(?:[.,'\\u00a0 ]\\d{3}){1,5}(?:[.,]\\d{1,3})?|\\d{1,9}(?:[.,]\\d{1,3})?";
 /** An amount: a currency's symbol or ISO code next to a number, before or after it ("€12.50", "12,50 EUR"). */
 const AMOUNT = new RegExp(`(?:${SYMBOLS}|${CODES})\\s?(?:${NUMBER})|(?<![\\d.,])(?:${NUMBER})\\s?(?:${SYMBOLS}|${CODES})`, "u");
 /** A card's last four digits: "ending in 4242", "•••• 4242". */
-const CARD = /(?:ending(?:\s+(?:in|with))?|ends\s+in|last\s+(?:4|four)\s+digits|[•*·xX]{2,})[\s:]*\d{4}(?!\d)/iu;
-const MONTH = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\\.?";
+const CARD = /(?:ending(?:\s{1,3}(?:in|with))?|ends\s{1,3}in|last\s{1,3}(?:4|four)\s{1,3}digits|[•*·xX]{2,8})[\s:]{0,3}\d{4}(?!\d)/iu;
+const MONTH = "(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]{0,6}\\.?";
 /** A day or a time: "10:30", "3 Dec", "Dec 3", "2026-12-03", "03/12/2026". */
 const DAY_OR_TIME = new RegExp(
-  `(?<!\\d)\\d{1,2}:\\d{2}(?!\\d)|(?<![\\p{L}])${MONTH}\\s+\\d{1,2}(?!\\d)|(?<!\\d)\\d{1,2}\\.?\\s+${MONTH}(?![\\p{L}])`
+  `(?<!\\d)\\d{1,2}:\\d{2}(?!\\d)|(?<![\\p{L}])${MONTH}\\s{1,3}\\d{1,2}(?!\\d)|(?<!\\d)\\d{1,2}\\.?\\s{1,3}${MONTH}(?![\\p{L}])`
     + "|(?<!\\d)\\d{4}-\\d{2}-\\d{2}(?!\\d)|(?<!\\d)\\d{1,2}[./]\\d{1,2}[./]\\d{2,4}(?!\\d)",
   "iu",
 );
 /** A web link: in the text, or one of the HTML's own links. */
-const TEXT_LINK = /https?:\/\/[^\s<>"')]+/i;
-const HTML_LINK = /\bhref\s*=\s*["']?\s*https?:\/\//i;
+const TEXT_LINK = /https?:\/\/[^\s<>"')]/i;
+const HTML_LINK = /\bhref\s{0,8}=\s{0,8}["']?\s{0,8}https?:\/\//i;
 
 function has(pattern: RegExp, text: string): boolean {
   pattern.lastIndex = 0;
   return pattern.test(text);
 }
 
-/** Whether a reference starts within 40 characters after a word a reference follows. */
+/** Whether a reference starts within 40 characters after a word a reference follows. One pass over both, in order. */
 function holdsReference(text: string): boolean {
-  const words = [...text.matchAll(REFERENCE_WORD)].map((match) => match.index + match[0].length);
-  if (words.length === 0) return false;
-  return [...text.matchAll(REFERENCE)].some((match) => words.some((end) => match.index >= end && match.index - end <= REFERENCE_NEAR));
+  const ends = [...text.matchAll(REFERENCE_WORD)].map((match) => match.index + match[0].length);
+  let next = 0;
+  for (const match of text.matchAll(REFERENCE)) {
+    while (next < ends.length && ends[next]! < match.index - REFERENCE_NEAR) next++;
+    if (next < ends.length && ends[next]! <= match.index) return true;
+  }
+  return false;
 }
 
 /** Whether the message holds a web link, in its text or among its HTML's links. */
@@ -100,7 +106,7 @@ export function holdsLink(text: string | null, html: string | null): boolean {
   return TEXT_LINK.test(text ?? "") || HTML_LINK.test(html ?? "");
 }
 
-/** What each kind needs the mail to show, besides the proof and machine-sent mail every kind needs. Not `code`'s. */
+/** What each kind needs the mail to show, besides the proof, machine-sent mail and the shape every kind needs. */
 export const EVIDENCE: Record<Exclude<ScreeningPass, "code">, (reading: Reading) => boolean> = {
   sign_in: ({ words, link }) => link && has(SIGN_IN, words),
   email_confirmation: ({ words, link }) => link && has(CONFIRM, words) && has(CONFIRMED, words),

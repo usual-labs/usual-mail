@@ -8,14 +8,14 @@ import { inboxes, messages, threads, type InboxRow } from "../db/index.ts";
 import type { Ctx } from "../service/context.ts";
 import { sentByServer } from "../service/drafts.ts";
 import { blockedMailArrived } from "../service/senders.ts";
-import { blockedSenders, emitThread, getThread, markKnown } from "../service/store.ts";
+import { blockedSenders, emitThread, getThread, markKnown, skippedWhileUnknown } from "../service/store.ts";
 import { settleThreadAvatars } from "../avatars/settle.ts";
 import { takeProviderState } from "./placement.ts";
 import { fitMessage } from "./fit.ts";
 import { becameOwn, changeHeldCopy, dropHeldCopy, holdCopy, sameMessage, sentKey, takeHeldCopy } from "./identity.ts";
 import { createThread, dateOf, deleteMessage, findByRef, insertMessage, refreshThread } from "./rows.ts";
 import { letInOwnSender, serverAddresses } from "./let-in.ts";
-import { classify, newMailInThread, skippedWhileUnknown } from "./sorting.ts";
+import { classify, newMailInThread } from "./sorting.ts";
 import { emitRules } from "../service/rules.ts";
 
 /**
@@ -150,7 +150,7 @@ export async function ingest(
       if (current && !current.screened && !await skippedWhileUnknown(ctx, current)) {
         for (const id of await markKnown(ctx, inbox.id, [incoming.from.email])) extraTidy.add(id);
       }
-      if (await newMailInThread(ctx, thread, incoming, before.get(thread.id)!.lastMessageAt)) aiWork.add(thread.id);
+      if (await newMailInThread(ctx, thread, incoming, before.get(thread.id)!.lastMessageAt, aiNow)) aiWork.add(thread.id);
     }
   }
 
