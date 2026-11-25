@@ -6,9 +6,10 @@
     /// The iPhone's top row, over the wallpaper (the owner's concept of 2026-11-20): search on the left, the switcher in
     /// the middle, settings on the right. Together they are the Mac's rail: search opens over the stack showing; the
     /// switcher's menu goes to a profile's mail or to To reply, Pinned, Snoozed or the Inbox page, each a stack kept as
-    /// it was left (`Navigation`); settings is its own stack. The glass is the Mac's (`GlassControl`), 32 points; the
-    /// two round buttons take touches 6 points beyond it (the switcher doesn't: room around a `Menu`'s label is drawn
-    /// as glass). Its ink follows the wallpaper under it as the rail's does (`RailTone`).
+    /// it was left (`Navigation`); settings is its own stack. The glass is the Mac's (`GlassControl`), at the iPhone's
+    /// size, 44 points with 20-point icons and 14-point words (`ControlSize`; the owner's words of 2026-11-25, "make
+    /// the header liquid glass controls size bigger"), a finger's size, so nothing takes touches beyond it. Its ink
+    /// follows the wallpaper under it as the rail's does (`RailTone`).
     struct PhoneTopBar: View {
         let nav: Navigation
         let inboxes: [Inbox]
@@ -22,11 +23,8 @@
         @Environment(\.windowSize) private var window
         @State private var addingGmail = false
 
-        /// How far beyond its glass a control takes touches.
-        static let touchSlop: CGFloat = 6
-
         var body: some View {
-            GlassEffectContainer(spacing: 10) {
+            GlassEffectContainer(spacing: ControlSize.spacing) {
                 HStack(spacing: 0) {
                     round(.search)
                     Spacer(minLength: 4)
@@ -50,9 +48,8 @@
             return Button {
                 press(target)
             } label: {
-                RailIcon(icon: target.icon, lit: lit)
+                RailIcon(icon: target.icon, lit: lit, size: ControlSize.icon)
                     .glassControl(lit: lit)
-                    .padding(Self.touchSlop)
                     .contentShape(Circle())
             }
             .buttonStyle(PlainControlStyle())
@@ -185,22 +182,22 @@
         var body: some View {
             let tint = RailTone.tint(for: frame, in: window)
             HStack(spacing: 8) {
-                label.icon.view(tint: tint ?? Theme.icon)
+                label.icon.view(size: ControlSize.icon, tint: tint ?? Theme.icon)
                     .id(label.icon)
                     .transition(.blurReveal)
                 Text(verbatim: label.title)
-                    .font(Theme.sans(12))
+                    .font(Theme.sans(ControlSize.text))
                     .foregroundStyle(tint ?? Theme.ink)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .contentTransition(.opacity)
                 if warns {
-                    SyncWarningMark(size: 11)
+                    SyncWarningMark(size: 13)
                         .transition(.blurReveal)
                 }
-                Icon.expand.view(tint: tint ?? Theme.icon)
+                Icon.expand.view(size: 18, tint: tint ?? Theme.icon)
             }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
             .glassControl()
             .onGeometryChange(for: CGRect.self) {
                 $0.frame(in: .global)

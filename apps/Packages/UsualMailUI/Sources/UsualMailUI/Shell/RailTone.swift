@@ -28,13 +28,15 @@ struct RailIcon: View {
     let icon: Icon
     /// Its button is lit, white under it whatever the wallpaper.
     var lit = false
+    /// Its side: the rail's 16, or the iPhone's top row's larger (`ControlSize.icon`).
+    var size: CGFloat = 16
     @Environment(\.railWindow) private var window
     @Environment(\.railLook) private var look
     @State private var frame: CGRect = .zero
 
     var body: some View {
         let tint = look.frosted || lit ? nil : RailTone.tint(for: frame, in: window)
-        icon.view(tint: tint)
+        icon.view(size: size, tint: tint)
             .onGeometryChange(for: CGRect.self) {
                 $0.frame(in: .global)
             } action: {

@@ -82,8 +82,16 @@ struct SeenTick: View {
     @State private var hovering = false
     @Environment(MailStore.self) private var store
 
-    /// The tick's square: the 16-point ring in a target a little larger.
-    static let side: CGFloat = 24
+    /// The tick's square, and its ring: on the Mac a 16-point ring in a target a little larger; on the iPhone, for a
+    /// finger, a 24-point ring in a 36-point target (the owner's words of 2026-11-25: "the check mark control should be
+    /// bigger").
+    #if os(iOS)
+        static let side: CGFloat = 36
+        static let ring: CGFloat = 24
+    #else
+        static let side: CGFloat = 24
+        static let ring: CGFloat = 16
+    #endif
 
     var body: some View {
         Button {
@@ -120,7 +128,7 @@ private struct SeenTickLabel: View {
 
     var body: some View {
         ZStack {
-            icon.view(tint: hovered ? Theme.secondary : Theme.time)
+            icon.view(size: SeenTick.ring, tint: hovered ? Theme.secondary : Theme.time)
                 .id(icon)
                 .transition(.blurReveal)
         }

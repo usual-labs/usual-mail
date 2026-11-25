@@ -16,17 +16,18 @@ import UsualMailKit
 /// - To reply, Pinned, Snoozed and the Inbox page: a quiet title capsule with the page's icon and name where the tabs
 ///   are, not a button; with a mail open, it becomes the back to the list, as a chosen tab does, the mail's actions
 ///   popping in;
-/// - Settings: only its five tabs;
+/// - Settings: only its five tabs (on the iPhone after its back button);
 /// - search, over any stack: a capsule back to where the person was ("← Pinned"), and with a mail open from the
 ///   results, back to them ("← Search").
 /// Whichever bar is `hidden` blurs out: its words and icons out of focus, its glass fading.
 ///
 /// On the iPhone the same row sits at the foot of the card (`compact`, the owner's concept of 2026-11-20: the tabs and
-/// controls "come down from the top"), with what a narrow screen and a finger ask for: a back button is the arrow
-/// alone once a mail is open, so the mail's five buttons fit; To reply, Pinned, Snoozed and the Inbox page show no
-/// title capsule, as the switcher above the card names them; Settings' tabs sit in the middle of the row, not at its
-/// right; a capsule takes touches 6 points above and below its 32;
-/// and the snooze and more menus open upwards as popovers.
+/// controls "come down from the top"), with what a narrow screen and a finger ask for: capsules 44 points high
+/// (`ControlSize`); a back button is the arrow alone once a mail is open, so the mail's five buttons fit; To reply,
+/// Pinned, Snoozed and the Inbox page show no title capsule, as the switcher above the card names them; Settings has a
+/// back button, the arrow alone, to the stack it was opened from, and its tabs at the right (the owner's words of
+/// 2026-11-25); the chosen tab is named only when the row fits it (`BarFit`), else it is its lit icon alone; and the
+/// snooze and more menus open upwards as popovers.
 struct TopBar: View {
     @Binding var place: Place
     let screeningCount: Int
@@ -42,6 +43,11 @@ struct TopBar: View {
     var namesSettingsTabs = true
     /// The iPhone's row, at the foot of the card.
     var compact = false
+    /// On the iPhone, the row's width, so a chosen tab is named only when it fits (`BarFit`); nil names it always.
+    var room: CGFloat? = nil
+    /// On the iPhone's Settings, where its back button goes ("Home"), and going there.
+    var leaveTitle = ""
+    var leave: () -> Void = {}
     /// The moment the mail's buttons are drawn for: whether it still waits to come back (`BarAction.button`).
     var now = Date()
     let back: () -> Void
@@ -52,24 +58,27 @@ struct TopBar: View {
     private var reading: Bool { mail != nil }
 
     var body: some View {
-        GlassEffectContainer(spacing: 10) {
-            HStack(spacing: 10) {
-                ForEach(TopBar.items(place: place, reading: reading, compact: compact)) { item in
+        let items = TopBar.items(place: place, reading: reading, compact: compact)
+        // Whether the chosen tab is named: always on the Mac; on the iPhone when the row fits it.
+        let names = room.map { BarFit.width(items, title: { title(of: $0, names: true) }) <= $0 } ?? true
+        GlassEffectContainer(spacing: ControlSize.spacing) {
+            HStack(spacing: ControlSize.spacing) {
+                ForEach(items) { item in
                     switch item {
-                    case .tab(let tab): slot(tab)
+                    case .tab(let tab): slot(tab, names: names)
                     case .action(let action):
                         if let mail { actionButton(action, item: item, mail: mail) }
-                    case .gap: Spacer(minLength: 10)
-                    case .screening: screeningButton
+                    case .gap: Spacer(minLength: ControlSize.spacing)
+                    case .screening: screeningButton(names: names)
                     case .back: backButton
                     case .title: titleCapsule
-                    case .settings(let tab): settingsSlot(tab)
+                    case .settings(let tab): settingsSlot(tab, names: names)
+                    case .leave: leaveButton
                     }
                 }
             }
         }
-        .frame(maxWidth: TopBar.centres(place: place, compact: compact) ? .infinity : nil)
-        .frame(height: 32 + 2 * touchSlop)
+        .frame(height: ControlSize.height)
         .opacity(hidden ? 0 : 1)
         .allowsHitTesting(!hidden)
         .disabled(hidden)
@@ -86,11 +95,28 @@ struct TopBar: View {
     /// The tab whose page is showing, if a tab's is.
     private var selectedTab: Tab? { place.tab }
 
-    /// How far above and below its 32 points a capsule takes touches on the iPhone: 44 in all.
-    private var touchSlop: CGFloat { compact ? 6 : 0 }
-
     /// A back button's name: none on the iPhone, where the arrow alone leaves room for the mail's buttons.
     private func backTitle(_ title: String) -> String? { compact && reading ? nil : title }
+
+    /// The words an item's capsule shows, `names` saying whether a chosen tab is named: the one place they are
+    /// decided, for drawing the row and for seeing whether it fits (`BarFit`).
+    func title(of item: Item, names: Bool) -> String? {
+        switch item {
+        case .tab(let tab):
+            if reading, tab == selectedTab { return backTitle(tab.title) }
+            return names && tab == selectedTab ? tab.title : nil
+        case .settings(let tab):
+            let selected = settingsTab.wrappedValue == tab
+            return (selected ? names : namesSettingsTabs) ? tab.title : nil
+        case .screening:
+            if reading && place == .screening { return backTitle("Screening") }
+            if place == .screening { return names ? "Screening" : nil }
+            return screeningCount > 0 ? "\(screeningCount)" : nil
+        case .back: return backTitle(reading ? place.title : returnTitle)
+        case .title: return reading ? backTitle(place.title) : place.title
+        case .action, .gap, .leave: return nil
+        }
+    }
 
     // MARK: Arrangement
 
@@ -105,6 +131,8 @@ struct TopBar: View {
         case title
         /// One of Settings' tabs, at the right of its row.
         case settings(SettingsTab)
+        /// On the iPhone's Settings, back to the stack it was opened from.
+        case leave
 
         var id: Self { self }
     }
@@ -113,15 +141,15 @@ struct TopBar: View {
     /// five mail actions. With a mail open from Screening: the screening capsule, a gap, let in, block and more. On To
     /// reply, Pinned, Snoozed and the Inbox page: the title capsule, and with a mail open, the five mail actions after
     /// it. On Settings: a gap, then its five tabs, at the right. On search: its capsule back, and with a mail open, the
-    /// five mail actions after it. `compact`, the iPhone's: no title capsule until a mail is open, and Settings' tabs
-    /// with no gap, as the row centres them (`centres`).
+    /// five mail actions after it. `compact`, the iPhone's: no title capsule until a mail is open, and Settings' back
+    /// button before the gap.
     static func items(place: Place, reading: Bool, compact: Bool = false) -> [Item] {
         let actions = reading ? BarAction.mailActions.map(Item.action) : []
         if compact, !reading, [.toReply, .pinned, .snoozed, .inbox].contains(place) { return [] }
         switch place {
         case .settings:
             let tabs = SettingsTab.allCases.map(Item.settings)
-            return compact ? tabs : [.gap] + tabs
+            return (compact ? [.leave, .gap] : [.gap]) + tabs
         case .search:
             return [.back, .gap] + actions
         case .toReply, .pinned, .snoozed, .inbox:
@@ -135,19 +163,12 @@ struct TopBar: View {
         }
     }
 
-    /// Whether the row's items sit in its middle rather than from its left: Settings' tabs on the iPhone (the owner's
-    /// words of 2026-11-24, "in settings page, make the bottom tabs centered. only in iphone"). The Mac keeps them at
-    /// the right, past the gap.
-    static func centres(place: Place, compact: Bool) -> Bool {
-        compact && place == .settings
-    }
-
     // MARK: Capsules
 
-    @ViewBuilder private func slot(_ tab: Tab) -> some View {
+    @ViewBuilder private func slot(_ tab: Tab, names: Bool) -> some View {
         if reading, tab == selectedTab {
             Button(action: back) {
-                capsule(.tab(tab), icon: .back, title: backTitle(tab.title), tinted: true)
+                capsule(.tab(tab), icon: .back, title: title(of: .tab(tab), names: names), tinted: true)
             }
             .buttonStyle(PlainControlStyle())
             .keyboardShortcut(.cancelAction)
@@ -158,7 +179,8 @@ struct TopBar: View {
             Button {
                 withAnimation(Motion.move) { place = .tab(tab) }
             } label: {
-                capsule(.tab(tab), icon: tab.icon, title: selected ? tab.title : nil, tinted: false, lit: selected)
+                capsule(
+                    .tab(tab), icon: tab.icon, title: title(of: .tab(tab), names: names), tinted: false, lit: selected)
             }
             .buttonStyle(PlainControlStyle())
             .tooltip(selected ? nil : tab.title)
@@ -167,23 +189,32 @@ struct TopBar: View {
         }
     }
 
-    /// One of Settings' tabs: the chosen one lit (`GlassControl.lit`) with its icon and name; the others clear, named
-    /// too when there is room, else their icon alone with the name as a tooltip.
-    private func settingsSlot(_ tab: SettingsTab) -> some View {
+    /// One of Settings' tabs: the chosen one lit (`GlassControl.lit`) with its icon and name (on the iPhone when the
+    /// row fits it); the others clear, named too when there is room, else their icon alone with the name as a tooltip.
+    private func settingsSlot(_ tab: SettingsTab, names: Bool) -> some View {
         let selected = settingsTab.wrappedValue == tab
-        let named = selected || namesSettingsTabs
+        let title = title(of: .settings(tab), names: names)
         return Button {
             withAnimation(Motion.move) { settingsTab.wrappedValue = tab }
         } label: {
-            capsule(.settings(tab), icon: tab.icon, title: named ? tab.title : nil, tinted: false, lit: selected)
+            capsule(.settings(tab), icon: tab.icon, title: title, tinted: false, lit: selected)
         }
         .buttonStyle(PlainControlStyle())
-        .tooltip(named ? nil : tab.title)
+        .tooltip(title == nil ? tab.title : nil)
         .accessibilityLabel(tab.title)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
-    /// One capsule of glass, 32 high: an icon that changes in a blur (the chosen tab's, turning to the arrow), and a
+    /// The iPhone's Settings' back button, the arrow alone at the row's left: to the stack Settings was opened from.
+    private var leaveButton: some View {
+        Button(action: leave) {
+            capsule(.leave, icon: .back, title: nil, tinted: true)
+        }
+        .buttonStyle(PlainControlStyle())
+        .accessibilityLabel("Back to \(leaveTitle)")
+    }
+
+    /// One capsule of glass, `ControlSize.height` high: an icon that changes in a blur (the chosen tab's, turning to the arrow), and a
     /// tab's name that comes and goes in one. Glass that comes or goes pops: from small to full size, and back. A
     /// `still` one is no button, so its glass doesn't answer the pointer. The chosen tab, the mail stack's or
     /// Settings', is `lit` as the rail's current button is, white under its clear glass, so it reads over the sky and
@@ -192,15 +223,15 @@ struct TopBar: View {
     /// mail open it is the back button, tinted as every back button is.
     private func capsule(
         _ item: Item, icon: Icon, title: String?, tinted: Bool, lit: Bool = false, still: Bool = false,
-        spacing: CGFloat = 6, inset: CGFloat = 14
+        spacing: CGFloat = 6, inset: CGFloat = ControlSize.inset
     ) -> some View {
         HStack(spacing: spacing) {
-            icon.view(tint: icon.isGrey ? Theme.icon : nil)
+            icon.view(size: ControlSize.icon, tint: icon.isGrey ? Theme.icon : nil)
                 .id(icon)
                 .transition(.blurReveal)
             if let title {
                 Text(title)
-                    .font(Theme.sans(12))
+                    .font(Theme.sans(ControlSize.text))
                     .foregroundStyle(Theme.ink)
                     .fixedSize()
                     .contentTransition(.numericText())
@@ -214,8 +245,6 @@ struct TopBar: View {
         .glassEffectID(item, in: glass)
         .glassEffectTransition(.materialize)
         .transition(.glassPop)
-        // On the iPhone a finger's room above and below; nothing on the Mac.
-        .padding(.vertical, touchSlop)
         .contentShape(Capsule())
     }
 
@@ -275,7 +304,7 @@ struct TopBar: View {
     private var backButton: some View {
         let title = reading ? place.title : returnTitle
         return Button(action: back) {
-            capsule(.back, icon: .back, title: backTitle(title), tinted: true)
+            capsule(.back, icon: .back, title: self.title(of: .back, names: true), tinted: true)
         }
         .buttonStyle(PlainControlStyle())
         .keyboardShortcut(reading ? .cancelAction : nil)
@@ -306,11 +335,12 @@ struct TopBar: View {
 
     /// The screening queue: how many wait, or "Screening" on its own page; with a mail opened from it, the back
     /// button (its icon turning to the arrow).
-    @ViewBuilder private var screeningButton: some View {
+    @ViewBuilder private func screeningButton(names: Bool) -> some View {
         if reading && place == .screening {
             Button(action: back) {
                 capsule(
-                    .screening, icon: .back, title: backTitle("Screening"), tinted: true, spacing: 4, inset: 10)
+                    .screening, icon: .back, title: title(of: .screening, names: names), tinted: true, spacing: 4,
+                    inset: 10)
             }
             .buttonStyle(PlainControlStyle())
             .keyboardShortcut(.cancelAction)
@@ -324,8 +354,7 @@ struct TopBar: View {
                 // On its own page it carries its name, as a chosen tab does (Figma frame "MacBook Pro 14" - 8");
                 // elsewhere how many wait.
                 capsule(
-                    .screening, icon: .screening,
-                    title: here ? "Screening" : (screeningCount > 0 ? "\(screeningCount)" : nil), tinted: here,
+                    .screening, icon: .screening, title: title(of: .screening, names: names), tinted: here,
                     spacing: 4, inset: 10)
             }
             .buttonStyle(PlainControlStyle())

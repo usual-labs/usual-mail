@@ -124,19 +124,32 @@ private struct ScreeningRow: View {
     }
 }
 
-/// A row's icon button (more from this sender, let in, block): grey at rest; under the pointer drawn in the icons'
-/// colour on a soft circle.
+/// A row's icon button (more from this sender, let in, block): on the Mac a 16-point icon, grey at rest, under the
+/// pointer drawn in the icons' colour on a soft 28-point circle. On the iPhone larger, for a finger (the owner's words
+/// of 2026-11-25: "the reject and accept buttons should be bigger for each row"): a 20-point icon in the icons' colour
+/// on a 40-point circle, always shown, as nothing hovers there.
 private struct RowIcon: View {
     let icon: Icon
     @Environment(\.isControlHovered) private var hovered
 
+    #if os(iOS)
+        private static let side: CGFloat = 40
+        private static let glyph: CGFloat = 20
+        private static let circle: CGFloat = 40
+    #else
+        private static let side: CGFloat = 22
+        private static let glyph: CGFloat = 16
+        private static let circle: CGFloat = 28
+    #endif
+
     var body: some View {
-        icon.view(tint: hovered ? Theme.icon : nil)
-            .frame(width: 22, height: 22)
+        let shown = hovered || !Pointer.exists
+        icon.view(size: Self.glyph, tint: shown ? Theme.icon : nil)
+            .frame(width: Self.side, height: Self.side)
             .background {
                 Circle()
-                    .fill(Color.black.opacity(hovered ? 0.06 : 0))
-                    .frame(width: 28, height: 28)
+                    .fill(Color.black.opacity(shown ? 0.06 : 0))
+                    .frame(width: Self.circle, height: Self.circle)
             }
             .contentShape(Rectangle())
     }

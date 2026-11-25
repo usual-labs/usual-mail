@@ -2,7 +2,8 @@ import SwiftUI
 import UsualMailKit
 
 /// Home: conversations and what nobody has sorted yet, New above Seen, each one or two quiet lines. Notifications have
-/// their own tab (owner's decision of 2026-11-19).
+/// their own tab (owner's decision of 2026-11-19). On the iPhone a row swiped either way does what Settings says
+/// (`SwipeAction`: by default left marks it seen, right snoozes it).
 struct HomeView: View {
     /// The inbox the profile switch picked, or nil for every inbox.
     let inboxId: String?
@@ -51,6 +52,8 @@ struct HomeView: View {
                 .revealOnAppear(delay: Motion.delay(at: first))
             ForEach(Array(threads.enumerated()), id: \.element.id) { index, thread in
                 HomeItem(thread: thread, inbox: store.lists.inbox(id: thread.inboxId)) { open(thread.id) }
+                    // On the iPhone, a swipe either way does what Settings says (`SwipeAction`).
+                    .homeSwipes(thread)
                     .revealOnAppear(delay: Motion.delay(at: first + 1 + index))
                     .transition(.blurReveal)
             }
@@ -126,7 +129,7 @@ struct HomeItem: View {
                                 .foregroundStyle(Theme.time)
                                 .lineLimit(1)
                                 .fixedSize()
-                        } else {
+                        } else if showsTime {
                             TimelineView(.everyMinute) { context in
                                 Text(HomeWords.ago(thread.lastMessageAt, now: context.date))
                                     .font(Theme.sans(10))
@@ -184,6 +187,13 @@ struct HomeItem: View {
 
     private var title: String {
         words?.title ?? (thread.subject.isEmpty ? "(no subject)" : thread.subject)
+    }
+
+    /// Whether the time shows at the title's right (on the Mac under the pointer). On the iPhone a notification's row
+    /// leaves it out, as its title already says when ("Out for delivery · today, 15:15–18:15"; the owner's words of
+    /// 2026-11-25: "remove the duplicate date").
+    private var showsTime: Bool {
+        Pointer.exists || !(words is EventWords)
     }
 
     private var line: String {

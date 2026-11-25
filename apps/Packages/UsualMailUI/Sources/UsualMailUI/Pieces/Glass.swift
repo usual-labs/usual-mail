@@ -16,7 +16,27 @@ enum Pointer {
     #endif
 }
 
-/// The design's controls on the wallpaper: 32 points high, round, of Liquid Glass. A selected one is tinted with the
+/// The glass controls' measures: on the Mac the design's 32 points high, 16-point icons and 12-point words, 14 from a
+/// capsule's ends, 10 between capsules. On the iPhone larger, for a finger (the owner's words of 2026-11-25: "make the
+/// header liquid glass controls size bigger", "make the bottom glass tabs and controls bigger"): 44 points, the least
+/// Apple asks for a touch, 20-point icons, 14-point words, 12 from the ends (so an icon's capsule is round), 8 between.
+enum ControlSize {
+    #if os(iOS)
+        static let height: CGFloat = 44
+        static let icon: CGFloat = 20
+        static let text: CGFloat = 14
+        static let inset: CGFloat = 12
+        static let spacing: CGFloat = 8
+    #else
+        static let height: CGFloat = 32
+        static let icon: CGFloat = 16
+        static let text: CGFloat = 12
+        static let inset: CGFloat = 14
+        static let spacing: CGFloat = 10
+    #endif
+}
+
+/// The design's controls on the wallpaper: `ControlSize.height` high, round, of Liquid Glass. A selected one is tinted with the
 /// design's white at 30%. A lit one is chosen, as the rail's current button is: white at `RailLook.lit` under clear
 /// glass, so "chosen" looks one way across the app (the chosen tab in the top row, and a mail page button whose action
 /// the mail already has: it is pinned, waits to be replied to, is snoozed or is done); its glass stays clear, as a tint
@@ -28,11 +48,13 @@ struct GlassControl: ViewModifier {
     var selected = false
     var lit = false
     var interactive = true
+    /// Its least width and height: `ControlSize.height`, or a grid's own cell.
+    var side = ControlSize.height
     @Environment(\.isControlHovered) private var hovered
 
     func body(content: Content) -> some View {
         content
-            .frame(minWidth: 32, minHeight: 32)
+            .frame(minWidth: side, minHeight: side)
             // Always there, so lighting a capsule or putting it out fades on the bar's spring.
             .background(Color.white.opacity(lit ? RailLook.lit : 0), in: Capsule())
             .contentShape(Capsule())
@@ -52,8 +74,10 @@ struct GlassControl: ViewModifier {
 }
 
 extension View {
-    func glassControl(selected: Bool = false, lit: Bool = false, interactive: Bool = true) -> some View {
-        modifier(GlassControl(selected: selected, lit: lit, interactive: interactive))
+    func glassControl(
+        selected: Bool = false, lit: Bool = false, interactive: Bool = true, side: CGFloat = ControlSize.height
+    ) -> some View {
+        modifier(GlassControl(selected: selected, lit: lit, interactive: interactive, side: side))
     }
 
     /// The pointing hand over something clickable that isn't a `PlainControlStyle` button (link-style and system

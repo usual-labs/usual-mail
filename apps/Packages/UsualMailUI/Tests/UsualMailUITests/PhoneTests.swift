@@ -77,19 +77,34 @@ struct PhoneTests {
                 #expect(
                     TopBar.items(place: place, reading: reading, compact: true)
                         == TopBar.items(place: place, reading: reading))
-                #expect(!TopBar.centres(place: place, compact: true))
             }
         }
     }
 
-    @Test func settingsTabsSitInTheMiddleOnTheIPhoneOnly() {
-        // The iPhone's row has Settings' five tabs with no gap before them, centred; the Mac's keeps the gap, which
-        // puts them at the right.
+    @Test func settingsHasABackButtonOnTheIPhoneOnly() {
+        // The owner's words of 2026-11-25: "move the bottom glass tabs to right and on left put an back button". The
+        // iPhone's row is the back button, a gap, then the five tabs at the right; the Mac's has no back button.
         let tabs = SettingsTab.allCases.map(TopBar.Item.settings)
-        #expect(TopBar.items(place: .settings, reading: false, compact: true) == tabs)
-        #expect(TopBar.centres(place: .settings, compact: true))
+        #expect(TopBar.items(place: .settings, reading: false, compact: true) == [.leave, .gap] + tabs)
         #expect(TopBar.items(place: .settings, reading: false) == [.gap] + tabs)
-        #expect(!TopBar.centres(place: .settings, compact: false))
+    }
+
+    @Test func theRowIsMeasuredAsItIsDrawn() {
+        // Every word 7 points a letter. An icon's capsule is round; one with words is its insets, its icon, 6 and the
+        // words; the screening capsule's insets are 10 and its gap 4; a gap is at its least; spacing between all.
+        let words: (String) -> CGFloat = { CGFloat($0.count) * 7 }
+        let round = max(ControlSize.height, 2 * ControlSize.inset + ControlSize.icon)
+        let named = 2 * ControlSize.inset + ControlSize.icon + 6 + 4 * 7
+        let screening = 2 * 10 + ControlSize.icon + 4 + 7
+        let items: [TopBar.Item] = [.tab(.home), .tab(.reads), .tab(.receipts), .tab(.notifications), .gap, .screening]
+        let titles: [TopBar.Item: String] = [.tab(.home): "Home", .screening: "3"]
+        #expect(
+            BarFit.width(items, title: { titles[$0] }, words: words)
+                == named + 3 * round + ControlSize.spacing + screening + 5 * ControlSize.spacing)
+        // Nothing named: every capsule round but the count's.
+        #expect(
+            BarFit.width(items, title: { $0 == .screening ? "3" : nil }, words: words)
+                == 4 * round + ControlSize.spacing + screening + 5 * ControlSize.spacing)
     }
 
     @Test func theCompactRowHasNoTitleCapsule() {

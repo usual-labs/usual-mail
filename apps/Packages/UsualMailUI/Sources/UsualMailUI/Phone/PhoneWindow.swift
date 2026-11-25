@@ -69,7 +69,7 @@
                         withAnimation(Motion.move) { nav.press(target) }
                         if target == .search { searchFocus += 1 }
                     }
-                    .padding(.horizontal, PhoneLayout.topMargin - PhoneTopBar.touchSlop)
+                    .padding(.horizontal, PhoneLayout.topMargin)
                     PhoneCard {
                         Pages(
                             session: session, nav: nav, feed: feed, expandedGroups: $expandedGroups, kept: kept,
@@ -84,7 +84,8 @@
                         UndoStrip()
                         WindowBar(
                             nav: $nav, screeningCount: screeningCount, namesSettingsTabs: false, compact: true,
-                            back: back, act: { action, threadID in act(action, on: threadID) })
+                            back: back, act: { action, threadID in act(action, on: threadID) },
+                            leaveSettings: { withAnimation(Motion.move) { nav.leaveSettings() } })
                     }
                     .padding(.horizontal, PhoneLayout.barMargin)
                 }
@@ -152,12 +153,12 @@
 
     /// The concept's measures, read off its frame (414 points wide): the top row's controls 16 from the screen's edges
     /// and 16 above the card (24 in the concept, made "a bit less" at the owner's word of 2026-11-24); the row at the
-    /// card's foot 20 from the edges, so the four tabs and the screening capsule fit a 393-point screen with the
-    /// longest tab's name showing.
+    /// card's foot 16 from the edges too, since its controls grew to 44 points (2026-11-25; it was 20, so the tabs
+    /// fitted a 393-point screen with the longest name showing; now a chosen tab is named when it fits, `BarFit`).
     enum PhoneLayout {
         static let gap: CGFloat = 16
         static let topMargin: CGFloat = 16
-        static let barMargin: CGFloat = 20
+        static let barMargin: CGFloat = 16
     }
 
     /// The frosted card on the iPhone: as wide as the screen, rounded at the top, its ground running under the row at

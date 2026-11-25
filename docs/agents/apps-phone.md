@@ -12,7 +12,7 @@ app's screens are in [apps.md](apps.md); the data layer both use is in [apps-kit
 on top on left you would have the search. In middle, we would have a drop down selector, which would include all the
 inboxes and also all the other pages like reply, pin, snooze, and the main inbox. And on the right would have the
 setting page. Everything else would be kinda the same." The picture shows Home: search, the switcher (a person icon,
-an inbox's address, a chevron) and settings as 32-point glass over the wallpaper; the card as wide as the screen,
+an inbox's address, a chevron) and settings as 32-point glass over the wallpaper (44 since 2026-11-25); the card as wide as the screen,
 rounded at the top, running to the foot; at its foot Home (named), Feed, Receipts, Notifications and the screening
 capsule with its count. Text and controls are the Mac's sizes (12-point text, 32-point controls).
 
@@ -62,13 +62,42 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   opened. The notice over the
   lists is the Mac's. Seen on the sample in the simulator, 2026-11-25. Its ink follows the wallpaper under it (`RailTone`). The
   top row sits 16 above the card (the concept's 24, "a bit less" at the owner's word of 2026-11-24;
-  `PhoneLayout.gap`).
+  `PhoneLayout.gap`). Its glass is 44 points high with 20-point icons and the switcher's 14-point words, larger than
+  the Mac's 32 for a finger (`ControlSize`; owner's words of 2026-11-25, "make the header liquid glass controls size
+  bigger"), so nothing takes touches beyond it.
 - **The row at the card's foot** is the Mac's `TopBar` with `compact`: the tabs and the screening capsule; with a mail
   open the back button as an arrow alone and the mail's buttons; Settings' tabs as icons, the chosen one named;
-  search's capsule back. No title capsule on To reply, Pinned, Snoozed and Inbox (the switcher names them). Settings'
-  tabs sit in the middle of the row, not at its right as on the Mac (owner's words of 2026-11-24, "only in iphone";
-  `TopBar.centres`). Each capsule takes touches 6 points above and below its 32. Snooze and more open upwards as
-  popovers.
+  search's capsule back. No title capsule on To reply, Pinned, Snoozed and Inbox (the switcher names them). Its
+  capsules are 44 points high with 20-point icons and 14-point words, 8 apart, 16 from the screen's edges like the
+  top row (`ControlSize`, `PhoneLayout.barMargin`; owner's words of 2026-11-25, "make the bottom glass tabs and
+  controls bigger"). The chosen tab is named only when the row fits it (`BarFit`, measured in Geist at that size
+  against the row's width): on a 402-point screen "Notifications" fits; where it doesn't, the chosen tab is its lit
+  icon alone. On Settings the row is a back button at its left, the arrow alone, to the stack Settings was opened from
+  (`Navigation.leaveSettings`, `beforeSettings`), and the five tabs at its right (owner's words of 2026-11-25: "move
+  the buttom glass tabs to right and on left put an back button"; they sat in the middle since 2026-11-24); its
+  chosen tab is lit, named only when it fits, which it doesn't beside the back button at 44 points. Snooze and more
+  open upwards as popovers.
+- **Home's swipes** (owner's words of 2026-11-25): a row swiped left marks it seen (read: it moves from New to Seen),
+  or a seen one unseen; swiped right, it snoozes, asking when with the menu's times. Each way is a setting in
+  Settings' Appearance tab, "Swiping a mail" (`SwipeAction`, `SwipeSettings`: seen or unseen, snooze, reply later,
+  pin, archive or nothing), kept on the iPhone (`UserDefaults`). The row follows the finger (`SwipeRow`; a UIKit pan
+  that starts only for a sideways move, so the list scrolls as before and a tap opens); in the room it leaves, the
+  action's icon and words, light grey until 88 points, then in the ink with a tap of the haptics; let go past it, it
+  acts as the row's menu does. VoiceOver has the same two as actions. Seen in the simulator on the sample: both ways
+  moved the row and showed their words, and letting go of snooze opened its times; the sample takes no action (its
+  menu's "Mark as read" doesn't either), so what they do there is the menu's, not seen.
+- **Screening's let in and block** (and more from a sender) are a 20-point icon on a 40-point circle, always shown,
+  where the Mac has a 16-point icon whose circle shows under the pointer (owner's words of 2026-11-25, "the reject and
+  accept buttons should be bigger").
+- **Feed's headers stick** (owner's words of 2026-11-25, "each items header should stick to the top and then scroll
+  when next items comes"): each post is a section whose header (avatar, name, when; `FeedPostHeader`) is pinned while
+  its post scrolls under it, until the next post's header pushes it away (`FeedView.pinned`, the iPhone only). While
+  stuck it stands on the card's ground with a hairline under it, reaching the card's edges; in its place it has none.
+  Seen in the simulator on a feed made to scroll for the check (two sample posts don't).
+- **Notifications:** the seen tick is a 24-point ring in a 36-point target (the Mac's 16 in 24), and a notification's
+  row doesn't show the mail's date at its right, as its title already says when (owner's words of 2026-11-25: "the
+  check mark control should be bigger, and remove the duplicate date"); a row without an event (Home's words) keeps
+  it.
 - **Without a pointer** (`Pointer.exists` false): a row's time always shows, and so does a seen notification's tick.
   A long press on a row shows the Mac's right-click menu (the same `contextMenu`).
 - **Pages:** the card's side margin is `Theme.pageInset`, 16 on the iPhone (the concept's) and the Mac's 24.
@@ -100,7 +129,7 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   - The snooze and more popovers opened downwards, off the screen: on the iPhone `arrowEdge` is the popover's own
     edge, so the Mac's `.bottom` is right for both.
   - The switcher's capsule was 44 high: the 6 points of touch room around a `Menu`'s label were drawn as glass. The
-    room is gone, so the switcher takes touches on its 32 points only.
+    room is gone, so the switcher takes touches on its own glass only (44 points since 2026-11-25).
   - The Inbox page's and search's one-line rows left the subject a few letters: `MailLine` (`Pieces/`) lays the same
     parts out on two lines on the iPhone and as before on the Mac.
   - The card stopped at the keyboard: its ground now runs under it.

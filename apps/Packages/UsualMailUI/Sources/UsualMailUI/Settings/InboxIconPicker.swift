@@ -42,7 +42,7 @@ struct InboxIconPicker: View {
                     } label: {
                         Icon(option.icon).view()
                             .frame(width: 32, height: 32)
-                            .glassControl(selected: option.isCurrent)
+                            .glassControl(selected: option.isCurrent, side: 32)
                     }
                     .buttonStyle(PlainControlStyle())
                     .accessibilityLabel(Self.name(option.icon))

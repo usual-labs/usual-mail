@@ -5,7 +5,9 @@ import UsualMailKit
 /// and be scrollable"): every newsletter in the chosen profile, newest first, one post after another, each showing the
 /// mail itself, so the feed is read without opening anything. A post's messages are fetched only as it comes near the
 /// screen (`FeedPosts`), and showing a post never marks it read. Clicking its header or subject opens the mail page,
-/// which does.
+/// which does. On the iPhone each post's header (who and when) sticks to the top while its post scrolls under it, until
+/// the next post's header pushes it away (the owner's words of 2026-11-25: "each items header should stick to the top
+/// and then scroll when next items comes").
 struct FeedView: View {
     /// The inbox the profile switch picked, or nil for every inbox.
     let inboxId: String?
@@ -20,19 +22,29 @@ struct FeedView: View {
         // At the store's now: a snoozed newsletter comes back when the store re-reads the copy at its time.
         let list = CategoryList(store.lists, tab: .reads, inbox: inboxId, now: store.now)
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 32) {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: Self.pinned) {
                 ForEach(Array(list.threads.enumerated()), id: \.element.id) { index, thread in
-                    FeedPost(
-                        thread: thread, inbox: store.lists.inbox(id: thread.inboxId), state: posts.state(of: thread),
-                        separated: index > 0
-                    ) { open(thread.id) }
-                    // Only looks: never `store.open`, which marks the mail read and is the one mail open.
-                    .task(id: FeedPosts.Version(thread)) {
-                        await posts.load(thread) { await store.detail(threadID: $0) }
-                    }
+                    let inbox = store.lists.inbox(id: thread.inboxId)
                     // The first screenful comes into focus one after another; a post scrolled to, at once.
-                    .revealOnAppear(delay: index < 4 ? Motion.delay(at: index) : 0)
-                    .transition(.blurReveal)
+                    let delay = index < 4 ? Motion.delay(at: index) : 0
+                    Section {
+                        FeedPost(
+                            thread: thread, inbox: inbox, state: posts.state(of: thread),
+                            last: index == list.threads.count - 1
+                        ) { open(thread.id) }
+                        // Only looks: never `store.open`, which marks the mail read and is the one mail open.
+                        .task(id: FeedPosts.Version(thread)) {
+                            await posts.load(thread) { await store.detail(threadID: $0) }
+                        }
+                        .revealOnAppear(delay: delay)
+                        .transition(.blurReveal)
+                    } header: {
+                        FeedPostHeader(thread: thread, inbox: inbox) { open(thread.id) }
+                            // The post the feed keeps its place by (`scrollPosition`).
+                            .id(thread.id)
+                            .revealOnAppear(delay: delay)
+                            .transition(.blurReveal)
+                    }
                 }
                 if list.threads.isEmpty && store.hasLoadedFromDisk {
                     Text(verbatim: CategoryList.emptyWords(for: .reads))
@@ -48,7 +60,7 @@ struct FeedView: View {
                         .foregroundStyle(Theme.time)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
-                        .padding(.top, 8)
+                        .padding(.top, 40)
                         .revealOnAppear(delay: Motion.longestWait)
                 }
             }
@@ -61,31 +73,95 @@ struct FeedView: View {
         // only once its mail is laid out, so the post, not the distance.
         .scrollPosition(id: kept.map { $0.places.top($0.key) } ?? .constant(nil), anchor: .top)
     }
+
+    /// The headers stick on the iPhone; on the Mac they scroll with their posts.
+    #if os(iOS)
+        static let pinned: PinnedScrollableViews = [.sectionHeaders]
+    #else
+        static let pinned: PinnedScrollableViews = []
+    #endif
 }
 
-/// One newsletter as a post: a header like an Instagram post's (the sender's avatar and name, how long ago), the
-/// subject, the summary as a caption, then the mail as its sender wrote it, in full. The header and subject open the
-/// mail page, carry the row's right-click menu, and drag onto the rail as a row does.
+/// A post's header, like an Instagram post's: the sender's avatar and name, and how long ago, one button that opens the
+/// mail, with the row's right-click menu, dragged onto the rail as a row is. On the iPhone, while it sticks to the top,
+/// it stands on the card's own ground, reaching the card's edges, so the post scrolling under it doesn't show through;
+/// in its place in the feed it has none, as that ground would show as a band.
+struct FeedPostHeader: View {
+    let thread: MailThread
+    let inbox: Inbox?
+    let open: () -> Void
+    @Environment(MailStore.self) private var store
+    /// Whether it is stuck to the top of the feed.
+    @State private var stuck = false
+
+    var body: some View {
+        let sender = HomeWords.shownSender(of: thread, inbox: inbox)
+        let name = FeedWords.sender(of: thread, inbox: inbox)
+        Button(action: open) {
+            HStack(spacing: 6) {
+                Avatar(name: name, key: sender.key, avatar: sender.avatar)
+                Text(verbatim: name)
+                    .font(Theme.sans(12))
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 12)
+                TimelineView(.everyMinute) { context in
+                    Text(HomeWords.ago(thread.lastMessageAt, now: context.date))
+                        .font(Theme.sans(10))
+                        .foregroundStyle(Theme.time)
+                }
+            }
+            .padding(.vertical, 10)
+            .contentShape(Rectangle())
+            .rowHover()
+        }
+        .buttonStyle(PlainControlStyle())
+        .rowMenu(for: thread, open: open) { action in
+            Task { await store.perform(action, on: [thread.id]) }
+        }
+        .mailDraggable([thread.id], name: name, subject: thread.subject)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .accessibilityHint("Opens the mail")
+        #if os(iOS)
+            .background { stuckGround }
+            // Stuck once its top reaches the top of the feed's scroll view.
+            .onGeometryChange(for: Bool.self) {
+                $0.frame(in: .scrollView).minY <= 0.5
+            } action: {
+                stuck = $0
+            }
+            .animation(.easeOut(duration: 0.15), value: stuck)
+        #endif
+    }
+
+    /// The card's ground behind it while it is stuck, reaching the card's edges, with a hairline under it.
+    private var stuckGround: some View {
+        Rectangle()
+            .fill(Theme.card)
+            .background(.ultraThinMaterial)
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.hairline).frame(height: 1) }
+            .padding(.horizontal, -Theme.pageInset)
+            .opacity(stuck ? 1 : 0)
+    }
+}
+
+/// One newsletter as a post, under its header (`FeedPostHeader`): the subject, the summary as a caption, then the mail
+/// as its sender wrote it, in full, and a hairline before the next post. The subject opens the mail page, carries the
+/// row's right-click menu, and drags onto the rail as a row does.
 struct FeedPost: View {
     let thread: MailThread
     let inbox: Inbox?
     let state: FeedPosts.State
-    /// Not the first post: a hairline above it.
-    let separated: Bool
+    /// The feed's last post: no hairline after it.
+    let last: Bool
     let open: () -> Void
     @Environment(MailStore.self) private var store
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if separated {
-                Rectangle()
-                    .fill(Theme.hairline)
-                    .frame(height: 1)
-                    .padding(.bottom, 32)
-                    .accessibilityHidden(true)
-            }
             VStack(alignment: .leading, spacing: 12) {
-                heading
+                subject
                 if let caption = FeedWords.caption(for: thread) {
                     // A model's plain text: shown as text, never as markup.
                     Text(verbatim: caption)
@@ -97,43 +173,33 @@ struct FeedPost: View {
                 }
                 content
             }
+            if !last {
+                Rectangle()
+                    .fill(Theme.hairline)
+                    .frame(height: 1)
+                    .padding(.top, 32)
+                    .padding(.bottom, 22)
+                    .accessibilityHidden(true)
+            }
         }
     }
 
-    /// The header row and the subject, one button that opens the mail.
-    private var heading: some View {
-        let sender = HomeWords.shownSender(of: thread, inbox: inbox)
-        let name = FeedWords.sender(of: thread, inbox: inbox)
-        return Button(action: open) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Avatar(name: name, key: sender.key, avatar: sender.avatar)
-                    Text(verbatim: name)
-                        .font(Theme.sans(12))
-                        .foregroundStyle(Theme.ink)
-                        .lineLimit(1)
-                    Spacer(minLength: 12)
-                    TimelineView(.everyMinute) { context in
-                        Text(HomeWords.ago(thread.lastMessageAt, now: context.date))
-                            .font(Theme.sans(10))
-                            .foregroundStyle(Theme.time)
-                    }
-                }
-                Text(verbatim: thread.subject.isEmpty ? "(no subject)" : thread.subject)
-                    .font(Theme.sans(13, weight: .medium))
-                    .foregroundStyle(Theme.ink)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .contentShape(Rectangle())
-            .rowHover()
+    /// The subject, a button that opens the mail.
+    private var subject: some View {
+        Button(action: open) {
+            Text(verbatim: thread.subject.isEmpty ? "(no subject)" : thread.subject)
+                .font(Theme.sans(13, weight: .medium))
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .rowHover()
         }
         .buttonStyle(PlainControlStyle())
         .rowMenu(for: thread, open: open) { action in
             Task { await store.perform(action, on: [thread.id]) }
         }
-        .mailDraggable([thread.id], name: name, subject: thread.subject)
-        .accessibilityElement(children: .combine)
+        .mailDraggable([thread.id], name: FeedWords.sender(of: thread, inbox: inbox), subject: thread.subject)
         .accessibilityHint("Opens the mail")
     }
 

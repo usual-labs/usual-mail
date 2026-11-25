@@ -4,7 +4,8 @@ import UsualMailKit
 
 /// Settings' Appearance tab, an app setting on this Mac (`Background`): a small preview of the window's background in
 /// the window's shape, "Choose a picture…" (the system's picker, pictures only; the app copies it at once, so the
-/// sandbox's access to the file isn't needed again), "Use the default", and "Soften the background".
+/// sandbox's access to the file isn't needed again), "Use the default", and "Soften the background". On the iPhone
+/// also what swiping a mail does (`SwipeSettings`).
 struct AppearanceTab: View {
     var background = Background.shared
     @Environment(\.windowSize) private var window
@@ -51,6 +52,9 @@ struct AppearanceTab: View {
                 .pointer()
                 SettingsView.note("A slight blur and dim behind the window, so the words over it read more easily.")
             }
+            #if os(iOS)
+                SwipeSettings()
+            #endif
         }
         .animation(Motion.reveal, value: background.isCustom)
         .animation(Motion.reveal, value: background.problem)
