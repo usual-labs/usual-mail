@@ -9,6 +9,7 @@ import type { InboxStatusReason } from "./inbox-health.ts";
 import type { GoogleSignInInfo } from "./google.ts";
 import type { OwnerInfo } from "./owner.ts";
 import type { RemotePictures } from "./pictures.ts";
+import type { ScreeningPass } from "./screening.ts";
 
 /** Opaque identifier. Never parse it. */
 export type Id = string;
@@ -302,6 +303,13 @@ export interface Thread {
   need?: Need;
   /** One line on why it is where it is, for example a rule's text or an agent's reason. */
   reason?: string;
+  /**
+   * Why a thread whose sender wasn't let in is out of Screening: the kind of mail the server's AI named and the server's
+   * own check confirmed (docs/contract.md, "Rules and learning"). Its sender isn't let in by it. Shown as
+   * `skippedScreeningLine` ("Skipped Screening: a sign-in link"). Absent while the thread is screened, and for every
+   * other way out of Screening.
+   */
+  skippedScreening?: ScreeningPass;
   /**
    * What the thread is about, in one or two plain lines, without the sender's name (interfaces add it), written by
    * the server's AI. Plain text, no line breaks, at most 200 characters. Absent until written; it is never HTML.

@@ -2,8 +2,7 @@
 // own checker proved the From domain, the mail is an organisation's, and the domain isn't a mailbox provider's anyone
 // can sign up to. Whether the sender is let in and the thread isn't screened is the store's to say (`settle.ts`).
 
-import type { Category } from "@usualmail/core";
-import { isFreemail, isSharedPlatform } from "./freemail.ts";
+import { isPublicMailDomain, isSharedPlatform, type Category } from "@usualmail/core";
 import { asciiHost } from "./host.ts";
 import type { SuffixList } from "./suffixes.ts";
 
@@ -28,5 +27,5 @@ export function avatarDomain(verified: string | null, email: string, suffixes: S
   const at = email.lastIndexOf("@");
   if (at <= 0 || asciiHost(email.slice(at + 1)) !== verified || isSharedPlatform(verified)) return null;
   const registrable = suffixes.registrableDomain(verified);
-  return registrable && !isFreemail(registrable) ? registrable : null;
+  return registrable && !isPublicMailDomain(registrable) ? registrable : null;
 }

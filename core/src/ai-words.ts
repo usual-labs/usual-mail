@@ -76,7 +76,10 @@ const S = AI_SENT_FIELD_WORDS.summarize;
 
 /** What each job sends, and what is never sent, as sentences. The same for every inbox and service. */
 export const AI_SENT_WORDS = {
-  categorize: `${C.subject}; ${C.from}, ${C.listId} and ${C.machineSent}; and ${C.text}.`,
+  categorize:
+    `${C.subject}; ${C.from}, ${C.listId} and ${C.machineSent}; and ${C.text}. For machine-sent mail from a sender you ` +
+    "haven't let in, the same may be sent once more, to ask whether it is a sign-in link, a security alert, an order " +
+    "update or another notice that may skip Screening.",
   summarize:
     `${S.subject}, and ${S.text}, ${S.from} and ${S.sent}. Any email address in the subject or the text is replaced with ` +
     `${ADDRESS_STAND_IN}, so no address is sent. Never for a one-time code. For a receipt or an invoice the same is ` +

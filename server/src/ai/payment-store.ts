@@ -3,7 +3,7 @@
 // List), and, once per store, the latest rules applied to the details already stored. No model is asked. Callers hold
 // the lock.
 
-import { PAYMENT_CATEGORIES, type PaymentDetails } from "@usualmail/core";
+import { isPublicMailDomain, isSharedPlatform, PAYMENT_CATEGORIES, type PaymentDetails } from "@usualmail/core";
 import { and, asc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { messages, threads, type ThreadRow } from "../db/index.ts";
 import type { Ctx } from "../service/context.ts";
@@ -11,7 +11,6 @@ import { emitThread, getThread } from "../service/store.ts";
 import { checkDueDate, type DatedText } from "./payment-dates.ts";
 import { canonicalParty, cutDisplayText, isOneLowercaseWord, orSenderName, partyName, samePartyForm } from "./payment-party.ts";
 import { isPaymentService } from "./payment-services.ts";
-import { isFreemail, isSharedPlatform } from "../avatars/freemail.ts";
 import type { SuffixList } from "../avatars/suffixes.ts";
 import { hadRulePass, PAYMENT_RULES } from "./passes.ts";
 import { senderParty } from "./payment.ts";
@@ -33,7 +32,7 @@ export function senderKey(address: string, suffixes: SuffixList | null): string 
   const domain = lower.split("@")[1] ?? "";
   if (!domain) return lower;
   const registrable = suffixes?.registrableDomain(domain) ?? null;
-  if (isFreemail(registrable ?? domain) || isSharedPlatform(domain)) return lower;
+  if (isPublicMailDomain(registrable ?? domain) || isSharedPlatform(domain)) return lower;
   return registrable ?? domain;
 }
 

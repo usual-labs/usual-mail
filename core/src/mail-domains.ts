@@ -1,10 +1,14 @@
-// Mailbox providers anyone can sign up to. Mail from an address at one of them is from a person (or anyone at all),
-// never from the provider's brand, so its logo is never shown for it: a newsletter sent from a Gmail address must not
-// wear Gmail's logo. Matched on a registrable domain: exactly, or by its first label for the providers with a domain in
-// many countries (hotmail.co.uk, yahoo.co.jp, gmx.at). The provider's own mail (accounts.google.com, microsoft.com)
-// comes from other domains and keeps its logo. Some providers also send their own notices from these domains
-// (proton.me, hey.com, zoho.com); those get initials, an accepted cost. Platforms whose customers share the platform's
-// domain (`isSharedPlatform`) are no brand either.
+/**
+ * Public mail domains: mailbox providers anyone can sign up to, and platforms whose customers send from the platform's
+ * own domain. One list for the server's two uses of it. Mail from an address at one of them is from a person (or anyone
+ * at all), never from the provider's brand: a newsletter sent from a Gmail address must not wear Gmail's logo
+ * (docs/contract-avatars.md), and a colleague's domain is never one of them (docs/contract.md, "Letting a sender in":
+ * the inbox's own domain lets a sender in only when it isn't public). Matched on a registrable domain: exactly, or by
+ * its first label for the providers with a domain in many countries (hotmail.co.uk, yahoo.co.jp, gmx.at). The
+ * provider's own mail (accounts.google.com, microsoft.com) comes from other domains. Some providers also send their own
+ * notices from these domains (proton.me, hey.com, zoho.com); those get initials, an accepted cost. Platforms whose
+ * customers share the platform's domain (`isSharedPlatform`) are no brand and no one's company either.
+ */
 
 const DOMAINS = new Set([
   // Google, Microsoft, Apple, Yahoo, AOL
@@ -64,7 +68,7 @@ for (const domain of MAIL_COM_DOMAINS) DOMAINS.add(domain);
 const LABELS = new Set(["hotmail", "outlook", "live", "windowslive", "yahoo", "gmx", "yandex", "aol", "zoho", "zohomail"]);
 
 /** Whether a registrable domain (ASCII, lower case) is a mailbox provider's that anyone can sign up to. */
-export function isFreemail(registrable: string): boolean {
+export function isPublicMailDomain(registrable: string): boolean {
   return DOMAINS.has(registrable) || LABELS.has(registrable.split(".")[0] ?? "");
 }
 
