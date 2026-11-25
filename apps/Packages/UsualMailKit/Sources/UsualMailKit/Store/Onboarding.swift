@@ -210,8 +210,16 @@ public enum Onboarding {
             line: "Put mail aside to answer, keep it at hand, or bring it back when it matters."),
         Slide(title: "Screening.", line: "First mail from someone new waits here until you let them in."),
         Slide(title: "Your whole inbox.", line: "Everything as Gmail has it, newest first, one press away."),
-        Slide(title: "Your inboxes.", line: "Switch between them on the left, or see them all at once."),
+        Slide(title: "Your inboxes.", line: inboxesLine),
     ]
+
+    /// Where the inboxes are switched: the rail on the Mac, the switcher's menu at the top of the iPhone's screen (its
+    /// tour shows the iPhone, 2026-11-25).
+    #if os(iOS)
+        static let inboxesLine = "Switch between them from the menu at the top, or see them all at once."
+    #else
+        static let inboxesLine = "Switch between them on the left, or see them all at once."
+    #endif
 
     /// The line under the carousel. The server counts only what is left (`pending`), not a total, and counts 0 until
     /// an inbox's first sync has listed its mail, so "All sorted" waits until no inbox is still fetching; meanwhile it

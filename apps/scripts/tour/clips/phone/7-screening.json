@@ -1,0 +1,14 @@
+{
+  "width": 600,
+  "height": 1304,
+  "window": [402, 874],
+  "pointer": "touch",
+  "start": {"state": "home", "pointer": [201, 600]},
+  "steps": [
+    {"wait": 0.8},
+    {"move": [359, 818], "duration": 0.6},
+    {"click": true, "show": "screening"},
+    {"wait": 2.6},
+    {"back": true}
+  ]
+}

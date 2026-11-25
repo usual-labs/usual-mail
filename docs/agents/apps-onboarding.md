@@ -84,27 +84,40 @@ applies only to inboxes connected after it is set.
    the server that failed, an empty field offers "Test again" (`testAi`).
 7. **While your mail comes in:** nine slides (`Onboarding.slides`, title and line): Home is what needs you, A line on
    every message, Feed, Receipts, Notifications, Reply later / pin / snooze, Screening, Your whole inbox, Your inboxes
-   (Notifications and Your whole inbox added by the owner on 2026-11-20). Each slide plays its own clip (`TourClip`,
+   (Notifications and Your whole inbox added by the owner on 2026-11-20). The last slide's line names where the
+   inboxes are switched: "on the left" on the Mac (the rail), "from the menu at the top" on the iPhone (the
+   switcher; 2026-11-25, with the iPhone's own clips). Each slide plays its own clip (`TourClip`,
    `Onboarding/TourClip.swift`; the owner's words of 2026-11-25: "use dummy data to show properly the features, and
-   even show a cursor animating … with a gif/video instead of image"): the Mac app on the tour's sample, a drawn
-   pointer moving and clicking, crossfades between states and a closer framing, five to nine seconds, silent, looping
-   (`AVPlayerLooper` under an `AVPlayerLayer`, the Mac's and the iPhone's own representable), held at the moment the
-   feature shows with Reduce Motion on; one player a slide, crossfading. Arrows (also the left and right keys), a dot
-   per slide; at the foot the progress line and "Go to Home" (always enabled, Return), which ends the first run on
-   this Mac.
-   - **The clips** (`Resources/tour-<n>-<name>.mp4`, H.264, 1280 × 832, 2.4 MB for the nine; they replace the one
-     screenshot, `onboarding-screenshot`) are made by `apps/scripts/make-tour.sh`: it builds a copy of the Mac app as
-     `labs.usual.preview` (never the real app or its data), opens it in each state with `-UsualMailTour YES` (the
-     sample with every inbox well, nothing left for the AI and a summary on every mail, `Shell/TourSample.swift`,
-     debug builds only) and the place, inbox, mail and open-rail options, captures its window alone, then composes
-     each clip from `apps/scripts/tour/clips/<n>-<name>.json` (`tour/compose.swift`: CoreGraphics frames to ffmpeg).
-     Nothing drives the app (this Mac gives the sessions no pointer): each state is its own capture, the pointer is
-     drawn. Its windows open on screen while it runs. Seen on 2026-11-25 in the Mac preview copy, opened straight at
-     this step with `-UsualMailOnboardingSteps '{ <server name> = whileWaiting; }'` (the defaults' argument domain),
-     and in the iPhone simulator's preview copy the same way. They show the Mac's window on the iPhone too. There the
-     step's card had run past a 402-point screen (its width followed only the window's height); since 2026-11-25 the
-     clip is as wide as the screen leaves it and the card sits at the foot like the other steps. The width is never
-     below zero (the geometry reader's first size can be zero, and SwiftUI then logged "Invalid frame dimension").
+   even show a cursor animating … with a gif/video instead of image"), each app its own ("in iphone, the videos should
+   show the iphone UI not mac UI!", the same day): the app on the tour's sample, five to ten seconds, silent, looping
+   (`AVPlayerLooper` under an `AVPlayerLayer`, the Mac's and the iPhone's own representable), held at a still that
+   shows the feature with Reduce Motion on; one player a slide, crossfading. On the Mac, the window with a drawn
+   pointer moving and clicking, crossfades between states and a closer framing, the clip as wide as the card. On the
+   iPhone, the phone's screen standing up in the card's middle with the phone's rounded corners (`WhileWaitingStep`:
+   as tall as the screen leaves beside the card's words and foot, at most 500 points), a touch (a grey disc) where
+   the finger lands, and the lists and inboxes chosen from the switcher's menu, shown open. Arrows (also the left and
+   right keys), a dot per slide; at the foot the progress line and "Go to Home" (always enabled, Return), which ends
+   the first run on this device.
+   - **The clips** (`Resources/tour-mac-<n>-<name>.mp4`, H.264, 1280 × 832, 2.4 MB for the nine, and
+     `tour-phone-<n>-<name>.mp4`, 600 × 1304, 2.3 MB; both sets are in the shared package, so each app carries the
+     other's too; they replace the one screenshot, `onboarding-screenshot`) are made by `apps/scripts/make-tour.sh
+     mac|phone`: it builds a copy of the app as `labs.usual.preview` (never the real app or its data), opens it in
+     each state with `-UsualMailTour YES` (the sample with every inbox well, nothing left for the AI and a summary on
+     every mail, `Shell/TourSample.swift`, debug builds only) and the place, inbox, mail and open-rail options,
+     captures it, then composes each clip from `apps/scripts/tour/clips/<mac|phone>/<n>-<name>.json`
+     (`tour/compose.swift`: CoreGraphics frames to ffmpeg; `"pointer": "touch"` for the iPhone's). Nothing drives the
+     Mac app (this Mac gives the sessions no pointer): each state is its own capture of its window, the pointer is
+     drawn; its windows open on screen while it runs. The iPhone's are captured in a booted simulator through
+     agent-device (`AGENT_DEVICE`, `SIMULATOR`), which opens the app in each state, taps the switcher for the three
+     states with its menu open, and takes the screenshots at 3x, the status bar at 9:41 meanwhile (`simctl
+     status_bar`, cleared after); made on an iPhone 18 Pro (402 × 874 points, which the clips' taps assume). Seen on
+     2026-11-25 in the Mac preview copy, opened straight at this step with
+     `-UsualMailOnboardingSteps '{ <server name> = whileWaiting; }'` (the defaults' argument domain), and in the
+     iPhone simulator's preview copy the same way: the first slide's clip, the sixth and the ninth with its words.
+     The iPhone's card had run past a 402-point screen while it showed the Mac's clip (its width followed only the
+     window's height); since 2026-11-25 the card is as wide as the screen leaves it and sits at the foot like the
+     other steps. The clip's size is never below zero (the geometry reader's first size can be zero, and SwiftUI then
+     logged "Invalid frame dimension").
 
 ## The Google client's guided set-up (2026-11-21)
 

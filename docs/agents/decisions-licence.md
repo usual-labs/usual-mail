@@ -83,7 +83,8 @@ Each check's verdict: "OK to publish", "fix first" or "owner decides". Sources a
    `THIRD_PARTY_NOTICES.md` says so. The photographer's name couldn't be confirmed (unsplash.com refuses automated
    reads, and a web search didn't find the page), so the notices link the page and name nobody. The photo also
    appears as the iPhone app's icon (a crop), the website's favicon, touch icon and background layers, and behind
-   the app in the onboarding tour's clips (`tour-*.mp4`, which replaced `onboarding-screenshot.png` on 2026-11-25).
+   the app in the onboarding tour's clips (`tour-mac-*.mp4` and `tour-phone-*.mp4`, which replaced
+   `onboarding-screenshot.png` on 2026-11-25).
    The website's footers still say "Wallpaper: Unsplash" without the link; adding it needs a site deploy
    (improvement-ideas.md).
 3. **The icons: OK to publish.** Every icon the apps, the dashboard, the connector and the website ship is in

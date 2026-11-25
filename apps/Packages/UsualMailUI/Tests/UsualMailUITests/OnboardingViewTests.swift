@@ -8,15 +8,22 @@ import UsualMailKit
 /// and the welcome keeps usual.dev's margins.
 @MainActor
 struct OnboardingViewTests {
-    @Test func everySlideHasItsClipBundled() throws {
-        #expect(TourClip.all.count == Onboarding.slides.count, "one clip a slide")
-        #expect(Set(TourClip.all.map(\.resource)).count == TourClip.all.count)
-        for clip in TourClip.all {
-            let url = try #require(clip.url, "\(clip.resource).mp4 in the package's resources")
-            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-            #expect(size > 50_000 && size < 1_000_000, "\(clip.resource): \(size) bytes")
-            #expect(clip.still > 0)
+    @Test func everySlideHasItsClipBundledForEachApp() throws {
+        // The Mac's clips show the Mac app, the iPhone's the iPhone app; each app plays its own.
+        #expect(TourClip.all == TourClip.mac)
+        for clips in [TourClip.mac, TourClip.phone] {
+            #expect(clips.count == Onboarding.slides.count, "one clip a slide")
+            for clip in clips {
+                let url = try #require(clip.url, "\(clip.resource).mp4 in the package's resources")
+                let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                #expect(size > 50_000 && size < 1_000_000, "\(clip.resource): \(size) bytes")
+                #expect(clip.still > 0)
+            }
         }
+        let names = (TourClip.mac + TourClip.phone).map(\.resource)
+        #expect(Set(names).count == names.count)
+        #expect(TourClip.mac.allSatisfy { $0.resource.hasPrefix("tour-mac-") })
+        #expect(TourClip.phone.allSatisfy { $0.resource.hasPrefix("tour-phone-") })
     }
 
     @Test func theWelcomeIsManifestoD() {

@@ -1,0 +1,15 @@
+{
+  "width": 600,
+  "height": 1304,
+  "window": [402, 874],
+  "pointer": "touch",
+  "start": {"state": "home", "pointer": [201, 600]},
+  "steps": [
+    {"wait": 0.6},
+    {"zoom": 1.35, "center": [149, 324], "duration": 1.1},
+    {"wait": 0.5},
+    {"zoom": 1.35, "center": [253, 324], "duration": 2.0},
+    {"wait": 0.6},
+    {"back": true, "duration": 1.0}
+  ]
+}

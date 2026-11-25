@@ -1,7 +1,7 @@
-// Composes one clip of the onboarding tour (apps/scripts/make-tour.sh) from window captures of the Mac app: a drawn
-// pointer that moves and clicks, crossfades from one captured state to the next, and an optional slow zoom. It writes
-// raw BGRA frames to stdout for ffmpeg to encode. Nothing here drives the app: each state is its own capture, opened
-// with the app's launch options.
+// Composes one clip of the onboarding tour (apps/scripts/make-tour.sh) from captures of the Mac app's window or the
+// iPhone app's screen: a drawn pointer that moves and clicks (on the iPhone, a touch where the finger lands),
+// crossfades from one captured state to the next, and an optional slow zoom. It writes raw BGRA frames to stdout for
+// ffmpeg to encode. Nothing here drives the app: each state is its own capture, opened with the app's launch options.
 //
 // Usage: swift compose.swift <clip.json> <captures folder>  (clip format: see `Clip` below)
 
@@ -13,11 +13,14 @@ import ImageIO
 /// One clip: its frame, the window it shows (in points), the captured states it moves between, and its steps.
 struct Clip: Decodable {
     /// Frames a second (30), the frame's size in pixels (1280 x 832), and the captured window's size in points
-    /// (1512 x 982; its PNGs are twice that).
+    /// (1512 x 982; its PNGs are twice that). An iPhone clip gives its own (600 x 1304, a 402 x 874 screen at 3x).
     var fps: Int?
     var width: Int?
     var height: Int?
     var window: [Double]?
+    /// How a click shows: `arrow`, the Mac's pointer, moving to it (the default); or `touch`, the iPhone's, a disc
+    /// where the finger lands, nothing between.
+    var pointer: String?
     /// State name to capture file, where it isn't `<state>.png`.
     var states: [String: String]?
     /// How the clip frames the window at rest: a zoom and its center in points (the whole window without).
@@ -161,6 +164,7 @@ let frames = Int((duration * Double(fps)).rounded())
 var images: [String: CGImage] = [:]
 for name in Set([clip.start.state] + fades.flatMap { [$0.from, $0.to] }) { images[name] = image(name) }
 
+let touches = clip.pointer == "touch"
 let width = clip.width ?? 1280
 let height = clip.height ?? 832
 let space = CGColorSpace(name: CGColorSpace.sRGB)!
@@ -223,6 +227,12 @@ func render(_ time: Double) {
         draw(shown, alpha: 1)
     }
 
+    if touches {
+        drawTouches(time, scale: scale, toFrame: toFrame)
+        context.restoreGState()
+        return
+    }
+
     // A click: a ring that widens and fades from the pointer's tip, the pointer pressed a little meanwhile.
     let tip = toFrame(pointer.at(time))
     let size = base * (0.75 + 0.25 * cam.zoom) * 1.25
@@ -252,6 +262,33 @@ func render(_ time: Double) {
     context.restoreGState()
 
     context.restoreGState()
+}
+
+/// A touch, as iOS shows one: a grey disc with a light edge at the finger, landing just before the tap, held while
+/// pressed, then lifting (it widens a little as it fades). `scale` is pixels a point.
+func drawTouches(_ time: Double, scale: Double, toFrame: (CGPoint) -> CGPoint) {
+    for click in clicks where time >= click - 0.18 && time < click + 0.5 {
+        let t = time - click
+        let shown: Double
+        let grow: Double
+        if t < 0 {
+            let p = ease((t + 0.18) / 0.18)
+            (shown, grow) = (p, 1.15 - 0.15 * p)
+        } else if t < 0.2 {
+            (shown, grow) = (1, 1)
+        } else {
+            let p = ease((t - 0.2) / 0.3)
+            (shown, grow) = (1 - p, 1 + 0.25 * p)
+        }
+        let at = toFrame(pointer.at(click))
+        let radius = 19 * grow * scale
+        let disc = CGRect(x: at.x - radius, y: at.y - radius, width: radius * 2, height: radius * 2)
+        context.setFillColor(CGColor(gray: 0.45, alpha: 0.42 * shown))
+        context.fillEllipse(in: disc)
+        context.setStrokeColor(CGColor(gray: 1, alpha: 0.85 * shown))
+        context.setLineWidth(1.5 * scale)
+        context.strokeEllipse(in: disc.insetBy(dx: 0.75 * scale, dy: 0.75 * scale))
+    }
 }
 
 let out = FileHandle.standardOutput

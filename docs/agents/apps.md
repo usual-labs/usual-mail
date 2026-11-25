@@ -427,7 +427,8 @@ The split, today's onboarding and the working rules are in the sessions' shared 
 Agreed since:
 - `MailWindow` shows its `OnboardingView` over the whole window (no rail or tabs) while
   `Onboarding.isNeeded(store)`; wired 2026-11-17 evening, replacing the old "Connect your mail" card.
-- Its tour's clips are this package's `Resources/tour-*.mp4` ([apps-onboarding.md](apps-onboarding.md)).
+- Its tour's clips are this package's `Resources/tour-mac-*.mp4` and, for the iPhone, `tour-phone-*.mp4`
+  ([apps-onboarding.md](apps-onboarding.md)).
 - The pairing words above are the owner's.
 
 ## Runs on this Mac

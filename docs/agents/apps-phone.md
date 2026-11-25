@@ -82,7 +82,10 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   pairing at the foot of their safe area, 16 above it (not seen: the simulator's app is paired). Their two bottom
   corners follow the screen's (`OnboardingCardShape`, a `ConcentricRectangle`: the screen's radius less the card's
   distance from its edges, at least 16; the top 16; owner's words of 2026-11-24): about 31 on pairing's cards on an
-  iPhone 18 Pro, 16 once the keyboard lifts the card away from the corners (both seen in the simulator).
+  iPhone 18 Pro, 16 once the keyboard lifts the card away from the corners (both seen in the simulator). "While your
+  mail comes in" plays the iPhone's own clips, the phone's screen standing up in the card (owner's words of
+  2026-11-25, "in iphone, the videos should show the iphone UI not mac UI!"; [apps-onboarding.md](apps-onboarding.md)),
+  and its last slide says the inboxes are switched from the menu at the top.
 
 ## Seen in the simulator (2026-11-20, the sample)
 

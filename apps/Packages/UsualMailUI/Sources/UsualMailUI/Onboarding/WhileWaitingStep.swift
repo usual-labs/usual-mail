@@ -2,31 +2,47 @@ import SwiftUI
 import UsualMailKit
 
 /// "While your mail comes in": nine slides on what Usual Mail does (arrows, dots, and the left and right keys), each
-/// with its clip of the feature (`TourClip`: the Mac app on the tour's sample, a pointer moving and clicking, looping;
-/// still with Reduce Motion on), and at the foot how the first sorting goes and "Go to Home", which is always there.
+/// with its clip of the feature (`TourClip`: this app on the tour's sample, looping; still with Reduce Motion on), and
+/// at the foot how the first sorting goes and "Go to Home", which is always there. On the Mac the clip is the window,
+/// as wide as the card; on the iPhone it is the phone's screen standing up, in the card's middle.
 struct WhileWaitingStep: View {
     let home: () -> Void
     @Environment(MailStore.self) private var store
     @State private var index = 0
 
     private let slides = Onboarding.slides
-    /// The clips' proportions (a 1512 × 982 window, framed at 1280 × 832).
+    /// This app's clips' proportions: the Mac's window, or the iPhone's screen.
     private static let aspect: CGFloat = TourClip.aspect
     /// What the card takes beside the clip: its own padding, and on the iPhone its 16 from the screen's edges (it overflowed
     /// a 402-point screen before, seen 2026-11-25).
     #if os(iOS)
         private static let sideRoom: CGFloat = 48 + 32
+        /// The tallest the iPhone's clip stands, and what the card's words, dots and foot take below it, with room above
+        /// the card.
+        private static let phoneClipHeight: CGFloat = 500
+        private static let besideClip: CGFloat = 250
     #else
         private static let sideRoom: CGFloat = 48
     #endif
 
     var body: some View {
         GeometryReader { geometry in
-            // As wide as the mail card, smaller in a short window or on the iPhone, so the whole step stays on screen;
-            // never below nothing, as when the reader's first size is zero.
-            let width = max(
-                0,
-                min(652, geometry.size.width - Self.sideRoom, max(300, (geometry.size.height - 320) * Self.aspect)))
+            // Never below nothing, as when the reader's first size is zero.
+            #if os(iOS)
+                // As tall as the screen leaves beside the card's other parts, as wide as that makes it.
+                let clipHeight = max(0, min(Self.phoneClipHeight, geometry.size.height - Self.besideClip))
+                let width = max(0, min(geometry.size.width - Self.sideRoom, clipHeight * Self.aspect))
+                let cardWidth = max(0, geometry.size.width - 32)
+                // The phone's own corners, at the clip's size.
+                let corner = width * 0.13
+            #else
+                // As wide as the mail card, smaller in a short window, so the whole step stays on screen.
+                let width = max(
+                    0,
+                    min(652, geometry.size.width - Self.sideRoom, max(300, (geometry.size.height - 320) * Self.aspect)))
+                let cardWidth = width + 48
+                let corner: CGFloat = 10
+            #endif
             VStack(alignment: .leading, spacing: 16) {
                 // One player a slide, crossfading as the slide changes, so a clip always starts from its beginning.
                 ZStack {
@@ -36,8 +52,9 @@ struct WhileWaitingStep: View {
                 }
                 .frame(width: width, height: width / Self.aspect)
                 .background(Theme.card)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline) }
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+                .overlay { RoundedRectangle(cornerRadius: corner, style: .continuous).strokeBorder(Theme.hairline) }
+                .frame(maxWidth: .infinity)
                 .accessibilityElement()
                 .accessibilityLabel("A short clip of this in Usual Mail")
                 HStack(alignment: .center, spacing: 12) {
@@ -67,7 +84,7 @@ struct WhileWaitingStep: View {
                     PrimaryButton(title: "Go to Home", action: home)
                 }
             }
-            .onboardingCard(width: width + 48)
+            .onboardingCard(width: cardWidth)
             .revealOnAppear()
             .frame(width: geometry.size.width, height: geometry.size.height, alignment: OnboardingLayout.cardAlignment)
         }
