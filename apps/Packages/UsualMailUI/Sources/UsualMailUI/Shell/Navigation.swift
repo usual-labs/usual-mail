@@ -56,7 +56,8 @@ struct Navigation: Equatable, Sendable {
         didSet { if settingsTab != oldValue { accountsSignIn = nil } }
     }
     /// The Gmail inbox Settings' Accounts tab signs in with Google again as it opens: the sync notice's "Sign in again"
-    /// (`SyncNotice`). Going anywhere else drops it, so coming back to Accounts later starts nothing.
+    /// (`SyncNotice`). Dropped once the tab has started it (`accountsSignInStarted`), and on going anywhere else, so
+    /// neither a rebuilt tab nor coming back to Accounts later starts it twice.
     private(set) var accountsSignIn: String?
     /// The mail open in each stack. Settings holds none.
     private var openMail: [Destination: String] = [:]
@@ -178,6 +179,11 @@ struct Navigation: Equatable, Sendable {
     mutating func openAccounts(signingIn inboxId: String? = nil) {
         openSettings(.accounts)
         accountsSignIn = inboxId
+    }
+
+    /// Settings' Accounts tab took the sign-in it was opened for: it keeps it in its own state from here.
+    mutating func accountsSignInStarted() {
+        accountsSignIn = nil
     }
 
     /// The sync notice's button (`SyncNotice.Action`). The dashboard opens in the browser and trying again asks the

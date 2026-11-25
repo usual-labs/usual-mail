@@ -15,9 +15,14 @@ struct AccountsTab: View {
     /// The Gmail inbox being signed in with Google again.
     @State private var signingIn: String?
 
-    /// `signingIn`: the Gmail inbox to sign in with Google again as the tab opens (`Navigation.accountsSignIn`).
-    init(session: AppSession, signingIn: String? = nil) {
+    /// Told once the tab took the sign-in it opened for, so the window drops its request.
+    private let started: @MainActor () -> Void
+
+    /// `signingIn`: the Gmail inbox to sign in with Google again as the tab opens (`Navigation.accountsSignIn`);
+    /// `started`, once it is in the tab's own state (`Navigation.accountsSignInStarted`).
+    init(session: AppSession, signingIn: String? = nil, started: @escaping @MainActor () -> Void = {}) {
         self.session = session
+        self.started = started
         _signingIn = State(initialValue: signingIn)
     }
 
@@ -28,6 +33,8 @@ struct AccountsTab: View {
             page
                 .task {
                     guard let inbox = signingIn else { return }
+                    // The tab holds it now: a rebuilt tab won't be handed it again.
+                    started()
                     // Once the rows are laid out.
                     await Task.yield()
                     scroller.scrollTo(inbox, anchor: .top)

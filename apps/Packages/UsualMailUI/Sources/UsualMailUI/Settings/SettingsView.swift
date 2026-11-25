@@ -13,6 +13,8 @@ struct SettingsView: View {
     let inboxId: String?
     /// The Gmail inbox the Accounts tab signs in with Google again as it opens (`Navigation.accountsSignIn`).
     var accountsSignIn: String? = nil
+    /// The Accounts tab took that sign-in (`Navigation.accountsSignInStarted`).
+    var accountsSignInStarted: @MainActor () -> Void = {}
 
     var body: some View {
         ScrollView {
@@ -30,7 +32,7 @@ struct SettingsView: View {
 
     @ViewBuilder private var page: some View {
         switch tab {
-        case .accounts: AccountsTab(session: session, signingIn: accountsSignIn)
+        case .accounts: AccountsTab(session: session, signingIn: accountsSignIn, started: accountsSignInStarted)
         case .ai: AITab()
         case .appearance: AppearanceTab()
         case .blocked: BlockedTab(inboxId: inboxId)

@@ -74,7 +74,8 @@
                         Pages(
                             session: session, nav: nav, feed: feed, expandedGroups: $expandedGroups, kept: kept,
                             search: search, searchFocus: searchFocus, read: read, leaveSearch: leaveSearch,
-                            openAISettings: openAISettings, fixSync: fixSync)
+                            openAISettings: openAISettings, fixSync: fixSync,
+                            accountsSignInStarted: { nav.accountsSignInStarted() })
                     }
                 }
                 // At the card's foot, over it: the lists scroll under the row and end above it.

@@ -26,30 +26,42 @@ struct Pages: View {
     /// Search's offer when asking needs the AI set up.
     let openAISettings: () -> Void
     /// The sync notice's button (`SyncNotice.Action`).
-    let fixSync: (SyncNotice.Action) -> Void
+    let fixSync: @MainActor (SyncNotice.Action) -> Void
+    /// Settings' Accounts tab took the sign-in it was opened for (`Navigation.accountsSignInStarted`).
+    let accountsSignInStarted: @MainActor () -> Void
     @Environment(MailStore.self) private var store
 
     var body: some View {
         let notice = SyncNotice.notice(for: SyncWarning.shown(nav: nav, inboxes: store.lists.inboxes))
         VStack(spacing: 0) {
             if let notice {
-                SyncNoticeView(notice: notice) { action in
-                    // The dashboard is a page in the browser and trying again a request; the rest move the window
-                    // (`Navigation.fixSync`).
-                    switch action {
-                    case .dashboard(let inboxId): Links.open(store.dashboardURL(inboxId: inboxId))
-                    case .tryAgain(let inboxId): try? await store.apiClient.syncInbox(id: inboxId)
-                    case .signIn, .openAccounts: fixSync(action)
-                    }
-                }
-                .padding(.horizontal, Theme.page.leading)
-                .padding(.top, 16)
-                .transition(.blurReveal)
+                SyncNoticeView(notice: notice, watched: watched(notice), dispatch: dispatch)
+                    .id(notice.action)
+                    .padding(.horizontal, Theme.page.leading)
+                    .padding(.top, 16)
+                    .transition(.blurReveal)
             }
             page
                 .frame(maxHeight: .infinity, alignment: .top)
         }
         .animation(Motion.move, value: notice)
+    }
+
+    /// What the sync notice's button does: the dashboard in the browser, Try again a request, the rest move the
+    /// window (`Navigation.fixSync`).
+    private var dispatch: SyncNoticeDispatch {
+        let store = store
+        return SyncNoticeDispatch(
+            openURL: { Links.open($0) }, dashboardURL: { store.dashboardURL(inboxId: $0) },
+            syncInbox: { try await store.apiClient.syncInbox(id: $0) }, navigate: fixSync)
+    }
+
+    /// The inbox Try again asks to sync, as the store has it now; nil for the other steps.
+    private func watched(_ notice: SyncNotice) -> SyncSnapshot? {
+        guard case .tryAgain(let inboxId) = notice.action, let inbox = store.lists.inbox(id: inboxId) else {
+            return nil
+        }
+        return SyncSnapshot(inbox)
     }
 
     @ViewBuilder private var page: some View {
@@ -126,7 +138,8 @@ struct Pages: View {
             }
         case .settings:
             SettingsView(
-                session: session, tab: nav.settingsTab, inboxId: inboxId, accountsSignIn: nav.accountsSignIn
+                session: session, tab: nav.settingsTab, inboxId: inboxId, accountsSignIn: nav.accountsSignIn,
+                accountsSignInStarted: accountsSignInStarted
             )
             .transition(.handOver)
         case .search:

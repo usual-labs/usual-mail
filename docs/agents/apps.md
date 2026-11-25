@@ -205,18 +205,24 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   VoiceOver say "stopped syncing". Over every list that shows its mail (the mail stack on that inbox or every inbox;
   To reply, Pinned, Snoozed and the Inbox page), not on Settings, search or an open mail, a notice tops the card
   (`Pages`, fixed while the list scrolls): "Personal stopped syncing.", the server's `statusDetail` in three lines at
-  most (Google's 265-character reason ran to six on the iPhone; Accounts and VoiceOver have it whole), and the dark
-  button, chosen by `statusReason` (`SyncNotice.Action.step`, 0.1.2; the server's sorting is in
-  [server.md](server.md)): `needsSignIn` is "Sign in again" for Gmail (Settings' Accounts tab, scrolled to that inbox,
-  its Google sign-in started at once: `Navigation.accountsSignIn`, dropped on leaving) and "Reconnect on the
-  dashboard" for IMAP (the inbox's dashboard page in the browser, `MailStore.dashboardURL(inboxId:)`, whose Reconnect
-  form takes new IMAP details, which the apps don't); `hostSetup` is "Open Accounts", starting nothing, since the host
-  fixes it; `providerError` and `notSyncing` are "Try again" (`APIClient.syncInbox`, the button working until the
-  server answers; the notice stays until a good sync). No reason (a server before 0.1.2) or an unknown one acts as a
-  refused sign-in did. Two inboxes are named, more counted, with "Open Accounts". Seen on the sample in a preview copy
+  most (Google's 265-character reason ran to six on the iPhone; Accounts and VoiceOver have it whole; without words,
+  "New mail from it won't arrive here until it syncs again.", which fits every reason; for `notSyncing`, "If it stays
+  like this, restart the server." added unless the words say it), and the dark button, chosen by `statusReason`
+  (`SyncNotice.Action.step`, 0.1.2; the server's sorting is in [server.md](server.md)): `needsSignIn` is "Sign in
+  again" for Gmail (Settings' Accounts tab, scrolled to that inbox, its Google sign-in started at once:
+  `Navigation.accountsSignIn`, dropped once the tab took it and on leaving) and "Reconnect on the dashboard" for IMAP
+  (the inbox's dashboard page in the browser, `MailStore.dashboardURL(inboxId:)`, whose Reconnect form takes new IMAP
+  details, which the apps don't); `hostSetup`, and a reason this app doesn't know (a later server's), "Open
+  Accounts", starting nothing; `providerError` and `notSyncing` "Try again". No reason (a server before 0.1.2) acts as
+  a refused sign-in did. What the button does is `SyncNoticeDispatch` (`Shell/SyncRetry.swift`), out of the view.
+  Try again (`SyncRetry`, the review of 2026-11-25): the server only queues a sync, so a good answer says "Asked your
+  server to sync." and the button stays busy until the inbox's status, words or last sync change or 30 seconds pass;
+  a refusal says "Your server couldn't be asked to sync." and why, in the refusal's red; each line is said to
+  VoiceOver. The notice is one view per action (`.id(notice.action)`), so a busy button never carries over to another
+  inbox's notice. Two inboxes are named, more counted, with "Open Accounts". Seen on the sample in a preview copy
   (`labs.usual.preview`) on 2026-11-25, and Google's long reason and "Sign in again" with the sample's Gmail inbox
   stopped for the check only; the dashboard and Try again buttons not pressed (the sample has no server).
-  `SyncWarningTests`.
+  `SyncWarningTests`, `SyncRetryTests`.
 - **The first run** (the onboarding session's `Onboarding/`, described in [apps-onboarding.md](apps-onboarding.md)):
   `MailWindow` shows `OnboardingView(session:)` over the whole window, with no rail or tabs, while
   `Onboarding.isNeeded(store)`: once the server has answered, while it has no inbox, no AI key, or this Mac hasn't

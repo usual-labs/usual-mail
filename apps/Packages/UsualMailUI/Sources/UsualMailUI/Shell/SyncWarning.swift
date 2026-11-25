@@ -39,8 +39,9 @@ struct SyncNotice: Equatable {
     let detail: String
     let action: Action
 
-    /// What the notice's button does.
-    enum Action: Equatable {
+    /// What the notice's button does; also the notice view's identity, so one inbox's working button never carries
+    /// over to another's notice.
+    enum Action: Hashable {
         /// Settings' Accounts tab, signing this Gmail inbox in with Google again at once, as its "Sign in with Google
         /// again…" does.
         case signIn(inboxId: String)
@@ -65,20 +66,23 @@ struct SyncNotice: Equatable {
         /// The step for one inbox, by why it needs attention (`Inbox.statusReason`, 0.1.2): signing in again for a
         /// refused sign-in (Gmail here, IMAP on the dashboard, since the apps take no new IMAP details); Accounts, and
         /// no sign-in, for the host's own setup; trying again for a provider that kept failing or a sync that stopped.
-        /// No reason, from an older server, or one this app doesn't know: as for a refused sign-in.
+        /// A reason this app doesn't know (a later server's) opens Accounts, starting nothing, as core says
+        /// (`InboxStatusReason`); no reason, from a server before 0.1.2, acts as a refused sign-in did.
         static func step(for inbox: Inbox) -> Action {
             switch inbox.statusReason {
-            case .hostSetup?: .openAccounts
+            case .hostSetup?, .unknown?: .openAccounts
             case .providerError?, .notSyncing?: .tryAgain(inboxId: inbox.id)
-            case .needsSignIn?, .unknown?, nil:
+            case .needsSignIn?, nil:
                 // Any Gmail inbox signs in with Google again, one connected by hand too (Settings' Accounts tab).
                 inbox.provider == .gmail ? .signIn(inboxId: inbox.id) : .dashboard(inboxId: inbox.id)
             }
         }
     }
 
-    /// The notice for `stopped`, nil when it is empty. One inbox: its name, the server's words on why, and the step
-    /// its reason calls for (`Action.step`); several: their names or count, and Accounts.
+    /// The notice for `stopped`, nil when it is empty. One inbox: its name, the server's words on why (else words that
+    /// fit every reason), and the step its reason calls for (`Action.step`); several: their names or count, and
+    /// Accounts. A sync that stopped finishing also says to restart the server if it stays so, as the contract does,
+    /// unless the server's words say it already.
     static func notice(for stopped: [Inbox]) -> SyncNotice? {
         guard let first = stopped.first else { return nil }
         guard stopped.count == 1 else {
@@ -87,15 +91,19 @@ struct SyncNotice: Equatable {
                 ? "\(stopped[0].name) and \(stopped[1].name) stopped syncing."
                 : "\(stopped.count) inboxes stopped syncing."
             return SyncNotice(
-                title: title, detail: "New mail from them won't arrive here until they're reconnected.",
+                title: title, detail: "New mail from them won't arrive here until they sync again.",
                 action: .openAccounts)
         }
-        let detail = first.statusDetail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        return SyncNotice(
-            title: "\(first.name) stopped syncing.",
-            detail: detail.isEmpty ? "New mail from it won't arrive here until it's reconnected." : detail,
-            action: .step(for: first))
+        let given = first.statusDetail?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        var detail = given.isEmpty ? "New mail from it won't arrive here until it syncs again." : given
+        if first.statusReason == .notSyncing, !detail.localizedCaseInsensitiveContains("restart") {
+            detail += " \(restartWords)"
+        }
+        return SyncNotice(title: "\(first.name) stopped syncing.", detail: detail, action: .step(for: first))
     }
+
+    /// What a sync that stopped finishing adds when the server's words don't say it.
+    static let restartWords = "If it stays like this, restart the server."
 }
 
 /// The warning triangle, in the danger colour, at `size` points.
@@ -114,11 +122,14 @@ struct SyncWarningMark: View {
 /// The notice on the card (`SyncNotice`): the triangle, what stopped and why, and its button (the dark one), on the
 /// danger colour's tint, as wide as the page's content. The why stops at `detailLines`, so a long reason (Google's
 /// runs to six lines on the iPhone) doesn't push the list down; Settings' Accounts tab and VoiceOver have it whole.
+/// Under it, what Try again did or why it couldn't (`SyncRetry`), said to VoiceOver too. One view per action
+/// (`.id(notice.action)` where it is placed), so a working button stays with its own inbox.
 struct SyncNoticeView: View {
     let notice: SyncNotice
-    /// The button's step; the button shows it working until it returns ("Try again" waits for the server's answer).
-    let act: (SyncNotice.Action) async -> Void
-    @State private var working = false
+    /// The inbox Try again asks to sync, as it is now; nil for the other steps.
+    let watched: SyncSnapshot?
+    let dispatch: SyncNoticeDispatch
+    @State private var retry = SyncRetry()
 
     static let detailLines = 3
 
@@ -141,18 +152,18 @@ struct SyncNoticeView: View {
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(verbatim: "\(notice.title) \(notice.detail)"))
-                // The app's one filled button: fixing it is the step the notice is there for.
-                Button {
-                    Task {
-                        working = true
-                        await act(notice.action)
-                        working = false
+                if let line = retry.line {
+                    Group {
+                        if retry.refused { SettingsView.refusal(line) } else { SettingsView.note(line) }
                     }
-                } label: {
-                    DarkButtonLabel(title: notice.action.title, busy: working, enabled: !working)
+                    .transition(.blurReveal)
+                }
+                // The app's one filled button: fixing it is the step the notice is there for.
+                Button(action: press) {
+                    DarkButtonLabel(title: notice.action.title, busy: retry.busy, enabled: !retry.busy)
                 }
                 .buttonStyle(PlainControlStyle())
-                .disabled(working)
+                .disabled(retry.busy)
                 .pointer()
             }
             Spacer(minLength: 0)
@@ -160,5 +171,23 @@ struct SyncNoticeView: View {
         .padding(12)
         .background(UsualColor.dangerTint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .contain)
+        .animation(Motion.reveal, value: retry)
+        // The inbox changed (its status, words or last sync): the wait is over.
+        .onChange(of: watched) { _, now in retry.saw(now, at: .now) }
+        // Or `waitLimit` passed with nothing changed.
+        .task(id: retry.phase) {
+            guard case .waiting = retry.phase else { return }
+            try? await Task.sleep(for: .seconds(SyncRetry.waitLimit))
+            retry.saw(watched, at: .now)
+        }
+    }
+
+    private func press() {
+        retry.began()
+        Task {
+            let asked = await dispatch.run(notice.action)
+            retry.answered(asked, inbox: watched, at: .now)
+            if let line = retry.line { AccessibilityNotification.Announcement(line).post() }
+        }
     }
 }

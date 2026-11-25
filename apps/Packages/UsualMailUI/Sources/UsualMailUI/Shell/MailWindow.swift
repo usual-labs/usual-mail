@@ -177,7 +177,7 @@
             Pages(
                 session: session, nav: nav, feed: feed, expandedGroups: $expandedGroups, kept: kept, search: search,
                 searchFocus: searchFocus, read: read, leaveSearch: leaveSearch, openAISettings: openAISettings,
-                fixSync: fixSync)
+                fixSync: fixSync, accountsSignInStarted: { nav.accountsSignInStarted() })
         }
 
         /// The sync notice's button: Settings' Accounts tab, signing a Gmail inbox in again at once.

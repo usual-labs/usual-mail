@@ -92,7 +92,22 @@ struct SyncWarningTests {
         let silent = try #require(
             SyncNotice.notice(
                 for: inboxes("inb_northwind", .needsAttention, detail: " ").filter { $0.id == "inb_northwind" }))
-        #expect(silent.detail == "New mail from it won't arrive here until it's reconnected.")
+        #expect(silent.detail == "New mail from it won't arrive here until it syncs again.")
+        // A sync that stopped finishing says to restart the server, unless the server's words say it already.
+        var stalled = try inbox("inb_personal")
+        stalled.statusReason = .notSyncing
+        stalled.statusDetail = "No sync of this inbox has finished since 25 Nov, 14:02 UTC."
+        #expect(
+            SyncNotice.notice(for: [stalled])?.detail
+                == "No sync of this inbox has finished since 25 Nov, 14:02 UTC. If it stays like this, restart the server."
+        )
+        stalled.statusDetail = "No sync has finished. Try again; if it stays like this, restart the server."
+        #expect(SyncNotice.notice(for: [stalled])?.detail == stalled.statusDetail)
+        stalled.statusDetail = nil
+        #expect(
+            SyncNotice.notice(for: [stalled])?.detail
+                == "New mail from it won't arrive here until it syncs again. If it stays like this, restart the server."
+        )
         #expect(SyncNotice.notice(for: []) == nil)
     }
 
@@ -117,10 +132,12 @@ struct SyncWarningTests {
             #expect(step(imap, reason) == .tryAgain(inboxId: "inb_personal"))
             #expect(step(imap, reason).title == "Try again")
         }
-        // No reason (a server before 0.1.2) or one this app doesn't know: as before.
+        // No reason (a server before 0.1.2): as before.
         #expect(step(gmail, nil) == .signIn(inboxId: "inb_northwind"))
         #expect(step(imap, nil) == .dashboard(inboxId: "inb_personal"))
-        #expect(step(gmail, .unknown("quota_spent")) == .signIn(inboxId: "inb_northwind"))
+        // A reason this app doesn't know (a later server's): Accounts, starting nothing.
+        #expect(step(gmail, .unknown("quota_spent")) == .openAccounts)
+        #expect(step(imap, .unknown("quota_spent")) == .openAccounts)
     }
 
     @Test func severalInboxesAreNamedOrCountedAndSentToAccounts() throws {
@@ -129,7 +146,7 @@ struct SyncWarningTests {
         let two = try #require(
             SyncNotice.notice(for: ["inb_northwind", "inb_harbor"].compactMap { id in stopped.first { $0.id == id } }))
         #expect(two.title == "Northwind Studio and Harbor & Pine stopped syncing.")
-        #expect(two.detail == "New mail from them won't arrive here until they're reconnected.")
+        #expect(two.detail == "New mail from them won't arrive here until they sync again.")
         #expect(two.action == .openAccounts)
         let three = try #require(SyncNotice.notice(for: stopped))
         #expect(three.title == "3 inboxes stopped syncing.")
@@ -141,6 +158,10 @@ struct SyncWarningTests {
         nav.fixSync(.signIn(inboxId: "inb_northwind"))
         #expect(nav.place == .settings && nav.settingsTab == .accounts)
         #expect(nav.accountsSignIn == "inb_northwind")
+        // Once the tab has taken it, the window drops it, so a rebuilt tab doesn't start it again.
+        nav.accountsSignInStarted()
+        #expect(nav.accountsSignIn == nil && nav.place == .settings && nav.settingsTab == .accounts)
+        nav.fixSync(.signIn(inboxId: "inb_northwind"))
         // Another tab, another stack, search or a profile drops it, so Accounts later starts nothing.
         nav.settingsTab = .ai
         #expect(nav.accountsSignIn == nil)
