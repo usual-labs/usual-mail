@@ -101,8 +101,9 @@ elsewhere: [docs/self-hosting.md](docs/self-hosting.md).
   notifications have their own list. Before you save your AI key you see exactly what is sent and to whom; from then
   on every inbox's mail goes to it.
 - **First-time senders wait for you.** Mail from someone you haven't let in waits in screening. Codes, sign-in links,
-  security alerts, receipts and the like from a service your mailbox provider vouches for go straight to their lists
-  (the sender still isn't let in), and mail from your other inboxes and colleagues at your own domain is let in.
+  security alerts, receipts and the like sent to you from a service whose domain your mailbox provider (Gmail)
+  verified go straight to their lists (the sender still isn't let in), and mail from your other inboxes and
+  colleagues at your own domain is let in.
 - **Nothing happens behind your back.** Every action is recorded with who did it and can be undone. Correcting
   a category teaches that inbox a rule.
 - **Your server, your data.** You run the server, you hold the AI key. Your own agent can connect too, within the

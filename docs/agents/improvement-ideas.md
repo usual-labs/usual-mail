@@ -349,7 +349,8 @@ and the notes:
 - **Narrow what skips Screening further** (2026-11-25, with the screening gate; known-issues.md). A look-alike domain
   that authenticates well can pass as a security alert or a sign-in link. Ideas, none built: hold back mail whose links
   lead to a site other than the From domain's; keep a short list of brands' own domains for the security and payment
-  kinds; ask the question again when mail joins a thread that skipped Screening, and screen it again on a "none".
+  kinds; recognise more platforms whose notices carry their users' words (`TENANT_PLATFORMS` and the shape checks
+  catch only some of them).
 - **Evidence words in more languages** (2026-11-25). The gate's evidence (`server/src/ai/gate-evidence.ts`) is English;
   German, French and Spanish words for order, booking, sign-in and payment would let such mail pass the same way.
 - **Show why a thread skipped Screening in the apps** (2026-11-25): the contract says what to show

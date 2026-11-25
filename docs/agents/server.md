@@ -128,8 +128,8 @@ src/ai/              the server's AI
   fake.ts            FakeModels for tests, demo mode and --dev-fake-ai
   prompt.ts          what leaves the server for each job (core's limits and field names), the kinds' words and the
                      tie-break, the data block, which answers are accepted
-  text.ts            what a model reads of a message (modelText: stub rule, links cut; linear patterns); plainText for
-                     the gate
+  text.ts            what a model reads of a message (modelText: stub rule, links cut; linear patterns), which the
+                     gate reads too
   addresses.ts       addresses taken out of a summary request, each at sign read once, and the cut that splits none
   event.ts           a notification's event checked (event-dates.ts, event-times.ts, event-lines.ts)
   ask-again.ts       ASK_AGAIN: the AI's own filings asked again once per store at a start; payment*.ts and

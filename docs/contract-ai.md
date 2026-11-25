@@ -90,8 +90,10 @@ in `core/src/ai-words.ts`; the words, lists, actions and the sorting of new mail
   elsewhere to `conversation` (a person answered a newsletter, say); any other answer leaves that thread where it is.
   It never moves a thread out of `conversation`: a thread in `conversation` is never categorized again by the AI. The
   one exception is the dated one-off of 2026-11-19 below; it is not a standing behaviour. **A thread that skipped
-  Screening while its sender isn't let in** (`skippedScreening`) isn't categorized again when mail joins it: the AI
-  could only move it to `conversation`, which would put a stranger's mail in Home.
+  Screening while its sender isn't let in** (`skippedScreening`) is never made a `conversation` by the AI, which
+  would put a stranger's mail in Home. Mail from someone let in joining it asks nothing; mail from anyone not let in
+  screens it again and the gate judges the newest message, with any category allowed
+  ([rules and learning](contract.md#rules-and-learning), step 3).
 - **A thread needs a summary** when it has none, or when incoming mail has joined it since the summary was written,
   unless it is `otp`. **One-time codes are never summarized:** an `otp` thread is not sent to the summarize job, and a
   thread that becomes `otp`, whoever decides it, loses any summary it had. **A `receipt` or an `invoice` needs its
@@ -205,8 +207,10 @@ noise. The text part is read, or the text made from the HTML when there is no te
 shorter than 300 characters once cleaned while the HTML's text is at least three times as long. Then each link keeps
 its scheme and site and loses the rest ("https://site/…"; a link that is only a site stays whole), invisible and
 zero-width characters go, other spaces count as one, a run of four or more of one divider character becomes three,
-and blank lines and spaces at the ends of lines collapse; the limits cut what is left. The screening gate's own check
-(below) reads the message as it always did, links whole.
+and blank lines and spaces at the ends of lines collapse; the limits cut what is left. Since 2026-11-25 the screening
+gate's own check (below) reads the same, as far as the model read it; and every pattern that reads a message runs in
+time linear in its length, since a message is read under the server's lock (the gate's security review: a link
+followed by many ")" or a run of "<" took seconds for 40,000 characters).
 - **To search by a sentence** (2026-11-20, [asking in a sentence](contract-search.md#asking-in-a-sentence)): only
   when a person asks search in a sentence, and only then: the sentence as they wrote it, with today's date and weekday
   (in the time zone the app gives), to be turned into search filters. Nothing from the mail goes with it: no message,
@@ -532,20 +536,30 @@ Mail is untrusted input to a model, exactly as it is to an outside agent. The se
 2026-11-25). Mail can talk a model into calling it anything, and phishing imitates exactly the mail that may skip
 Screening: sign-in links, security alerts, password resets, receipts. So for a thread screened by the sender gate (not
 filed under Screening by the mailbox) the server's AI lifts the gate only when the server's own check also holds for the
-message the model read (the newest incoming one); otherwise the thread stays screened, in the model's category. The
-check is conservative on purpose, so what it misses waits in Screening rather than a stranger skipping it
-(`server/src/ai/gate.ts`, `gate-evidence.ts`):
+message the model read, and only while the server holds the new thread for the AI's answers (`gatePending`) and that
+message is still its newest incoming one; otherwise the thread stays screened, in the model's category. The check is
+conservative on purpose, so what it misses waits in Screening rather than a stranger skipping it
+(`server/src/ai/gate.ts`, `gate-shape.ts`, `gate-evidence.ts`):
 
 - **the mailbox provider's checker proved the From domain,** and it is the address's own: `fromCheck` is `verified`
   for exactly that domain, by the rules sender pictures use ([sender pictures](contract-avatars.md), "When a picture
-  is shown", 3), and the domain is no public mail domain or shared platform (core's `isPublicMailDomain`,
-  `isSharedPlatform`). A server without the Public Suffix List, and an IMAP inbox, prove nothing, so nothing skips
-  Screening there; **and**
+  is shown", 3), the provider is one whose checker the server trusts (Gmail), and the domain is no public mail domain
+  or shared platform (core's `isPublicMailDomain`, `isSharedPlatform`). A server without the Public Suffix List
+  proves nothing; **and**
 - **the message looks machine-sent** by the provider's test (`ProviderMessage.automated`: bulk, auto-submitted, a list
   header or no-reply); **and**
-- **it shows the kind's evidence**, read in its subject and text (made from its HTML when it has none), links whole,
-  words whole and in any case, a phrase's words joined by a space, a hyphen or nothing ("sign in", "sign-in",
-  "signin"):
+- **it has the shape of mail sent to this person by that organisation alone** (the gate's security review of
+  2026-11-25: the proof says which domain sent the mail, not who wrote it; a platform carries anyone's words under its
+  own domain, a comment on a shared document, a mention, a money request, a help desk's free trial, and a brand's real
+  alert can be sent on to others with its signature intact): (a) no List-Id; (b) every Reply-To at the From's
+  registrable domain; (c) To or Cc names the inbox's own address, a `+tag` ignored and dots at gmail.com (and
+  googlemail.com), which a copy sent on by Bcc doesn't; (d) not from a platform whose customers send from their own
+  subdomain of it (`TENANT_PLATFORMS` in `gate-shape.ts`: zendesk.com, freshdesk.com, atlassian.net and the like);
+  **and**
+- **it shows the kind's evidence**, read in its subject (at most 1,000 characters) and its text as the model read it
+  (above: made from its HTML when needed, links cut to their site, at most 4,000 characters), words whole and in any
+  case, a phrase's words joined by up to three spaces or hyphens or nothing ("sign in", "sign-in", "signin"); a link
+  counts in the stored text or among the HTML's own links:
   - **a one-time code** (`code`, for the AI's `otp`): a code within 80 characters of one of the words `code`, `codes`,
     `passcode`, `one-time`, `otp`, `verification` or `verify`. A code is six to eight digits, or two groups of three or
     four digits joined by one space or hyphen (`482913`, `482 913`, `4829-1375`), standing alone: no letter, digit or
@@ -570,10 +584,16 @@ check is conservative on purpose, so what it misses waits in Screening rather th
   - **a payment alert** (`payment`): a payment word ("payment", "charged", "card", "renewal", "declined", "fraud"
     and the like) and an amount or a card's last four digits ("ending in 4242", "•••• 4242").
 
+**A one-time code** needs less: the proof, machine-sent mail, (c) the inbox addressed, and the code; not the rest of
+the shape (a code may come from a list's address or reply elsewhere). **An inbox whose provider has no checker at all**
+(IMAP) can't give the proof, so there a code passes on the rest, as before 2026-11-25 (the coordinator's decision of
+2026-11-25, so IMAP doesn't get worse); nothing else passes there. A Gmail inbox's missing or failed proof
+(`unverified`, `other_checker`, `repeated`, `no_header`, or none read) never falls back.
+
 **The gate's question.** For an answer of `otp` whose code the check accepts, nothing more is asked. Otherwise, when
-the AI's category may be one of the kinds and the proof, machine-sent mail and one of those kinds' evidence hold, the
-categorize job's model is asked once which kind it is (`server/src/ai/pass-prompt.ts`): the same item the categorize
-request carried, inside its own marked data block, a choice among that category's kinds (core's
+the AI's category may be one of the kinds and the proof, machine-sent mail, the shape and one of those kinds' evidence
+hold, the categorize job's model is asked once which kind it is (`server/src/ai/pass-prompt.ts`): the same item the
+categorize request carried, inside its own marked data block, a choice among that category's kinds (core's
 `SCREENING_PASS_CATEGORIES`) and `none`; a decision model answers it on the gateway, a language model through
 structured output limited to the options. Only an answer among the options counts, and the kind it names must then
 pass the check itself. It is counted in the usage as a categorize request. When the service fails it, the category

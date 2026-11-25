@@ -845,9 +845,8 @@ The builder's choices, for the review ([server-screening.md](server-screening.md
   links, email confirmations and resets in `otp` or `notification`, orders in `receipt` or `notification`, and so on.
   **An invoice never skips Screening:** a bill from a stranger is the commonest fraud, so payment alerts land in
   `notification` or `receipt` only.
-- **The proof applies to one-time codes too,** as "for every kind" says: an IMAP inbox, and a server without the
-  Public Suffix List, now let nothing skip Screening, codes included (since 2026-11-17 a code passed there on
-  machine-sent mail and a code alone).
+- **The proof applies to one-time codes too** on Gmail, as "for every kind" says. (On IMAP the review's decisions
+  below restored 0.1.2's codes.)
 - **`Thread.skippedScreening`, not `reason`:** the AI gives no reason, the Mac app ignores `reason` for the AI's
   decisions, and a kind lets an app say it its own way; core's `skippedScreeningLine` gives the words.
 - **Writing into a thread that skipped Screening lets nobody in, and the AI doesn't move it to `conversation`** while
@@ -856,6 +855,28 @@ The builder's choices, for the review ([server-screening.md](server-screening.md
 - **The sender rules match exactly:** another inbox's exact address; the inbox's own domain itself, not a subdomain.
   No record, like the other ways in. The public mail domains moved from the server's sender pictures into core
   (`core/src/mail-domains.ts`), one list for both.
+
+**The security review's findings and the coordinator's decisions, the same day** (the review was NO-GO; it found the
+proof's parser sound, and agreed that invoices never skip and with the separate question):
+
+- **The proof says which domain sent the mail, not who wrote it,** so every kind but a code also needs the shape of
+  mail sent to this person by that organisation alone: no List-Id, every Reply-To at the From's registrable domain, To
+  or Cc naming the inbox (a `+tag` and Gmail's dots aside: this defeats a replayed alert and a Bcc blast), and not a
+  tenant subdomain of a help desk or shop platform (a gate-only list). The reviewer had run a shared document's
+  comment, a project mention, a money request and a help desk trial through the gate: all passed before. A code needs
+  the To or Cc check too.
+- **Patterns run in linear time,** and the gate reads only what the model read: the reviewer measured seconds for
+  80,000 characters under the server's lock. The same fix reached the older readers every request and snippet use.
+- **Judged only while held, and only the newest message:** a thread passes only while the server holds it for the
+  AI's answers, so "written back once" holds; mail joining while the question is out isn't judged by the earlier
+  answer; the AI never makes such a thread a conversation.
+- **Anyone not let in writing into a thread that skipped Screening screens it again,** and the gate judges the newest
+  message (callback phishing threaded onto an order).
+- **A colleague is a person:** the domain rule needs mail that isn't machine-sent and has no List-Id (a group relaying
+  outsiders as the company, a tool sending as it).
+- **IMAP's one-time codes are restored** (the coordinator's decision, so IMAP doesn't get worse): keyed on the
+  provider having no checker at all, codes only, with the code check and the To or Cc check; Gmail's missing or failed
+  proof never falls back.
 
 Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
 mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").

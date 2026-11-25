@@ -24,25 +24,34 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   shows, that HTML is shown without saying it was cut (it takes over a megabyte of markup the sanitizer drops).
 - **Mail that skips Screening: what the server's check doesn't stop** (server, 2026-11-25, by design; open as limits,
   [server-screening.md](server-screening.md)). (1) **A look-alike domain that authenticates well passes:** a phisher
-  who owns `lumen-bank-security.example`, publishes DMARC and sends machine-looking mail with security words passes as a
-  "security alert" if the model agrees: the check proves the From domain is the sender's own, not that it is the brand
-  it imitates. Letting it through shows no logo (its sender isn't let in), and the line "Skipped Screening: a security
-  alert" says why it is there. A list of known brands' domains, or holding back mail whose links lead elsewhere, would
-  narrow it; neither is built. (2) **Once through, a thread stays through:** its sender writing into it again (a
-  phisher's follow-up "reply") stays out of Screening in that thread's list, though it lets nobody in and the AI won't
-  move it to Home. (3) **The evidence words are English only** ("sign in", "order", "booking"): a German shop's
-  "Bestellung" or a French "connexion" never passes, so such mail waits in Screening as before. (4) **IMAP inboxes let
-  nothing skip Screening, codes included,** since IMAP has no checker the server trusts; a code that passed there
-  before 2026-11-25 now waits in Screening. Same for a server built without the Public Suffix List. (5) **Invoices
-  never skip it,** also a renewal the AI calls an invoice. (6) **The question's quality is untried:** no real model has
-  answered it (`liquid/d1.2` on the gateway, `gpt-6-luna`, `claude-haiku-5-5`); the fake answers by words. (7) **Mail
-  stored before the server read `fromCheck`** has none, but only new mail meets the gate, so that matters only for a
-  thread asked again (`ask-again.ts`), which then stays screened.
-- **The sender rules match exactly** (server, 2026-11-25, by design): a colleague at a subdomain of the inbox's domain
-  (`eu.work.example` for `me@work.example`), a second domain the company owns, or another inbox's alias (Gmail's dots
-  and `+` tags, a "send mail as" address) isn't let in by them and waits in Screening until the person lets them in.
-  The "own addresses" rule needs the receiving inbox to be Gmail (the proof), whatever the other inbox is.
-
+  who owns `lumen-bank-security.example`, publishes DMARC and sends machine-looking mail with security words to the
+  person passes as a "security alert" if the model agrees: the check proves the From domain is the sender's own, not
+  that it is the brand it imitates. It shows no logo (its sender isn't let in), and "Skipped Screening: a security
+  alert" says why it is there. A list of brands' own domains, or holding back mail whose links lead elsewhere, would
+  narrow it; neither is built. (2) **A platform's notice carrying a user's words** still passes when it has the shape
+  of the platform's own mail: addressed to the person, no List-Id, no Reply-To elsewhere, not a tenant subdomain
+  (`TENANT_PLATFORMS`). The security review's four cases (a shared document's comment or share, a project mention, a
+  money request, a help desk trial) are stopped by the Reply-To, the List-Id and To, the Reply-To, and the tenant list
+  as their real mail carries them; a platform that writes a user's words with none of those passes. (3) **Once
+  through, a thread is judged again** when anyone not let in writes into it (fixed by the review: it is screened
+  again and the newest message judged), but mail from someone let in into it changes nothing. (4) **The evidence words
+  are English only** ("sign in", "order", "booking"): a German "Bestellung" or a French "connexion" waits in Screening.
+  (5) **Mail sent to an alias or a forwarding address** never skips Screening, codes included: To or Cc must name the
+  inbox's own address (a `+tag` and Gmail's dots aside), so a "send mail as" alias, a second domain or a forwarder's
+  address doesn't count. (6) **Invoices never skip it,** also a renewal the AI calls an invoice. (7) **Mail that
+  arrived while the AI was off, paused or failing stays in Screening** when the AI categorizes it later, codes
+  included (since 2026-11-25; before, a code passed then and moved out of Screening). (8) **The question's quality is
+  untried:** no real model has answered it (`liquid/d1.2` on the gateway, `gpt-6-luna`, `claude-haiku-5-5`); the fake
+  answers by words. (9) On IMAP only codes pass, as before 2026-11-25; a server without the Public Suffix List lets
+  nothing through on Gmail.
+- **The sender rules match exactly, and may never fire for colleagues** (server, 2026-11-25; open). A colleague at a
+  subdomain of the inbox's domain (`eu.work.example` for `me@work.example`), a second domain the company owns, or
+  another inbox's alias (Gmail's dots and `+` tags, a "send mail as" address) isn't let in by them. A colleague must be
+  a person: mail that looks machine-sent or carries a List-Id isn't let in by the domain, so a colleague writing
+  through a list or a tool waits in Screening. **Unverified:** whether Gmail stamps its own `Authentication-Results`
+  on mail between two people in the same Google Workspace. If it doesn't, `fromCheck` is `no_header` and the colleague
+  rule never fires for them; check on a real Workspace mailbox (the stored `messages.from_check` of a colleague's mail
+  says). The "own addresses" rule needs the receiving inbox to be Gmail, whatever the other inbox is.
 - **Syncing can fall behind without a warning in three ways** (server, found 2026-11-25 by the review of the apps'
   warning; open). Fixed in 0.1.2 (the owner's "Yes, fix it", [contract](../contract-sync.md#when-an-inbox-needs-attention)):
   every failed sync used to set `needs_attention`, a brief network error too, so the apps' notice flashed and Gmail's
@@ -713,6 +722,10 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
   at its limit; `html-depth.test.ts`; each fix's test failing with that fix undone, but the tracker removal's (its old
   cost stays under the tests' 3 s). Still open: the patterns below in "Linear only where they run", and the address
   leaks in [server-ai.md](server-ai.md) (a quoted local part, an address literal, the part before a second @).
+  Since 0.1.4 the screening gate's own patterns are linear too: its card and reference patterns ("card " and 80,000
+  "*" took 7.6 s; "order " and 80,000 "-", 2.6 s) are bounded, the gate reads only what the model read (the subject's
+  first 1,000 characters and 4,000 of the model's text), and `plainText`, which 0.1.3's gate read, is gone. Tests in
+  `screening-gate` and `ai-linear`'s gate work; the sweep's list is in [server-screening.md](server-screening.md).
 - **The owner password's re-review follow-ups** (server, 2026-11-24, `owner-claim-fix`; each with a test that fails on
   the code before). (1) A hundred wrong passwords or codes from everyone locked signing in for everyone: ten IPv4
   addresses or ten /64s (even in one /48) were enough; now a /48 counts at thirty and the ceiling is a thousand (Open,

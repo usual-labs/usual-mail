@@ -56,8 +56,8 @@ some mail from senders who aren't let in skip Screening,** as one-time codes alr
 confirmations, security alerts, password resets and account changes, receipts and order updates, bookings and payment
 alerts. The server's AI names the kind, the server's own check must also hold, and `Thread.skippedScreening` says why
 ([rules and learning](#rules-and-learning)). **The same day two kinds of sender came to be let in without the AI:**
-another inbox on this server and a colleague at the inbox's own domain, both only when the mailbox provider proved the
-From domain ([letting a sender in](#rules-and-learning)). Which parts follow it is in
+another inbox on this server and a colleague (a person) at the inbox's own domain, both only when the mailbox provider
+proved the From domain ([letting a sender in](#rules-and-learning)). Which parts follow it is in
 [agents/01-overview.md](agents/01-overview.md); open questions in [agents/contract-questions.md](agents/contract-questions.md).
 
 ## Pages
@@ -158,7 +158,9 @@ The contract is split by subject. This page is the entry point.
   its category's list; its sender still isn't let in, so their next mail is screened. Absent while the thread is
   screened (undoing the AI's decision screens it again and drops the kind), for every other way out of Screening (the
   sender let in, a rule, a person's `otp`, the mailbox's filing), and on a code that skipped Screening before
-  2026-11-25. It stays when the sender is let in later: it says how the thread came out of Screening. **What an
+  2026-11-25. Mail from someone not let in joining the thread screens it again and drops the kind until the gate
+  judges the newest message ([rules and learning](#rules-and-learning)). It stays when the sender is let in later: it
+  says how the thread came out of Screening. **What an
   interface shows:** in the reading view's "why it's here", under the category's line, `skippedScreeningLine` in core's
   words ("Skipped Screening: a sign-in link"), with the actions a screened thread offers for its sender (let in,
   block), so the person can still decide about them; in lists, nothing beyond what any thread of its category shows.
@@ -434,21 +436,31 @@ answered `needs_person`, also for an inbox it may read.
      kinds of mail skip Screening** without letting the sender in (the owner's decision of 2026-11-25): one-time codes,
      sign-in links, email confirmations, security alerts, password resets and account changes, receipts and order
      updates, bookings, and payment alerts. **A model's answer alone never lifts the gate:** the server's own check
-     must also hold for the message the model read: the mailbox provider's checker proved its From domain (not a
-     public mail domain's or a shared platform's), it looks machine-sent, and it shows that kind's evidence (see
-     [mail as untrusted input](contract-ai.md#mail-is-untrusted-input-to-a-model)). For an answer of `otp` with a
-     code, that is all. Otherwise, when the category may be one of the kinds and the server's check could hold for
-     one of them, the AI is asked once more which kind it is, or none. A kind counts only in its own categories
-     (core's `SCREENING_PASS_CATEGORIES`): a code in `otp`; a sign-in link or an email confirmation in `otp` or
-     `notification`; a security alert in `notification`; a password reset or account change in `notification` or
-     `otp`; an order update in `receipt` or `notification`; a booking or a payment alert in `notification` or
-     `receipt`. **An `invoice` never skips Screening.** When it holds, the thread is in that category, not screened,
-     `skippedScreening` names the kind, and its sender still isn't let in. Otherwise the thread stays screened in the
-     category the model gave (`otp` included); when the AI may not process the thread, or gives no answer it accepts,
-     it is screened in `unknown`. While the server waits for the answers the thread is screened but isn't written
-     back, so mail that skips Screening isn't moved to Screening and out again at the provider: it is written back
-     once, to its category's label or folder. A person's own `categorize` to `otp` lifts the gate as before, without
-     a kind. (A sender let in as one of the person's own when the mail arrives, below, never reaches this step.)
+     must also hold for the message the model read: the mailbox provider's checker proved its From domain (Gmail's;
+     not a public mail domain's or a shared platform's), it looks machine-sent, it has the shape of mail sent to this
+     person by that organisation alone (no List-Id, every Reply-To at the From's own domain, To or Cc naming the inbox,
+     not a help desk's or shop's tenant on its platform), and it shows that kind's evidence (see
+     [mail as untrusted input](contract-ai.md#mail-is-untrusted-input-to-a-model)). A one-time code needs only the
+     proof, machine-sent mail addressed to the inbox and a code; in an IMAP inbox, whose provider has no checker,
+     those without the proof, as before 2026-11-25. For an answer of `otp` with such a code, that is all. Otherwise,
+     when the category may be one of the kinds and the server's check could hold for one of them, the AI is asked once
+     more which kind it is, or none. A kind counts only in its own categories (core's `SCREENING_PASS_CATEGORIES`): a
+     code in `otp`; a sign-in link or an email confirmation in `otp` or `notification`; a security alert in
+     `notification`; a password reset or account change in `notification` or `otp`; an order update in `receipt` or
+     `notification`; a booking or a payment alert in `notification` or `receipt`. **An `invoice` never skips
+     Screening.** When it holds, the thread is in that category, not screened, `skippedScreening` names the kind, and
+     its sender still isn't let in. Otherwise the thread stays screened in the category the model gave (`otp`
+     included); when the AI may not process the thread, or gives no answer it accepts, it is screened in `unknown`.
+     **Only while the server holds the new thread for the AI's answers** is it judged: held, it is screened but isn't
+     written back, so mail that skips Screening is written back once, to its category's label or folder, never to
+     Screening and out again. Mail that arrived while the AI was off, paused or failing, or whose answer failed, is
+     written back under Screening and stays screened when the AI categorizes it later; and mail that joins the thread
+     while it is held means the answers about the earlier message don't count. A person's own `categorize` to `otp`
+     lifts the gate as before, without a kind. (A sender let in as one of the person's own when the mail arrives,
+     below, never reaches this step.) **Mail joining a thread that skipped Screening** from anyone not let in (its own
+     sender, or someone threaded onto it) screens it again, drops the kind and is judged by this step again, the newest
+     message read: a qualifying update skips Screening again, held unwritten meanwhile; anything else waits in
+     Screening. The AI never makes such a thread a `conversation` while its sender isn't let in.
   4. **Otherwise** (its sender is let in): the server's AI categorizes it.
 
 
@@ -468,12 +480,14 @@ answered `needs_person`, also for an inbox it may read.
   threads filed under Screening there), by writing in a thread that isn't screened (for example someone copied on
   a conversation the person is part of; not into one that skipped Screening while its sender isn't let in: writing
   into such a thread lets nobody in, its own sender included), or, since 2026-11-25, **by being one of the person's
-  own when their mail arrives:** another inbox connected on this server (its exact address), or someone at this
+  own when their mail arrives:** another inbox connected on this server (its exact address), or a person at this
   inbox's own domain (exactly, not a subdomain) when that domain isn't a public mail domain or a shared platform's
-  (core's `isPublicMailDomain` and `isSharedPlatform`). Both only when the mailbox provider's checker proved the From
-  domain (`ProviderMessage.fromCheck`, as for [sender pictures](contract-avatars.md); IMAP has no checker the server
-  trusts, so neither applies there), for new mail the provider didn't file under Screening, never for the first
-  sync's history, and with the AI on, off or failing alike. **Every way of letting a sender in also unscreens their other threads,**
+  (core's `isPublicMailDomain` and `isSharedPlatform`): mail that looks machine-sent or carries a List-Id isn't a
+  colleague's (a group relaying an outsider's post as "X via info@company", a help desk or marketing tool sending as
+  the company). Both only when the mailbox provider's checker proved the From domain (`ProviderMessage.fromCheck`, as
+  for [sender pictures](contract-avatars.md); only Gmail's is trusted, so neither applies to an IMAP inbox), for new
+  mail the provider didn't file under Screening, never for the first sync's history, and with the AI on, off or
+  failing alike. **Every way of letting a sender in also unscreens their other threads,**
   those the mailbox filed under Screening included, except the first sync's history, which lets its senders in
   without lifting anyone's screening. None of these lets in the inbox's own address; only `allow_sender` does. A
   blocked sender stays blocked until `allow_sender` lets them in or the

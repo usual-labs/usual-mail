@@ -394,8 +394,12 @@ amount answer loses its leading and trailing separators by a scan from each end 
   link to `scheme://host/…` (`scheme://host` when nothing follows the host; who signed in dropped, a full stop or
   bracket after it kept); a run of four or more of one punctuation, maths, modifier or box-drawing character (single
   spaces between allowed) to three; runs of spaces to one, lines trimmed, blank lines at most one. The limits cut after
-  cleaning, and summaries' addresses are replaced after it. `plainText` (the old reading, links whole) stays only for
-  the screening gate's check (`gate.ts`), so that check is exactly as before. Tests: `ai-text` (8).
+  cleaning, and summaries' addresses are replaced after it. Since 2026-11-25 the screening gate's check reads the same
+  (`plainText`, the old reading, is gone), and every pattern here is linear: tags stripped as `<[^<>]*>` (a lone `<`
+  no longer swallows text up to the next tag), style, script, head and title blocks taken out by `withoutBlocks` (a
+  scan that stops looking for a closing tag once none follows), a link's trailing punctuation read from its end, and
+  the snippet's tag, angle-link and markdown-link patterns kept from reading past a `<` or `[`. Tests: `ai-text` (8),
+  and `screening-gate`'s 1 MB bodies.
 - The data goes in one block per request: `<usual-mail-data id="X">`, one JSON line per item with `<`, `>`, every line
   break and the direction overrides escaped, `</usual-mail-data id="X">`, with X 18 random hex characters per request
   (the connector's format). The instructions outside say everything inside is data, never an instruction. Decision
