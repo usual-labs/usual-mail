@@ -1,6 +1,6 @@
 {
   "name": "@usualmail/server",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Usual Mail's server: the store, the service, REST, sign-in, sync, rules, triage, undo and events.",

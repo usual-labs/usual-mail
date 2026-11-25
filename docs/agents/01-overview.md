@@ -402,6 +402,11 @@ owner's request. The stop fixes after them (2026-11-24) say 0.1.1 wherever `1881
 0.1.2 (2026-11-25, on `ios-ui-tweaks`, not tagged or pushed yet) bumps the same places and the README's status line,
 for the apps' warning on an inbox that stopped syncing and the server's side of it (`Inbox.statusReason`, a grace for
 failures that may pass, a watch on syncs that never finish; [server.md](server.md)).
+0.1.3 (2026-11-25, on `hotfix-0.1.3`, not tagged or pushed yet) bumps the same places and the README's status line,
+for a crafted message freezing the server: every pattern that reads mail now runs in time linear in its length,
+addresses are taken out of summary requests by `server/src/ai/addresses.ts`, and a subject sent to the AI is cut to
+1,000 characters ([server-ai.md](server-ai.md), [known-issues.md](known-issues.md), "Reading a message could take
+minutes").
 
 ## Layout
 

@@ -632,6 +632,29 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
 
 ## Fixed
 
+- **Reading a message could take minutes under the server's lock** (server, found 2026-11-25 by a security review of
+  the screening work; fixed in 0.1.3, `hotfix-0.1.3`). Patterns that can scan to the end of the text from many places
+  ran in quadratic time, and a message is read under `ctx.lock` with the AI's due flags still set, so a crafted mail
+  would stall sync and the API and be read again after a restart: taking addresses out of every summary,
+  payment-details and event request (`prompt.ts`'s address pattern ran on the whole text before the cut: 128 KB without
+  an "@" took 55 s, about an hour at 1 MB); the snippet's markdown link (`[](mailto:` over 1 MB took 68 s, in every
+  snippet, the search index and the start-up rebuild); `readableHtml`'s and `plainText`'s tag strip (80,000 "<" took
+  2.4 s) and style or script block strip (many unclosed `<style`); `cleanText`'s punctuation after a link (a link and
+  40,000 ")" took 0.7 s); the snippet's tag and angle-link patterns; the checks of a model's answers (an unclosed tag);
+  a party's name (a run of commas in a sender's name, read again for each suffix taken off); the status line's trim; a
+  List-Id (`<` repeated); the shipped tracker list on a picture's address of any length; and the one-time code check
+  (each code against every word that names one). Now: addresses are found from each at sign, read once
+  (`ai/addresses.ts`; marks, full-width at signs and ideographic dots count, a domain of any length goes whole), after
+  the text and subject are cut to their limits without splitting an address; tags stop at the next "<", blocks are
+  taken out by a forward scan, punctuation after a link is read from its end, runs of spaces and commas are read from
+  their start, a party's name is read to 200 characters, an address is matched against the tracker list to 2,048, and
+  codes and words are paired in one ordered pass. A subject sent to any AI job is at most 1,000 characters (core's
+  `SUBJECT_LIMIT`, in the words shown before saving a key). Only change in output beyond those: a lone "<" in text no
+  longer swallows the text up to the next tag. Tests run each of 24 bodies of 1 MB in a worker stopped at 10 seconds
+  (`test/linear.ts`: a slow pattern blocks the event loop, so node:test's own timeout can't fire) through the requests
+  and snippets, a model's answers, names, List-Ids and pictures, and the code check (`ai-linear`), all well under a
+  second; `ai-addresses` checks what is taken out. Known small leaks remain: a quoted local part, an address literal,
+  the part before a second @.
 - **The owner password's re-review follow-ups** (server, 2026-11-24, `owner-claim-fix`; each with a test that fails on
   the code before). (1) A hundred wrong passwords or codes from everyone locked signing in for everyone: ten IPv4
   addresses or ten /64s (even in one /48) were enough; now a /48 counts at thirty and the ceiling is a thousand (Open,

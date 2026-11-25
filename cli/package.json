@@ -1,6 +1,6 @@
 {
   "name": "usual-mail",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "The usual-mail command: set up and run your own Usual Mail server, then pair apps, give agents access and connect inboxes.",

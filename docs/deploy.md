@@ -7,7 +7,7 @@ read [Running your own Usual Mail server](self-hosting.md); its sections on the 
 Gmail and the AI key apply wherever the server runs.
 
 **Early.** The image is `ghcr.io/usual-labs/usual-mail` (amd64 and arm64), published from each release as its
-version (`0.1.2`), its minor line (`0.1`) and `latest`. To run code that isn't released yet, build the image from a
+version (`0.1.3`), its minor line (`0.1`) and `latest`. To run code that isn't released yet, build the image from a
 copy of this repository (`git clone https://github.com/usual-labs/usual-mail.git`) with
 `docker build -t ghcr.io/usual-labs/usual-mail:latest .` on the machine that runs it: only Docker Compose on that same
 machine finds an image built there. (Render builds from the repository itself, and Railway can.) What has been tried

@@ -343,6 +343,14 @@ contract-ai.md). Built:
 Exactly core's words (`AI_SENT_WORDS` in `core/src/ai-words.ts`), built from the same limits; the items carry only
 the fields `AI_SENT_FIELD_WORDS` names (typed so in `prompt.ts`), and `test/ai-sent.test.ts` fails on any other.
 
+**In linear time** (0.1.3; [known-issues.md](known-issues.md), "Reading a message could take minutes"): requests are
+built under `ctx.lock`, so no pattern reading mail may scan back and forth. Addresses are taken out by
+`ai/addresses.ts` (re-exported by `prompt.ts`): each at sign, "@" or "＠", read once; its domain, any number of
+labels of any length dotted by ".", "。", "．" or "｡", letters, digits and marks; its local part back from it, the whole
+run when at most 256 long, else its last 64. `cutWithoutAddresses` cuts the text to its budget first, with room for
+one address, back to where none is split. A subject goes to every job cut to `SUBJECT_LIMIT` (1,000). Tests:
+`ai-linear` (24 bodies of 1 MB, each in a worker stopped at 10 s, `test/linear.ts`) and `ai-addresses`.
+
 - **A search asked in a sentence** (2026-11-20, `search/ask-words.ts`, server-search.md): the sentence alone, as
   `{ "question" }` in the data block (`AI_ASK_FIELD_WORDS`, `AI_SENT_WORDS.ask`), with today's date and weekday in
   the instructions. Nothing from the mailbox; `test/search-ask.test.ts` fails if a sender's name, an inbox's name,
