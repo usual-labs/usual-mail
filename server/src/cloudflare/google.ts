@@ -21,6 +21,12 @@ export interface GoogleEnv {
 }
 
 /** Both secrets or neither. One alone is left out, with words for the log, never its value. */
+/**
+ * How a Cloudflare host gives the server its Google client (`GoogleOptions.clientFix`): the Worker's secrets, which win
+ * over a client a device gave.
+ */
+const CLIENT_FIX = "the Worker's secrets USUAL_MAIL_GOOGLE_CLIENT_ID and USUAL_MAIL_GOOGLE_CLIENT_SECRET, in its settings";
+
 export function environmentClient(env: GoogleEnv): { client: GoogleClient | null; problem?: string } {
   const clientId = env.USUAL_MAIL_GOOGLE_CLIENT_ID?.trim() ?? "";
   const clientSecret = env.USUAL_MAIL_GOOGLE_CLIENT_SECRET?.trim() ?? "";
@@ -86,6 +92,7 @@ export function cloudflareGoogle(options: CloudflareGoogleOptions): GoogleOption
     },
     redirectUri: options.redirectUri,
     addressFix: ADDRESS_FIX,
+    clientFix: CLIENT_FIX,
     clientFromEnvironment: fromEnv.client !== null,
     async saveClient(file) {
       const sealed = await secrets.seal(file, SEAL_CONTEXT);

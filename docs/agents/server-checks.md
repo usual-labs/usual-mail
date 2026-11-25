@@ -3,6 +3,14 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **The server review of 0.1.2's findings (2026-11-25):** both type checks clean; `npm test` 1,083 tests (1,077 pass,
+  6 skipped, 0 fail), new `test/sync-health-stalls.test.ts` (4: a twenty-minute first-sync batch settled by the next,
+  a hang ending in `provider_error` with no `ok` between, the lock's second look, a 30-minute write-back backlog), each
+  seen failing with its fix undone (no revive, no write-back sign, `not_syncing` settled on a failure), and the
+  health unit tests rewritten for the attempt's start, slow attempts, a kept sign-in and the words.
+  `npm run check:cloudflare` 91 pass. `node scripts/build.mjs <scratch>/dist` (7,999,583 bytes) and `smoke-bundle.mjs`
+  on it passed; `dist/server.mjs` untouched.
+
 - **When an inbox needs attention, 0.1.2 (2026-11-25, `ios-ui-tweaks`):** both type checks clean; `npm test` 1,077
   tests (1,071 pass, 6 skipped, 0 fail), new `test/sync-health.test.ts` (13: the sorting of every failure kind, the
   grace, a long gap starting a new run, the words in two zones, ten minutes of failing polls said once and cleared,

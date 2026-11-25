@@ -167,27 +167,33 @@ new mail are on the contract's main page.
 `statusReason`, so an interface offers the step that fits, and `statusDetail`'s words:
 
 - **`needs_sign_in`, at once:** the mailbox refused the inbox's sign-in: Google refused its refresh token, it was
-  signed in with another Google client than the server's now, Gmail refused the access or its scope, or the IMAP server
-  refused the login (a provider throws an error named `SignInRefused`, below). A person signs in again or gives new
-  details. For an inbox connected by hand, Google refusing its own client is this too.
+  signed in with another Google client than the server's now, Gmail refused the access or lacks its scope, or the
+  IMAP server refused the login (a provider throws an error named `SignInRefused`, below; a login the server says it
+  can't do just now, such as IMAP's `[UNAVAILABLE]`, isn't one). A person signs in again or gives new details. For an
+  inbox connected by hand, Google refusing its own client is this too.
 - **`host_setup`, at once:** the host's own setup stops it: the server has no Google client any more, Google refused
-  it, or the Gmail API is off in its project, for an inbox connected by signing in with Google. The host fixes it;
-  signing in again doesn't help.
+  it, or the Gmail API is off in its project, for an inbox connected by signing in with Google. The host fixes it,
+  and the words say how on this host (`usual-mail google set`; on Cloudflare, the Worker's secrets); signing in again
+  doesn't help.
 - **`provider_error`, after a grace:** any other failure (no connection, a name that doesn't resolve, a timeout, the
-  provider's own error or limits) may pass, so it leaves the status as it was until failures have gone on for
-  `SYNC_FAILURE_GRACE_MS` (ten minutes) since the first one after the last good sync, across two failed attempts at
-  least. A gap longer than `notSyncingAfterMs` since the last attempt (the server stopped, its machine asleep) starts the
-  count again rather than counting the gap. `statusDetail` is the provider's words.
-- **`not_syncing`:** no sync of an open inbox, good or failed, has finished for `notSyncingAfterMs` (the larger of 15
-  minutes and five poll intervals) while the server ran: its sync is stuck. Time while the server was stopped or its
-  machine asleep doesn't count, nor time since it started or woke (a Cloudflare object), nor a first sync that is
-  still sending batches or saying how far it got. It is said within a third of that time more, and a server that
-  starts again settles it before syncing. Its words say since when the inbox last synced; trying again
-  (`syncInbox`) may do, else restarting the server.
+  provider's own error or limits, Gmail's spent daily quota, which lasts until Google resets it) may pass, so it
+  leaves the status as it was until failures have gone on for `SYNC_FAILURE_GRACE_MS` (ten minutes), across two failed
+  attempts at least. The run counts from the start of the first failed attempt after the last good sync, so a long
+  hang before a failure is failing time; an attempt that begins more than `notSyncingAfterMs` after the last one ended
+  (the server stopped, its machine asleep) starts the run again. After `not_syncing`, a failed attempt is
+  `provider_error` at once. `statusDetail` is the provider's words.
+- **`not_syncing`:** no sign of life of an open inbox for `notSyncingAfterMs` (the larger of 15 minutes and five poll
+  intervals) while the server ran: no attempt finished, good or failed, no batch was stored, no first sync said how
+  far it got, no write-back (which shares the inbox's turn) finished. Its sync is stuck. Time while the server was
+  stopped or its machine asleep doesn't count, nor time since it started or woke (a Cloudflare object). It is said
+  within a third of that time more, after the server looks again under its lock, and never over `needs_sign_in` or
+  `host_setup`; a server that starts again settles it before syncing. Its words say when the inbox last synced well;
+  trying again (`syncInbox`) may do, else restarting the server.
 
-A finished attempt that fails in a way that may pass ends `not_syncing`; a good sync ends every reason. A paused
-inbox has none. A server before 0.1.2 sends no reason: an interface then treats it as it did (the words, and the
-inbox's settings).
+The next sign of life ends `not_syncing` (a batch stored mid-sync too). `needs_sign_in` and `host_setup` stay through
+failures that may pass: only a good sync or new credentials end them. A good sync ends every reason. A paused inbox
+has none. A server before 0.1.2 sends no reason: an interface then treats it as it did (the words, and the inbox's
+settings).
 
 ## Providers
 

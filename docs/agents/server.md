@@ -266,22 +266,31 @@ server, and its status.
   provider was opened with another window (`#checkWindow`), so a smaller window narrows it from that sync on (the
   providers never widen a first sync); a finished first sync never reads the window again. `conflict` while
   `USUAL_MAIL_SYNC_DAYS` set it, or with no way to keep it.
-- **When an inbox needs attention** (0.1.2, the owner's decision of 2026-11-25;
+- **When an inbox needs attention** (0.1.2, the owner's decision of 2026-11-25, and the server review's fixes;
   [sync](../contract-sync.md#when-an-inbox-needs-attention)): `sync/health.ts` sorts a failed attempt
-  (`classifyFailure`: `SignInRefused`, Google's refused token or another client, Gmail's 401 or missing scope are
+  (`classifyFailure`: `SignInRefused`, Google's refused token or another client, Gmail's 401 or `kind` "scope" are
   `needs_sign_in`; no Google client, a refused host client or the Gmail API off in its project are `host_setup` for a
-  signed-in inbox, `needs_sign_in` for one connected by hand; anything else may pass) and makes the row's next state
-  (`afterFailure`, `afterSuccess`): at once with a reason, or `provider_error` once failures have run ten minutes
-  across two attempts, a gap longer than the stale time since the last attempt starting the run again. Migration 0021
-  keeps the reason, the last attempt's time and the run (`failing_since`, `failures`), so a Cloudflare restart doesn't
-  reset it. `sync/watch.ts` (`SyncWatch`) keeps each open inbox's last sign of life (opened, a batch stored, a first
-  sync's word, an attempt finished) in memory on `Clock.monotonic` (`performance.now()`, which a sleeping machine
-  doesn't advance) and looks every third of `notSyncingAfterMs` (5 minutes by default); `sync/status.ts` stores what
-  either makes (`storeHealth`, a version and `inbox.changed` only when status, words or reason changed) and marks
-  silent inboxes `not_syncing` (`markNotSyncing`, "No sync of this inbox has finished since 25 Nov, 14:02 UTC, …", in
-  the host's time zone). `start` settles a `not_syncing` left by the last run first. A new password or a resume clears
-  the run. Tested in `test/sync-health.test.ts` (the sorting, the grace, a sleeping machine, a held sync, a long first
-  sync, a restart, a pause) and `test/migration-0021.test.ts`.
+  signed-in inbox, in words naming this host's way, `GoogleOptions.clientFix`: `usual-mail google set`, on Cloudflare
+  the Worker's secrets; `needs_sign_in` for one connected by hand; anything else may pass, Gmail's `daily_quota`
+  included) and makes the row's next state (`afterFailure` over the attempt's start and end, `afterSuccess`): at once
+  with a reason; a refused sign-in or the host's setup kept through failures that may pass; after `not_syncing`,
+  `provider_error` at once; else `provider_error` once the run (from the first failed attempt's start) has gone ten
+  minutes across two attempts, an attempt begun longer than the stale time after the last one ended starting it again.
+  Migration 0021 keeps the reason, the last attempt's end and the run (`failing_since`, `failures`), so a Cloudflare
+  restart doesn't reset it. `sync/watch.ts` (`SyncWatch`) keeps each open inbox's last sign of life (opened, an attempt
+  finished, a batch stored, a first sync's word, a write-back done) in memory on `Clock.monotonic` (`performance.now()`,
+  which a sleeping machine doesn't advance) and looks every third of `notSyncingAfterMs` (5 minutes by default); the
+  first sign of life after it said `not_syncing` settles it (`onRevived`), mid-sync too. `sync/status.ts` stores what
+  either makes (`storeHealth`, a version and `inbox.changed` only when status, words or reason changed) and marks silent
+  inboxes `not_syncing` (`markNotSyncing`, which asks the watch again under the lock and leaves a paused inbox, a
+  refused sign-in and the host's setup alone): "This inbox hasn't synced since 25 Nov, 14:02 UTC, and none of its syncs
+  has finished for over 15 minutes, …", in `Host.timeZone` (Node: the process's, so `TZ` in Docker). `start` settles a
+  `not_syncing` left by the last run first. A new password or a resume clears the run. Tested in
+  `test/sync-health.test.ts` (the sorting, the grace, the attempt's start, slow attempts, a kept sign-in, the words, a
+  sleeping machine, a held sync, a long first sync, a restart, a pause), `test/sync-health-stalls.test.ts` (a slow batch
+  settled by the next, a hang ending in `provider_error`, the lock's second look, write-backs; each seen failing with its
+  fix undone) and `test/migration-0021.test.ts`. The memory provider's adapter and factory moved to
+  `src/testing/memory-adapter.ts` (the mailbox file was over 500 lines).
 - **How far a first sync has got** (`src/sync/progress.ts`, `FirstSyncCounts`; 2026-11-23, the owner's decision;
   [sync](../contract-sync.md#sync)): during a sync of an inbox whose first sync runs (`!historyDone`), the engine
   passes `onProgress` to the provider and hears each batch's `progress` (not the batch that ends the first sync).

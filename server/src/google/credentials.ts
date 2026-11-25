@@ -45,7 +45,7 @@ export async function providerCredentials(ctx: Ctx, inbox: InboxRow): Promise<un
   const stored: unknown = JSON.parse(await ctx.host.secrets.open(inbox.credentials, inbox.id));
   if (!isSignedIn(stored)) return stored;
   const client = await ctx.google?.client() ?? null;
-  if (!client) throw new InboxAccessError("host_setup", attention.clientMissing);
+  if (!client) throw new InboxAccessError("host_setup", attention.clientMissing(ctx.google?.clientFix));
   if (client.clientId !== stored.clientId) throw new InboxAccessError("needs_sign_in", attention.otherClient);
   return { clientId: stored.clientId, clientSecret: client.clientSecret, refreshToken: stored.refreshToken };
 }
@@ -68,13 +68,14 @@ export function signedInConnection(connection: InboxConnection): InboxConnection
 
 /**
  * Why an inbox's provider failed, in words a person can act on. An inbox connected by signing in with Google whose
- * token or client Google refused is told to sign in again, or that the host must fix the client. How a sync sorts a
- * failure is sync/health.ts's.
+ * token or client Google refused is told to sign in again, or that the host must fix the client (`clientFix`: how
+ * this host gives it, `GoogleOptions.clientFix`). How a sync sorts a failure is sync/health.ts's.
  */
-export function attentionWords(inbox: InboxRow, error: unknown): string {
+export function attentionWords(inbox: InboxRow, error: unknown, clientFix?: string): string {
   const signedIn = inbox.connection?.kind === "gmail" && inbox.connection.signIn === "google";
   if (signedIn && error instanceof Error && error.name === "GoogleTokenError") {
-    return (error as Error & { kind?: string }).kind === "client_refused" ? attention.clientRefused : attention.tokenRefused;
+    const kind = (error as Error & { kind?: string }).kind;
+    return kind === "client_refused" ? attention.clientRefused(clientFix) : attention.tokenRefused;
   }
   return errorMessage(error);
 }

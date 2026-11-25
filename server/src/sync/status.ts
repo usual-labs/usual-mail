@@ -35,15 +35,30 @@ export async function storeHealth(
   });
 }
 
+/** What `markNotSyncing` asks of the watch (watch.ts's `SyncWatch`). */
+export interface SilenceWatch {
+  readonly afterMs: number;
+  isSilent(inboxId: string): boolean;
+  said(inboxId: string): void;
+}
+
 /**
- * The watch found these open inboxes silent for `afterMs` (watch.ts): each is `not_syncing`, unless it is paused or
- * already said so. Its next finished attempt settles it (health.ts).
+ * The watch found these open inboxes silent for `afterMs` (watch.ts): each is `not_syncing`, unless by the time the
+ * store's lock is held it has shown life (a sync that just finished, a reconnect that opened it again), is paused, is
+ * said so already, or needs a sign-in or the host's setup, which say more. Its next sign of life settles it.
  */
-export async function markNotSyncing(ctx: Ctx, inboxIds: string[], afterMs: number): Promise<void> {
+export async function markNotSyncing(ctx: Ctx, inboxIds: string[], watch: SilenceWatch): Promise<void> {
   for (const inboxId of inboxIds) {
-    await storeHealth(ctx, inboxId, (row) =>
-      row.paused || row.statusReason === "not_syncing"
-        ? null
-        : { status: "needs_attention", statusReason: "not_syncing", statusDetail: notSyncingWords(row.lastSyncedAt, afterMs, ctx.host.timeZone) });
+    await storeHealth(ctx, inboxId, (row) => {
+      const reason = row.status === "needs_attention" ? row.statusReason : null;
+      if (row.paused || !watch.isSilent(inboxId)) return null;
+      if (reason === "not_syncing" || reason === "needs_sign_in" || reason === "host_setup") return null;
+      watch.said(inboxId);
+      return {
+        status: "needs_attention",
+        statusReason: "not_syncing",
+        statusDetail: notSyncingWords(row.lastSyncedAt, watch.afterMs, ctx.host.timeZone),
+      };
+    });
   }
 }

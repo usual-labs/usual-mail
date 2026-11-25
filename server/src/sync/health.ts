@@ -16,15 +16,14 @@ export interface Failure {
   words: string;
 }
 
-/** Gmail's reasons for a 403 that a new sign-in fixes: the token lacks the scope. */
-const SCOPE_REASONS = new Set(["insufficientPermissions", "ACCESS_TOKEN_SCOPE_INSUFFICIENT"]);
-
 /**
  * Sorts why a sync of `inbox` failed. For an inbox connected by signing in with Google the host's client is the
- * host's: Google refusing it, or the Gmail API off in its project, is `host_setup`. For one connected by hand the client
- * is the person's own, so the same is theirs to fix with new credentials (`needs_sign_in`).
+ * host's: Google refusing it, or the Gmail API off in its project, is `host_setup`, in words naming how this host gives
+ * the client (`clientFix`, `GoogleOptions.clientFix`). For one connected by hand the client is the person's own, so the
+ * same is theirs to fix with new credentials (`needs_sign_in`). Gmail's missing scope (`kind` "scope", the same test
+ * as its words) needs a new sign-in; its spent daily quota (`daily_quota`) may pass, in words saying until when.
  */
-export function classifyFailure(inbox: InboxRow, error: unknown): Failure {
+export function classifyFailure(inbox: InboxRow, error: unknown, clientFix?: string): Failure {
   const words = errorMessage(error);
   if (!(error instanceof Error)) return { reason: null, words };
   const signedIn = inbox.connection?.kind === "gmail" && inbox.connection.signIn === "google";
@@ -35,7 +34,7 @@ export function classifyFailure(inbox: InboxRow, error: unknown): Failure {
       return { reason: named.reason === "host_setup" ? "host_setup" : "needs_sign_in", words };
     case "GoogleTokenError":
       if (named.kind === "client_refused") {
-        return signedIn ? { reason: "host_setup", words: attention.clientRefused } : { reason: "needs_sign_in", words };
+        return signedIn ? { reason: "host_setup", words: attention.clientRefused(clientFix) } : { reason: "needs_sign_in", words };
       }
       return { reason: "needs_sign_in", words: signedIn ? attention.tokenRefused : words };
     case SIGN_IN_REFUSED:
@@ -43,7 +42,7 @@ export function classifyFailure(inbox: InboxRow, error: unknown): Failure {
     case "GmailApiError": {
       const status = named.status;
       const gmailReason = typeof named.reason === "string" ? named.reason : "";
-      if (status === 401 || (status === 403 && SCOPE_REASONS.has(gmailReason))) return { reason: "needs_sign_in", words };
+      if (status === 401 || named.kind === "scope") return { reason: "needs_sign_in", words };
       if (status === 403 && gmailReason === "accessNotConfigured") {
         return { reason: signedIn ? "host_setup" : "needs_sign_in", words };
       }
@@ -60,24 +59,37 @@ export type Health = Pick<
   "status" | "statusDetail" | "statusReason" | "lastAttemptAt" | "failingSince" | "failures"
 >;
 
+/** A sync attempt's start and end, on the wall clock. */
+export interface Attempt {
+  startedAt: number;
+  endedAt: number;
+}
+
 /**
- * The row after a failed attempt at `now`. A run of failures starts at the first after a good sync, or after a gap
- * longer than `gapMs` since the last attempt (the server was stopped, or its machine asleep: that time isn't failing).
- * A failure that needs the person sets its reason at once; one that may pass waits out the grace, then is
- * `provider_error`. Within the grace the status stays as it was, except that a finished attempt ends `not_syncing`
- * (and a reason-less `needs_attention` from before 0.1.2, which can't be told from one that may pass).
+ * The row after a failed attempt. A run of failures starts at the first after a good sync, or when the attempt
+ * began more than `gapMs` after the last one ended (the server was stopped, or its machine asleep: that time isn't
+ * failing); it counts from the attempt's start, so a long hang before a failure counts as failing, not as a gap. A
+ * failure that needs the person sets its reason at once. One that may pass:
+ * - leaves a refused sign-in or the host's setup as they are: only a good sync or new credentials clear those;
+ * - after `not_syncing` (no attempt had finished for the stale time), is `provider_error` at once;
+ * - else waits out the grace (two failures at least, `SYNC_FAILURE_GRACE_MS` since the run began), then is
+ *   `provider_error`; within it the status stays as it was, except a reason-less `needs_attention` from before 0.1.2,
+ *   which can't be told from one that may pass.
  */
-export function afterFailure(row: InboxRow, failure: Failure, now: number, gapMs: number): Health {
-  const newRun = row.failingSince === null || row.lastAttemptAt === null || now - row.lastAttemptAt > gapMs;
-  const failingSince = newRun ? now : row.failingSince!;
+export function afterFailure(row: InboxRow, failure: Failure, attempt: Attempt, gapMs: number): Health {
+  const newRun = row.failingSince === null || row.lastAttemptAt === null || attempt.startedAt - row.lastAttemptAt > gapMs;
+  const failingSince = newRun ? attempt.startedAt : row.failingSince!;
   const failures = newRun ? 1 : row.failures + 1;
-  const run = { lastAttemptAt: now, failingSince, failures };
+  const run = { lastAttemptAt: attempt.endedAt, failingSince, failures };
+  const said = row.status === "needs_attention" ? row.statusReason : undefined;
   if (failure.reason) return { ...run, status: "needs_attention", statusDetail: failure.words, statusReason: failure.reason };
-  if (failures >= 2 && now - failingSince >= SYNC_FAILURE_GRACE_MS) {
+  if (said === "needs_sign_in" || said === "host_setup") {
+    return { ...run, status: row.status, statusDetail: row.statusDetail, statusReason: row.statusReason };
+  }
+  if (said === "not_syncing" || (failures >= 2 && attempt.endedAt - failingSince >= SYNC_FAILURE_GRACE_MS)) {
     return { ...run, status: "needs_attention", statusDetail: failure.words, statusReason: "provider_error" };
   }
-  const silent = row.status === "needs_attention" && (row.statusReason === "not_syncing" || row.statusReason === null);
-  if (silent) return { ...run, ...settled(row) };
+  if (said === null) return { ...run, ...settled(row) };
   return { ...run, status: row.status, statusDetail: row.statusDetail, statusReason: row.statusReason };
 }
 
@@ -92,14 +104,15 @@ export function settled(row: Pick<InboxRow, "lastSyncedAt">): Pick<Health, "stat
 }
 
 /**
- * The words on an inbox no sync of which has finished for `afterMs` while the server ran: since when it last synced,
- * in the server's time zone, or for how long.
+ * The words on an inbox none of whose syncs has finished for `afterMs` while the server ran: when it last synced well
+ * (`lastSyncedAt`), in the server's time zone (`Host.timeZone`: the Cloudflare setting, or a Node process's own, so `TZ`
+ * in Docker), and that it has stopped finishing.
  */
 export function notSyncingWords(lastSyncedAt: number | null, afterMs: number, timeZone: string | undefined): string {
   const minutes = Math.round(afterMs / 60_000);
-  const since = lastSyncedAt === null ? `for over ${minutes} minutes` : `since ${when(lastSyncedAt, timeZone)}`;
-  return `No sync of this inbox has finished ${since}, though the server is running. Try again; if it stays like ` +
-    "this, restart the server.";
+  const synced = lastSyncedAt === null ? "hasn't synced yet" : `hasn't synced since ${when(lastSyncedAt, timeZone)}`;
+  return `This inbox ${synced}, and none of its syncs has finished for over ${minutes} minutes, though the server is ` +
+    "running. Try again; if it stays like this, restart the server.";
 }
 
 /** "25 Nov, 14:02 UTC" in the server's zone, UTC when it has none or names none Intl knows. */

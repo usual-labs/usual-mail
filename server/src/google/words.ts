@@ -68,18 +68,25 @@ export function notAvailable(missing: GoogleSignInMissing[]): string {
   return `Google sign-in isn't set up on this server: ${parts.join(", and ")}. Connect Gmail with a client id, secret and refresh token instead, or ask the host.`;
 }
 
+/**
+ * How a server its host starts itself (Node, Docker) is given its Google client, in the words below; a host whose way
+ * differs says its own (`GoogleOptions.clientFix`: on Cloudflare, the Worker's secrets).
+ */
+export const NODE_CLIENT_FIX = "usual-mail google set";
+
 /** Words on an inbox connected by signing in with Google when its access stops working. */
 export const attention = {
   tokenRefused:
     "Google no longer accepts this inbox's sign-in: it was revoked, it expired (while the Google client's consent " +
     "screen is in Testing, a sign-in lasts seven days), or the account's password changed. Sign in with Google again " +
     "to reconnect it; its rules and history stay.",
-  clientRefused:
+  /** `fix`: how this host gives the server its client (`GoogleOptions.clientFix`). */
+  clientRefused: (fix: string = NODE_CLIENT_FIX) =>
     "Google refused this server's Google client (its id or secret is wrong, or it was deleted). The host must give the " +
-    "server the right client (usual-mail google set); then the inbox syncs again.",
-  clientMissing:
+    `server the right client (${fix}); then the inbox syncs again.`,
+  clientMissing: (fix: string = NODE_CLIENT_FIX) =>
     "This inbox was connected by signing in with Google, but Google sign-in isn't set up on this server any more. Its " +
-    "host must give the server its Google client again (usual-mail google set); then the inbox syncs again.",
+    `host must give the server its Google client again (${fix}); then the inbox syncs again.`,
   otherClient:
     "This inbox was connected with another Google client than the one this server has now. Sign in with Google again " +
     "to reconnect it with this one; its rules and history stay.",

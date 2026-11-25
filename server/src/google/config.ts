@@ -30,6 +30,11 @@ export interface GoogleOptions {
    */
   addressFix?: string;
   /**
+   * How this host gives the server its Google client, in the words for an inbox whose client is gone or refused
+   * (`attention.clientMissing`, `clientRefused`). Absent: `usual-mail google set`, as on Node.
+   */
+  clientFix?: string;
+  /**
    * True when the host's own settings give the client (on Node, USUAL_MAIL_GOOGLE_CLIENT_ID and
    * USUAL_MAIL_GOOGLE_CLIENT_SECRET). They win over a saved client, so a device can't give one.
    */

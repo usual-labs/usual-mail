@@ -83,7 +83,7 @@ async function searchInbox(
   try {
     provider = await ctx.hooks.provider(inbox.id);
   } catch (error) {
-    return { state: refused(inbox, error), hits: [] };
+    return { state: refused(inbox, error, ctx.google?.clientFix), hits: [] };
   }
   if (!provider.search) {
     return { state: { inboxId: inbox.id, state: "unsupported", message: "This mailbox can't be searched from Usual Mail yet." }, hits: [] };
@@ -98,7 +98,7 @@ async function searchInbox(
       if (next === undefined) break;
     }
   } catch (error) {
-    return { state: refused(inbox, error), hits: [] };
+    return { state: refused(inbox, error, ctx.google?.clientFix), hits: [] };
   }
   return { state: { inboxId: inbox.id, state: "ok" }, hits, ...(next !== undefined && { next }) };
 }
@@ -146,7 +146,7 @@ export async function openRemote(ctx: Ctx, caller: Caller, id: Id): Promise<Thre
     found = await provider.fetchThread(threadKey);
   } catch (error) {
     if (error instanceof ServiceError) throw error;
-    throw new ServiceError("provider_error", attentionWords(inbox, error));
+    throw new ServiceError("provider_error", attentionWords(inbox, error, ctx.google?.clientFix));
   }
   if (!found.length) throw new ServiceError("not_found", "The mailbox no longer has this conversation");
   const threadId = await ctx.lock.run(async () => {
@@ -187,9 +187,10 @@ export function providerQuery(parsed: Parsed): ProviderSearchQuery {
 }
 
 /** How an inbox's refusal reads: the sign-in Google refused, or the provider's words. */
-function refused(inbox: InboxRow, error: unknown): RemoteInboxState {
+function refused(inbox: InboxRow, error: unknown, clientFix?: string): RemoteInboxState {
   const signIn = error instanceof Error && error.name === "GoogleTokenError";
-  return { inboxId: inbox.id, state: signIn ? "needs_sign_in" : "provider_error", message: signIn ? attentionWords(inbox, error) : errorMessage(error) };
+  const message = signIn ? attentionWords(inbox, error, clientFix) : errorMessage(error);
+  return { inboxId: inbox.id, state: signIn ? "needs_sign_in" : "provider_error", message };
 }
 
 /** At most `REMOTE_PER_MINUTE` remote searches and openings per device a minute; `rate_limited` beyond, with the wait. */

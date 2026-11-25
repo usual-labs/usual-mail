@@ -10,8 +10,15 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   "Sign in again" showed when signing in couldn't help (the host's client refused, a provider error); and a sync that
   never finished, or none at all while the server ran, warned of nothing. Now a refused sign-in and the host's setup
   warn at once with their reason (`statusReason`), a failure that may pass only after ten minutes across two attempts,
-  and no finished sync for 15 minutes (or five polls) is `not_syncing` (`server/src/sync/health.ts`, `watch.ts`). Still
-  open, none of them a status:
+  and no finished sync for 15 minutes (or five polls) is `not_syncing` (`server/src/sync/health.ts`, `watch.ts`). The
+  server review of 0.1.2 then found and got fixed: a `not_syncing` that stayed through a slow first sync's healthy
+  batches (a batch stored now ends it); IMAP's temporary login refusals (`[UNAVAILABLE]` and the like) taken for a wrong
+  password; a hang ending in a failure counted as a gap, so the warning went to `ok` and came back ten minutes later
+  (the run now counts from the attempt's start, and a failure after `not_syncing` is `provider_error` at once); the
+  watch writing over a status a finished sync or a reconnect had just set (it looks again under the lock); write-backs
+  not counting as signs of life; a refused sign-in turning into "try again" past the grace (it now stays until a good
+  sync or new credentials); words that said "no sync has finished" since the last good one, and advice naming
+  `usual-mail google set` on Cloudflare. Still open, none of them a status:
   - **IMAP skips a folder that has gone missing** (`mail/src/imap/sync.ts`, `mailboxMissing`): were INBOX itself to go
     (renamed at the provider), new mail would stop arriving while the inbox stays `ok`.
   - **A write-back that fails is logged and fails its records, never the inbox** (`sync/engine.ts`, `#runWriteBack`):
@@ -21,6 +28,8 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   - **On Cloudflare, a sync cut short each time the object restarts isn't `not_syncing`**: the watch is in memory and
     begins afresh at every start (so that a start or a wake never sets it off), so an object restarted before every sync
     finishes would never warn. Not seen; `lastAttemptAt` is stored, should it be needed.
+  - **The command's Docker mode passes no `TZ`** (`cli/src/launch/docker.ts`): a server it starts in Docker works in
+    UTC, so its words say times in UTC. Compose files have the line; the guides say so.
 - **The Dovecot suite's logins are refused** (`mail/test/imap/docker.ts`, found 2026-11-25, the first run with Docker
   answering; open). The harness starts `dovecot/dovecot:2.4.5` with `USER_PASSWORD`, its probe user logs in, then most
   per-test users (`u<random>@mail.example`) are refused, so 23 of its 32 tests fail with "refused the user name or

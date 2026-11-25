@@ -71,7 +71,10 @@ export class SyncEngine {
     this.#firstSync = new FirstSyncCounts(ctx, (work) => this.#queues.track(work));
     const clock = ctx.host.clock;
     this.#liveness = new SyncWatch(() => clock.monotonic?.() ?? clock.now(), notSyncingAfterMs(ctx.options.pollIntervalMs));
-    this.#liveness.onSilent = (inboxIds) => markNotSyncing(ctx, inboxIds, this.#liveness.afterMs);
+    this.#liveness.onSilent = (inboxIds) => markNotSyncing(ctx, inboxIds, this.#liveness);
+    // Life again after `not_syncing` (a batch stored mid-sync, a write-back done): settled at once.
+    this.#liveness.onRevived = (inboxId) =>
+      this.#queues.track(storeHealth(ctx, inboxId, (r) => (r.statusReason === "not_syncing" ? settled(r) : null)));
   }
 
   hooks(): Hooks {
@@ -176,6 +179,8 @@ export class SyncEngine {
     const ctx = this.#ctx;
     const inbox = await getInbox(ctx, inboxId);
     if (!inbox || inbox.paused || this.#closing.has(inboxId)) return;
+    // A failure's run counts from here, so a long hang before it is failing time, not a gap (health.ts).
+    const startedAt = ctx.now();
     try {
       await this.#checkGoogleClient(inbox);
       await this.#checkWindow(inbox);
@@ -226,8 +231,8 @@ export class SyncEngine {
       // The first sync is done only once the provider has sent all of it: until then its mail stays history (not
       // screened as new), and its count stays.
       const now = ctx.now();
-      this.#liveness.alive(inboxId);
       await storeHealth(ctx, inboxId, () => afterSuccess(now), { lastSyncedAt: now, ...(history && finished && { historyDone: true }) });
+      this.#liveness.alive(inboxId);
       if (history && finished) firstSync.forget(inboxId);
       // Once the provider's own changes are in: what was held while the inbox was paused, in order.
       const held = this.#held.get(inboxId) ?? [];
@@ -251,10 +256,11 @@ export class SyncEngine {
       ctx.host.log.error(`Syncing ${inboxId} failed: ${errorMessage(error)}`);
       this.#repairDue.add(inboxId);
       // A refused sign-in or the host's setup needs the person at once; a failure that may pass only after the grace.
-      const failure = classifyFailure(inbox, error);
-      const now = ctx.now();
+      const failure = classifyFailure(inbox, error, ctx.google?.clientFix);
+      const attempt = { startedAt, endedAt: ctx.now() };
+      await storeHealth(ctx, inboxId, (row) => afterFailure(row, failure, attempt, this.#liveness.afterMs));
+      // After storing, so a `not_syncing` this attempt ends goes to what it found, not to `ok` first.
       this.#liveness.alive(inboxId);
-      await storeHealth(ctx, inboxId, (row) => afterFailure(row, failure, now, this.#liveness.afterMs));
     } finally {
       this.#schedulePoll(inboxId);
     }
@@ -264,7 +270,7 @@ export class SyncEngine {
     if (!this.#started || this.#loops.has(inboxId)) return;
     const loop: Loop = { pollCancel: null, stopWatch: null };
     this.#loops.set(inboxId, loop);
-    this.#liveness.alive(inboxId);
+    this.#liveness.opened(inboxId);
     this.#repairDue.add(inboxId);
     this.#queues.track(this.#watch(inboxId, loop));
     this.requestSync(inboxId);
@@ -381,8 +387,9 @@ export class SyncEngine {
 
   // --- Writing back --------------------------------------------------------------------------------------
 
+  /** Queued with the inbox's syncs; one done is a sign of life, since a long backlog delays them (watch.ts). */
   #writeBack(task: WriteBackTask): void {
-    void this.#queues.enqueue(task.inboxId, () => this.#runWriteBack(task));
+    void this.#queues.enqueue(task.inboxId, () => this.#runWriteBack(task).finally(() => this.#liveness.alive(task.inboxId)));
   }
 
   async #runWriteBack(task: WriteBackTask): Promise<void> {

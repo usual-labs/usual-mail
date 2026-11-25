@@ -42,21 +42,28 @@ describe("sorting a failed sync", () => {
       reason: "needs_sign_in", words: attention.tokenRefused,
     });
     assert.deepEqual(classifyFailure(signedIn, named("GoogleTokenError", { kind: "client_refused" })), {
-      reason: "host_setup", words: attention.clientRefused,
+      reason: "host_setup", words: attention.clientRefused(),
     });
+    // On a host that gives the client its own way (Cloudflare's Worker secrets), the words say that way.
+    const worker = "the Worker's secrets USUAL_MAIL_GOOGLE_CLIENT_ID and USUAL_MAIL_GOOGLE_CLIENT_SECRET, in its settings";
+    assert.match(classifyFailure(signedIn, named("GoogleTokenError", { kind: "client_refused" }), worker).words, /\(the Worker's secrets USUAL_MAIL_GOOGLE_CLIENT_ID/);
+    assert.doesNotMatch(attention.clientMissing(worker), /usual-mail google set/);
     // Connected by hand, the client is the person's own: new credentials fix it, in Google's words.
     assert.deepEqual(classifyFailure(byHand, named("GoogleTokenError", { kind: "client_refused" })), {
       reason: "needs_sign_in", words: "GoogleTokenError said no",
     });
-    assert.equal(sorted(signedIn, new InboxAccessError("host_setup", attention.clientMissing)), "host_setup");
+    assert.equal(sorted(signedIn, new InboxAccessError("host_setup", attention.clientMissing())), "host_setup");
     assert.equal(sorted(signedIn, new InboxAccessError("needs_sign_in", attention.otherClient)), "needs_sign_in");
     assert.equal(sorted(signedIn, named("GmailApiError", { status: 401 })), "needs_sign_in");
-    assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "insufficientPermissions" })), "needs_sign_in");
+    // A missing scope, as mail's words and kind say it (by Gmail's reason or its message): a new sign-in fixes it.
+    assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "insufficientPermissions", kind: "scope" })), "needs_sign_in");
+    assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "forbidden", kind: "scope" })), "needs_sign_in");
     assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "accessNotConfigured" })), "host_setup");
     assert.equal(sorted(byHand, named("GmailApiError", { status: 403, reason: "accessNotConfigured" })), "needs_sign_in");
     for (const error of [
       named("GmailApiError", { status: 503 }), named("GmailApiError", { status: 429 }),
-      named("GmailApiError", { status: 403, reason: "dailyLimitExceeded" }), named("GmailUnreachable"),
+      // The daily quota passes once Google resets it: its words (mail's) say until when.
+      named("GmailApiError", { status: 403, reason: "dailyLimitExceeded", kind: "daily_quota" }), named("GmailUnreachable"),
       named("GoogleRefreshError"), named("TimeoutError"), new Error("getaddrinfo ENOTFOUND imap.acme.example"), "odd",
     ]) {
       assert.equal(sorted(signedIn, error), null, String((error as Error).name ?? error));
@@ -67,43 +74,71 @@ describe("sorting a failed sync", () => {
 describe("the grace for failures that may pass", () => {
   const passing: Failure = { reason: null, words: "Connection refused" };
   const GAP = 15 * MINUTE;
+  /** An attempt that ended at `end`, begun at `start` (at once, unless said). */
+  const attempt = (end: number, start = end) => ({ startedAt: start, endedAt: end });
+  const after = (was: InboxRow, failure: Failure, end: number, start = end) => ({ ...was, ...afterFailure(was, failure, attempt(end, start), GAP) });
 
   test("two failures over ten minutes make provider_error; fewer or sooner leave the status as it was", () => {
-    const first = afterFailure(row({ lastAttemptAt: 0 }), passing, MINUTE, GAP);
+    const first = after(row({ lastAttemptAt: 0 }), passing, MINUTE);
     assert.deepEqual([first.status, first.failingSince, first.failures], ["ok", MINUTE, 1]);
-    const soon = afterFailure({ ...row(), ...first }, passing, 9 * MINUTE, GAP);
+    const soon = after(first, passing, 9 * MINUTE);
     assert.deepEqual([soon.status, soon.statusReason, soon.failures], ["ok", null, 2]);
-    const late = afterFailure({ ...row(), ...soon }, passing, 11 * MINUTE, GAP);
+    const late = after(soon, passing, 11 * MINUTE);
     assert.deepEqual([late.status, late.statusReason, late.statusDetail], ["needs_attention", "provider_error", "Connection refused"]);
     // One failure alone never warns, however long ago the last good sync was.
-    const once = afterFailure(row({ lastAttemptAt: 0, lastSyncedAt: 0 }), passing, 30 * MINUTE, GAP);
-    assert.equal(once.status, "ok");
+    assert.equal(after(row({ lastAttemptAt: 0, lastSyncedAt: 0 }), passing, 30 * MINUTE).status, "ok");
   });
 
-  test("a long gap since the last attempt starts a new run: a stopped server or a sleeping machine isn't failing", () => {
+  test("a long gap before an attempt starts a new run: a stopped server or a sleeping machine isn't failing", () => {
     const failing = row({ lastAttemptAt: 9 * MINUTE, failingSince: MINUTE, failures: 5 });
-    const after = afterFailure(failing, passing, 9 * MINUTE + 8 * 60 * MINUTE, GAP);
-    assert.deepEqual([after.status, after.failures, after.failingSince], ["ok", 1, 9 * MINUTE + 8 * 60 * MINUTE]);
+    const woke = after(failing, passing, 9 * MINUTE + 8 * 60 * MINUTE);
+    assert.deepEqual([woke.status, woke.failures, woke.failingSince], ["ok", 1, 9 * MINUTE + 8 * 60 * MINUTE]);
   });
 
-  test("a refused sign-in is at once and stays through failures that may pass; a finished attempt ends not_syncing", () => {
-    const refused = afterFailure(row(), { reason: "needs_sign_in", words: "Refused." }, MINUTE, GAP);
+  test("a long attempt is failing time, not a gap: a hang before a failure counts, and slow attempts don't flip", () => {
+    // Begun a minute after the last good one, it hung 22 minutes, then failed: failing since it began.
+    const hung = after(row({ lastAttemptAt: 0 }), passing, 23 * MINUTE, MINUTE);
+    assert.deepEqual([hung.status, hung.failingSince, hung.failures], ["ok", MINUTE, 1]);
+    assert.equal(after(hung, passing, 24 * MINUTE, 23 * MINUTE).statusReason, "provider_error", "the next failure: 23 minutes");
+    // Attempts of twenty minutes each, one after another: one run, said once the grace is past, and it stays.
+    let slow = row({ lastAttemptAt: 0 });
+    const said: Array<string | null> = [];
+    for (let n = 0; n < 4; n++) {
+      slow = after(slow, passing, (n + 1) * 20 * MINUTE, n * 20 * MINUTE);
+      said.push(slow.statusReason);
+    }
+    assert.deepEqual(said, [null, "provider_error", "provider_error", "provider_error"]);
+  });
+
+  test("a refused sign-in or the host's setup stays through failures that may pass, past the grace too", () => {
+    const refused = after(row(), { reason: "needs_sign_in", words: "Refused." }, MINUTE);
     assert.deepEqual([refused.status, refused.statusReason, refused.statusDetail], ["needs_attention", "needs_sign_in", "Refused."]);
-    const thenOffline = afterFailure({ ...row(), ...refused }, passing, 2 * MINUTE, GAP);
-    assert.deepEqual([thenOffline.statusReason, thenOffline.statusDetail], ["needs_sign_in", "Refused."]);
+    let offline = refused;
+    for (let minute = 2; minute <= 30; minute++) offline = after(offline, passing, minute * MINUTE);
+    assert.deepEqual([offline.statusReason, offline.statusDetail, offline.failures], ["needs_sign_in", "Refused.", 30]);
+    const host = after(row(), { reason: "host_setup", words: "The host's client." }, MINUTE);
+    assert.equal(after(after(host, passing, 2 * MINUTE), passing, 20 * MINUTE).statusReason, "host_setup");
+  });
+
+  test("after not_syncing a failure is provider_error at once; a reason-less one from before 0.1.2 starts again", () => {
     const silent = row({ status: "needs_attention", statusReason: "not_syncing", statusDetail: "…", lastAttemptAt: MINUTE });
-    assert.deepEqual(afterFailure(silent, passing, 2 * MINUTE, GAP).status, "ok");
-    assert.deepEqual(afterFailure({ ...silent, lastSyncedAt: null }, passing, 2 * MINUTE, GAP).status, "connecting");
+    const failed = after(silent, passing, 22 * MINUTE, 2 * MINUTE);
+    assert.deepEqual([failed.status, failed.statusReason, failed.statusDetail], ["needs_attention", "provider_error", "Connection refused"]);
     // From before 0.1.2: no reason, so it can't be told from a failure that may pass; it waits out the grace again.
     const old = row({ status: "needs_attention", statusDetail: "Connection refused", lastAttemptAt: MINUTE });
-    assert.deepEqual([afterFailure(old, passing, 2 * MINUTE, GAP).status], ["ok"]);
+    assert.deepEqual([after(old, passing, 2 * MINUTE).status], ["ok"]);
+    assert.equal(after({ ...old, lastSyncedAt: null }, passing, 2 * MINUTE).status, "connecting");
   });
 
-  test("the words for an inbox that stopped syncing say since when, in the server's zone", () => {
+  test("the words for an inbox that stopped syncing say when it last synced well, in the server's zone", () => {
     const at = Date.parse("2026-11-25T14:02:00Z");
-    assert.match(notSyncingWords(at, 15 * MINUTE, undefined), /^No sync of this inbox has finished since 25 Nov, 14:02 UTC, /);
-    assert.match(notSyncingWords(at, 15 * MINUTE, "Europe/Berlin"), /since 25 Nov, 15:02 CET/);
-    assert.match(notSyncingWords(null, 15 * MINUTE, "Not/AZone"), /finished for over 15 minutes, though the server is running/);
+    assert.equal(
+      notSyncingWords(at, 15 * MINUTE, undefined),
+      "This inbox hasn't synced since 25 Nov, 14:02 UTC, and none of its syncs has finished for over 15 minutes, " +
+        "though the server is running. Try again; if it stays like this, restart the server.",
+    );
+    assert.match(notSyncingWords(at, 15 * MINUTE, "Europe/Berlin"), /since 25 Nov, 15:02 CET,/);
+    assert.match(notSyncingWords(null, 15 * MINUTE, "Not/AZone"), /^This inbox hasn't synced yet, and none of its syncs has finished for over 15 minutes/);
   });
 });
 
@@ -191,7 +226,7 @@ describe("a sync that never finishes", () => {
     }
     const silent = await listed(s);
     assert.deepEqual([silent.status, silent.statusReason], ["needs_attention", "not_syncing"]);
-    assert.match(silent.statusDetail ?? "", /^No sync of this inbox has finished since \d+ \w+, \d\d:\d\d UTC, though the server is running\./);
+    assert.match(silent.statusDetail ?? "", /^This inbox hasn't synced since \d+ \w+, \d\d:\d\d UTC, and none of its syncs has finished for over 15 minutes/);
     assert.equal(silent.version, synced.version + 1);
     hold = false;
     release();

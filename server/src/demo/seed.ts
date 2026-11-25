@@ -12,7 +12,8 @@ import { SuffixList } from "../avatars/suffixes.ts";
 import type { Host } from "../host.ts";
 import { ProviderRegistry } from "../providers.ts";
 import type { Before, ThreadState } from "../service/state.ts";
-import { MemoryMailbox, memoryFactory } from "../testing/memory-provider.ts";
+import { memoryFactory } from "../testing/memory-adapter.ts";
+import { MemoryMailbox } from "../testing/memory-provider.ts";
 import { belongsAt } from "../sync/writeback.ts";
 
 export interface Demo {
