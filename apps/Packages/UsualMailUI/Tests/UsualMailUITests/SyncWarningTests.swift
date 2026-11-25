@@ -136,12 +136,9 @@ struct SyncWarningTests {
     }
 
     @Test func theIPhonesMenuSaysSoUnderTheNameAndOnItsCapsule() {
-        #expect(
-            PhoneSwitch.menuSubtitle(name: "Personal", address: "me@home.example", stopped: true) == "Stopped syncing")
-        #expect(
-            PhoneSwitch.menuSubtitle(name: "Personal", address: "me@home.example", stopped: false) == "me@home.example")
-        #expect(PhoneSwitch.menuSubtitle(name: "me@home.example", address: "me@home.example", stopped: false) == nil)
-        #expect(PhoneSwitch.menuSubtitle(name: "Personal", address: nil, stopped: false) == nil)
+        // Only a stopped inbox has a line under its name; no address shows there.
+        #expect(PhoneSwitch.menuSubtitle(stopped: true) == "Stopped syncing")
+        #expect(PhoneSwitch.menuSubtitle(stopped: false) == nil)
         // On one line in the menu.
         #expect(PhoneSwitch.menuTitle(SyncWarning.words) == SyncWarning.words)
         // The capsule's words, which its triangle shows.

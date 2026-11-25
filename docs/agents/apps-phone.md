@@ -51,14 +51,15 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   2026-11-24, "dont let the items wrap, do ellipsis"; the full name stays the row's accessibility label). Tried and
   dropped the same day: the app's own popover in Geist 12 with the chosen row in bold (the owner: "its not native
   anymore"), and in the system's menu a bold title and a line limit, which it ignores, as it does any font: the
-  system's menu stays, in its own type. Under an inbox's name, its address (when that isn't its name), cut the same
-  way: a row's texts and picture are the button's own label, since from a `Label` the menu took the first text only
-  and no address ever showed (fixed 2026-11-25). An inbox that stopped syncing (`Shell/SyncWarning.swift`, in
+  system's menu stays, in its own type. A row shows the inbox's name only, not its address (the owner's word of
+  2026-11-25, "Hide them", once the address had begun to show under it); a row's texts and picture are the button's
+  own label, since from a `Label` the menu took the first text only and the line under a name never showed. An inbox
+  that stopped syncing (`Shell/SyncWarning.swift`, in
   [apps.md](apps.md)) has the red triangle for its icon, drawn as it is (`Icon.warningMenuImage`), and "Stopped
   syncing" under its name. On the chosen inbox the check mark takes the triangle's place, as it takes any icon's;
   its "Stopped syncing" line stays, and so does the capsule's triangle: while any inbox has stopped, the capsule
   shows it before its chevron and says so to VoiceOver (`PhoneSwitch.warning`), so the menu tells without being
-  opened. The address line under the other names waits on the owner (the review of 2026-11-25). The notice over the
+  opened. The notice over the
   lists is the Mac's. Seen on the sample in the simulator, 2026-11-25. Its ink follows the wallpaper under it (`RailTone`). The
   top row sits 16 above the card (the concept's 24, "a bit less" at the owner's word of 2026-11-24;
   `PhoneLayout.gap`).
@@ -101,9 +102,9 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
     parts out on two lines on the iPhone and as before on the Mac.
   - The card stopped at the keyboard: its ground now runs under it.
 - **Seen and left:** in the switcher's menu the Personal inbox's person icon draws solid (its grey fill, as a
-  template); an inbox's address didn't show under its name there (fixed 2026-11-25); no badges showed (the sample's counts weren't
-  checked). The pairing card was centred and didn't move for the
-  keyboard (since 2026-11-24 it sits at the foot and rises above it).
+  template); an inbox's address didn't show under its name there (left so: the owner hid it on 2026-11-25); no
+  badges showed (the sample's counts weren't checked). The pairing card was centred and didn't move for the keyboard
+  (since 2026-11-24 it sits at the foot and rises above it).
 - **Not seen on the sample:** the undo strip (the sample takes actions back and shows none; seen later on the
   owner's server, below), snooze's menu, actions against a
   server, Sign in with Google, the first run after pairing, a custom or dark wallpaper, other screen sizes.

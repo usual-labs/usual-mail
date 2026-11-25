@@ -65,10 +65,10 @@
             let label = PhoneSwitch.label(nav: nav, inboxes: inboxes)
             return Menu {
                 Section {
-                    profile(nil, icon: .allInboxes, name: PhoneSwitch.allInboxes, address: nil)
+                    profile(nil, icon: .allInboxes, name: PhoneSwitch.allInboxes)
                     ForEach(inboxes) { inbox in
                         profile(
-                            inbox.id, icon: Icon(inbox.icon), name: inbox.name, address: inbox.address,
+                            inbox.id, icon: Icon(inbox.icon), name: inbox.name,
                             stopped: SyncWarning.stopped(inbox))
                     }
                 }
@@ -99,15 +99,13 @@
             .accessibilityHint("Chooses an inbox or a list.")
         }
 
-        /// A profile's row: the mail stack on it, from any stack, at the page the mail stack last had. An inbox whose
-        /// name isn't its address shows the address under it. Both are cut to one line (`PhoneSwitch.menuTitle`). An
-        /// inbox that stopped syncing has the warning triangle for its icon and "Stopped syncing" under its name
+        /// A profile's row: the mail stack on it, from any stack, at the page the mail stack last had. Its name only,
+        /// cut to one line (`PhoneSwitch.menuTitle`), not its address (the owner's word of 2026-11-25: "Hide them").
+        /// An inbox that stopped syncing has the warning triangle for its icon and "Stopped syncing" under its name
         /// (`SyncWarning`).
-        private func profile(
-            _ id: String?, icon: Icon, name: String, address: String?, stopped: Bool = false
-        ) -> some View {
+        private func profile(_ id: String?, icon: Icon, name: String, stopped: Bool = false) -> some View {
             Group {
-                if let subtitle = PhoneSwitch.menuSubtitle(name: name, address: address, stopped: stopped) {
+                if let subtitle = PhoneSwitch.menuSubtitle(stopped: stopped) {
                     row(icon: icon, chosen: nav.profileMark.marks(id), warns: stopped) {
                         chooseProfile(id)
                     } title: {

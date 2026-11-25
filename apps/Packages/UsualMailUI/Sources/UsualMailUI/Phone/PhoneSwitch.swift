@@ -45,12 +45,10 @@ struct PhoneSwitch: Equatable {
         return String(text.prefix(head)) + "…" + String(text.suffix(kept - head))
     }
 
-    /// The line under an inbox's name in the menu: "Stopped syncing" for one that stopped (`SyncWarning`), else its
-    /// address when that isn't its name; nil for neither.
-    static func menuSubtitle(name: String, address: String?, stopped: Bool) -> String? {
-        if stopped { return SyncWarning.words }
-        guard let address, !address.isEmpty, address != name else { return nil }
-        return address
+    /// The line under an inbox's name in the menu: "Stopped syncing" for one that stopped (`SyncWarning`), else none.
+    /// Its address isn't shown there (the owner's word of 2026-11-25: "Hide them"); the capsule names an inbox by it.
+    static func menuSubtitle(stopped: Bool) -> String? {
+        stopped ? SyncWarning.words : nil
     }
 
     /// What the switcher's capsule says while any inbox has stopped syncing, which its triangle shows: "Personal
