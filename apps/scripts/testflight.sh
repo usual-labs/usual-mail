@@ -11,11 +11,23 @@
 # Usage: DEVELOPMENT_TEAM=ABCDE12345 scripts/testflight.sh [--mac] [--check]
 #   --mac     the Mac app instead of the iPhone app
 #   --check   signs and exports into build/TestFlight without uploading (with --mac, then checks every signature
-#             in the package's app is the app's own)
+#             in the package's app is the app's own: each sealed bundle and each Mach-O file)
+#
+# Run `--mac --check` before `--mac`: App Store Connect checks the Mac package's signatures only after the upload,
+# and the check here catches what it would refuse. Either registers a build number with App Store Connect (an export
+# with cloud-managed signing announces it), so neither is run just to try the script.
 #
 # BUNDLE_ID_PREFIX (default labs.usual) is the reverse-DNS prefix of the bundle ID.
 set -eu
 cd "$(dirname "$0")/.."
+
+# Every Mach-O file (an executable, a library, a loadable bundle's code) under $1, one path a line, by what `file`
+# reads in it rather than by where it sits.
+machos() {
+    find "$1" -type f | while IFS= read -r file; do
+        case "$(file -b "$file")" in *Mach-O*) printf '%s\n' "$file" ;; esac
+    done
+}
 
 destination=upload
 platform=iphone
@@ -76,7 +88,8 @@ if [ "$platform" = mac ]; then
     for bundle in "$archive"/Products/Applications/UsualMail.app/Contents/Resources/*.bundle; do
         [ -d "$bundle" ] || continue
         if [ -e "$bundle/Contents/MacOS" ] ||
-            /usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$bundle/Contents/Info.plist" >/dev/null 2>&1; then
+            /usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$bundle/Contents/Info.plist" >/dev/null 2>&1 ||
+            [ -n "$(machos "$bundle")" ]; then
             echo "$bundle holds code, so its signature can't simply come off." >&2
             exit 1
         fi
@@ -102,6 +115,11 @@ if [ "$platform" = mac ] && [ "$destination" = export ]; then
         [ "$(basename "$item")" = Contents ] && item=$(dirname "$item")
         got=$(signer "$item")
         [ "$got" = "$want" ] || { echo "${item#"$app"/} is signed by ${got:-nobody}, not $want." >&2; exit 1; }
+    done
+    # Code wherever it sits, not only in sealed bundles: a Mach-O file under Resources has no _CodeSignature folder.
+    machos "$app" | while IFS= read -r binary; do
+        got=$(signer "$binary")
+        [ "$got" = "$want" ] || { echo "${binary#"$app"/} is code signed by ${got:-nobody}, not $want." >&2; exit 1; }
     done
     rm -rf "$expanded"
 fi

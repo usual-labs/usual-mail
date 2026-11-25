@@ -166,7 +166,11 @@ Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; d
   the four Swift package resource bundles in `Contents/Resources` still carried the archive's Apple Development
   signature, which the export doesn't replace ([known-issues.md](known-issues.md)). Since then the script takes those
   bundles' signatures off in the archive before the export, and `--mac --check` fails if anything in the exported
-  app is signed by anyone but the app's signer. Build 202611251405, uploaded with that fix the same day, finished
+  app is signed by anyone but the app's signer: each sealed bundle, and since the review of 2026-11-25 each Mach-O
+  file wherever it sits (`machos`, by what `file` reads; the guard before taking a bundle's signature off looks for
+  them too). The script's usage says to run `--mac --check` before `--mac`. Both checks were tried on a copy of an
+  archived app, clean and with an unsigned binary planted in a resource bundle (each caught it), not by an export,
+  which registers a build. Build 202611251405, uploaded with that fix the same day, finished
   processing as valid and went into internal testing; the record gained its macOS version by itself, nobody added
   the platform by hand. Not yet seen installed from TestFlight.
 - **`--check` registers a build upload** that stays "awaiting upload" in App Store Connect (the export with

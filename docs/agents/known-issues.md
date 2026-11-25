@@ -1187,9 +1187,10 @@ signed Apple Distribution and the four bundles still Apple Development. `codesig
 distribution certificate is cloud-managed, so nothing on this Mac can sign the bundles with it.
 
 `apps/scripts/testflight.sh --mac` now removes each bundle's `Contents/_CodeSignature` in the archive before the
-export. They hold no code (the script stops if one has `Contents/MacOS` or a `CFBundleExecutable`), so the export's
-signature of the app seals them as resources, privacy manifests included. `--mac --check` then expands the package
-and fails if anything in the app is signed by anyone but the app's signer. Build 202611251405, made this way,
+export. They hold no code (the script stops if one has `Contents/MacOS`, a `CFBundleExecutable` or, since the review
+of 2026-11-25, any Mach-O file), so the export's signature of the app seals them as resources, privacy manifests
+included. `--mac --check` then expands the package and fails if anything in the app, a sealed bundle or a Mach-O
+file, is signed by anyone but the app's signer. Build 202611251405, made this way,
 processed as valid. The iPhone's exported `.ipa` has the same development-signed bundles (at the app's root), and
 App Store Connect accepts them for iOS, so the script leaves the iPhone alone; if iOS processing ever refuses them,
 the same step applies there ([apps-phone.md](apps-phone.md), "Sending it to TestFlight").
