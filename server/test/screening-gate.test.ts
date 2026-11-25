@@ -205,7 +205,12 @@ describe("the shape of mail sent to this person by that organisation alone (ever
     assert.equal(notice("service@paypal.com", "payment", "Sam requested €450.00", "Payment request: €450.00, rent."), false, "a money request");
     assert.equal(notice("service@intl.paypal.com", "security", "New sign-in", "A new sign-in. Was this you?"), false, "the same address's alerts too");
     assert.equal(notice("receipts+abc@stripe.com", "order", "Receipt from Sam's shop", "Order #112-3456789: €42.00. Call 555 0100."), false, "a payment service's receipt");
-    assert.equal(notice("no-reply@accounts.google.com", "security", "Security alert", "A new sign-in on Linux. Was this you?"), true, "the provider's own account alerts still pass");
+    assert.equal(notice("no-reply@google.com", "security", "Security alert", "A new sign-in. Was this you?"), false, "any other Google notifier");
+    assert.equal(notice("no-reply@groups.google.com", "account", "Your plan changed", "Your plan has changed."), false, "a Google subdomain's");
+    assert.equal(notice("no-reply@teams.microsoft.com", "security", "New sign-in", "A new sign-in. Was this you?"), false, "a Microsoft product's");
+    // The allow list: the account-security senders their help pages name.
+    assert.equal(notice("no-reply@accounts.google.com", "security", "Security alert", "A new sign-in on Linux. Was this you?"), true, "Google's account alerts still pass");
+    assert.equal(notice("account-security-noreply@accountprotection.microsoft.com", "security", "Unusual sign-in activity", "We detected unusual sign-in activity. Was this you?"), true, "Microsoft's account team's too");
   });
 
   test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {

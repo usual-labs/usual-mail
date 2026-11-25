@@ -38,12 +38,23 @@ export const TENANT_PLATFORMS: readonly string[] = [
  * can't be told from a security alert at the same address, the address is refused for every kind but a code: a real
  * alert waiting in Screening is the accepted cost. A starting list (the second security review of 2026-11-25).
  */
-const CARRIER_ADDRESSES: ReadonlySet<string> = new Set([
-  "comments-noreply@docs.google.com", "drive-shares-noreply@google.com", "drive-shares-dm-noreply@google.com",
-  "calendar-notification@google.com", "forms-receipts-noreply@google.com",
+/**
+ * Carriers by domain: every address at it or under it. Google's and Microsoft's whole domains, since each product there
+ * sends its own notices (a document's comments, a file shared, a calendar event, a form's answers, a team's chat) under
+ * one proof, and only their account-security senders (`ACCOUNT_SECURITY`) are let past (the final security review of
+ * 2026-11-25).
+ */
+const CARRIER_DOMAINS: readonly string[] = [
+  "google.com", "microsoft.com", "stripe.com", "venmo.com", "square.com", "squareup.com", "sharepointonline.com",
+];
+/**
+ * The account-security senders of those domains, which carry nobody else's words: Google's ("no-reply@accounts.google.com")
+ * and Microsoft's account team ("account-security-noreply@accountprotection.microsoft.com"), as their help pages name
+ * them (not read again here: docs/agents/known-issues.md).
+ */
+const ACCOUNT_SECURITY: ReadonlySet<string> = new Set([
+  "no-reply@accounts.google.com", "account-security-noreply@accountprotection.microsoft.com",
 ]);
-/** Carriers by domain: every address at it or under it. */
-const CARRIER_DOMAINS: readonly string[] = ["stripe.com", "venmo.com", "square.com", "squareup.com", "sharepointonline.com"];
 /** Carriers by name: every registrable domain whose first label it is (paypal.com, paypal.de, paypal.co.uk). */
 const CARRIER_NAMES: ReadonlySet<string> = new Set(["paypal"]);
 
@@ -89,8 +100,8 @@ export function onTenantPlatform(domain: string): boolean {
 
 /** (e): the address is a notifier's that carries its users' words. `home` is its proved registrable domain. */
 export function carriesUsersWords(email: string, domain: string, home: string): boolean {
-  return CARRIER_ADDRESSES.has(email.toLowerCase())
-    || CARRIER_DOMAINS.some((carrier) => domain === carrier || domain.endsWith(`.${carrier}`))
+  if (ACCOUNT_SECURITY.has(email.toLowerCase())) return false;
+  return CARRIER_DOMAINS.some((carrier) => domain === carrier || domain.endsWith(`.${carrier}`))
     || CARRIER_NAMES.has(home.split(".")[0] ?? "");
 }
 
