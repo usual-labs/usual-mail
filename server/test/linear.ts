@@ -45,6 +45,7 @@ export const BODIES: Record<string, string> = {
   "ideographic dots after an at sign": `a@${"b。".repeat(MB / 2)}`,
   "combining marks before an at sign": `${"e\u0301".repeat(MB / 2)}@x`,
   "one domain label of a megabyte": `a@${"b".repeat(MB)}`,
+  "an amount with separators between its digits": `€1${". ".repeat(MB / 2)}1`,
 };
 
 /** What reads a message under the server's lock: the one-time code check, the requests and snippets, the answers. */

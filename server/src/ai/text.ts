@@ -20,9 +20,8 @@ export const STUB_RATIO = 3;
 export function plainText(text: string | null, html: string | null): string {
   if (text !== null && text.trim()) return text.trim();
   if (!html) return "";
-  return withoutBlocks(html)
-    .replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6])\s*>/gi, "\n")
-    .replace(/<[^<>]*>/g, " ")
+  const lines = withoutBlocks(html).replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6])\s*>/gi, "\n");
+  return withoutTags(lines)
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
@@ -62,10 +61,11 @@ function stub(own: string, fromHtml: string): boolean {
 
 /** Text made from HTML, its entities read once, then cleaned. */
 export function readableHtml(html: string): string {
-  const text = withoutBlocks(html)
-    .replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6]|table|blockquote|pre)\s*>/gi, "\n")
-    // A tag ends at its ">", or where the next "<" starts: so no "<" is read past another.
-    .replace(/<[^<>]*>/g, " ")
+  const shown = withoutComments(withoutBlocks(html));
+  const lines = shown.replace(/<br\s*\/?>|<\/(p|div|li|tr|h[1-6]|table|blockquote|pre)\s*>/gi, "\n");
+  // A tag starts where HTML starts one, so a lone "<" in the text ("a < b") stays, and runs to its nearest ">", so a
+  // "<" inside an attribute leaves no piece of the tag in the text.
+  const text = withoutTags(lines, opensTag)
     .replace(/&(#\d{1,7}|#x[0-9a-f]{1,6}|[a-z]{2,8});/gi, (entity, name: string) => readEntity(name) ?? entity);
   return cleanText(text);
 }
@@ -123,6 +123,48 @@ function withoutBlocks(html: string): string {
   return out + html.slice(kept);
 }
 
+/**
+ * The text with each tag read as a space, as `/<[^>]*>/g` reads them (a tag runs from its "<" to the nearest ">", so a
+ * "<" inside an attribute or a comment is part of it), in linear time: that pattern reads from every "<" to the end of
+ * a text with no ">" after it, and once no ">" follows a "<", none follows a later one either. With `opens`, only a "<"
+ * it accepts starts a tag (`opensTag`: as `/<\/?[a-z!?][^>]*>/gi` reads them).
+ */
+function withoutTags(text: string, opens: (text: string, at: number) => boolean = () => true): string {
+  let out = "";
+  let kept = 0;
+  for (let at = text.indexOf("<"); at >= 0; at = text.indexOf("<", at + 1)) {
+    if (!opens(text, at)) continue;
+    const end = text.indexOf(">", at + 1);
+    if (end < 0) break;
+    out += `${text.slice(kept, at)} `;
+    kept = end + 1;
+    at = end;
+  }
+  return out + text.slice(kept);
+}
+
+/**
+ * The HTML with each comment, "<!--" to its "-->", read as a space; one never closed stays. In linear time: once no
+ * "-->" follows a "<!--", none follows a later one either.
+ */
+function withoutComments(html: string): string {
+  let out = "";
+  let kept = 0;
+  for (let open = html.indexOf("<!--"); open >= 0; open = html.indexOf("<!--", kept)) {
+    const close = html.indexOf("-->", open + 4);
+    if (close < 0) break;
+    out += `${html.slice(kept, open)} `;
+    kept = close + 3;
+  }
+  return out + html.slice(kept);
+}
+
+/** Whether a tag left in text starts here, as `<\/?[a-z!?]` reads it: "<", maybe "/", then a letter, "!" or "?". */
+function opensTag(text: string, at: number): boolean {
+  const next = text[at + 1] === "/" ? text[at + 2] : text[at + 1];
+  return next !== undefined && /^[a-z!?]$/i.test(next);
+}
+
 /** A message's text with what carries nothing to read taken out. */
 export function cleanText(text: string): string {
   return text
@@ -162,8 +204,6 @@ const MARKDOWN_LINK = /\[([^[\]\n]*)\]\(\s*(?:https?:\/\/|mailto:)[^()[\]\s]*\s*
 const ANGLE_LINK = /<\s*(?:https?:\/\/|mailto:)[^<>\s]*\s*>/gi;
 /** A link standing in the text, as `cleanText` left it ("https://host/…") or starting with "www.". */
 const NAKED_LINK = /(?<![\p{L}\p{N}])(?:https?:\/\/|www\.)[^\s<>"'`]*/giu;
-/** A tag left in text. */
-const TAG = /<\/?[a-z!?][^<>]*>/gi;
 /** An entity left in text (a text part that writes "&zwnj;"): read, or dropped when unknown. */
 const ENTITY = /&(#\d{1,7}|#x[0-9a-f]{1,6}|[a-z]{2,8});/gi;
 /** Control and direction characters (the summary's check), read as a space. */
@@ -196,8 +236,7 @@ export function readingText(text: string | null, html: string | null): string {
 
 /** Text as one plain line: tags, invisible and control characters gone, every run of spaces one space. */
 export function plainLine(text: string): string {
-  return text
-    .replace(TAG, " ")
+  return withoutTags(text, opensTag)
     .replace(INVISIBLE, "")
     .replace(CONTROL, " ")
     .replace(/\s+/g, " ")

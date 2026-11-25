@@ -162,8 +162,25 @@ function bodyOf(part: GmailPart, rfc822: boolean, plan: RebuildPlan, mark: (part
 
 function encodedTransfer(headers: readonly Header[]): boolean {
   const value = headers.find((h) => h.name.toLowerCase() === "content-transfer-encoding")?.value ?? "";
-  const token = /^[ \t]*([\w-]+)/.exec(value.replace(/\([^)]*\)/g, " ").toLowerCase())?.[1];
+  const token = /^[ \t]*([\w-]+)/.exec(withoutComments(value).toLowerCase())?.[1];
   return token === "base64" || token === "quoted-printable";
+}
+
+/**
+ * The value with each "(...)" read as a space, as `/\([^)]*\)/g` reads them, in linear time: that pattern reads from
+ * every "(" to the end of a value that never closes one (0.1.3, after a security review). Once no ")" follows a "(",
+ * none follows a later one either.
+ */
+function withoutComments(value: string): string {
+  let out = "";
+  let kept = 0;
+  for (let open = value.indexOf("("); open >= 0; open = value.indexOf("(", kept)) {
+    const close = value.indexOf(")", open + 1);
+    if (close < 0) break;
+    out += `${value.slice(kept, open)} `;
+    kept = close + 1;
+  }
+  return out + value.slice(kept);
 }
 
 /** The Content-Type with its charset parameters replaced by UTF-8; every other parameter kept as written. */

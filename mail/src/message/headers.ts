@@ -40,8 +40,13 @@ export function messageIds(value: string | undefined): string[] {
   return out;
 }
 
+/**
+ * The value without the angle brackets around it. The closing run is matched only from its start (`(?<!>)`): from
+ * every ">" of a long run, ">+$" would read to the run's end and fail there (0.1.3, after a security review: a
+ * Message-ID of 256 KB of ">" took 25.6 s, and the message is read again on every sync).
+ */
 export function stripBrackets(value: string): string {
-  return value.trim().replace(/^<+/, "").replace(/>+$/, "").trim();
+  return value.trim().replace(/^<+/, "").replace(/(?<!>)>+$/, "").trim();
 }
 
 /** The list's id from List-Id (RFC 2919): the part in angle brackets, lower case. */

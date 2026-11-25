@@ -3,6 +3,7 @@
  * bullets and table cells apart, drops everything that isn't shown (head, style, script).
  */
 import { Parser } from "htmlparser2";
+import { boundedHtml } from "./html-depth.ts";
 
 const HIDDEN = new Set(["head", "style", "script", "title", "template", "noscript", "xml", "svg", "math"]);
 const BLOCK = new Set([
@@ -46,7 +47,7 @@ export function htmlToText(html: string): string {
     },
     { decodeEntities: true },
   );
-  parser.write(html);
+  parser.write(boundedHtml(html));
   parser.end();
   return tidy(out.join(""));
 }

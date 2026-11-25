@@ -215,7 +215,7 @@ const EXTENSIONS: Record<string, string> = {
 function defaultFilename(mimeType: string, index: number): string {
   if (EXTENSIONS[mimeType]) return EXTENSIONS[mimeType];
   const [type, subtype] = mimeType.split("/");
-  if (type === "image" && subtype && /^[a-z0-9.+-]+$/.test(subtype)) return `image-${index + 1}.${subtype.replace(/\+.*$/, "")}`;
+  if (type === "image" && subtype && /^[a-z0-9.+-]+$/.test(subtype)) return `image-${index + 1}.${subtype.split("+")[0]}`;
   return `attachment-${index + 1}`;
 }
 

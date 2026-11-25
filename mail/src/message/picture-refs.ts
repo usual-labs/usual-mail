@@ -48,10 +48,14 @@ export function canonicalPictureUrl(value: string): string | null {
   return url.href;
 }
 
-/** A length as an attribute or a style gives it, in pixels, or undefined when it isn't one. */
+/**
+ * A length as an attribute or a style gives it, in pixels, or undefined when it isn't one. Trimmed first, so no two
+ * runs of spaces stand side by side in the pattern: with three, a width of "1", spaces and a letter took time cubic in
+ * the spaces (2,000 took 1.3 s, on every picture pass; 0.1.3, after a security review).
+ */
 function pixels(value: string | undefined): number | undefined {
   if (value === undefined) return undefined;
-  const match = /^\s*(\d+(?:\.\d+)?)\s*(?:px)?\s*(?:!\s*important)?\s*$/i.exec(value);
+  const match = /^(\d+(?:\.\d+)?)(?:\s*px)?(?:\s*!\s*important)?$/i.exec(value.trim());
   return match ? Number(match[1]) : undefined;
 }
 

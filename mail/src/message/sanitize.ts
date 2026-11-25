@@ -10,6 +10,7 @@
  */
 import sanitizeHtmlLib from "sanitize-html";
 import { sanitizeStyleAttribute, sanitizeStylesheet } from "./css.ts";
+import { boundedHtml } from "./html-depth.ts";
 import { canonicalPictureUrl, isRemote, isTinyOrHidden, type PictureDecision, type PictureHook, type PictureSite } from "./picture-refs.ts";
 
 const ALLOWED_TAGS = [
@@ -72,20 +73,21 @@ const OPTIONS: sanitizeHtmlLib.IOptions = {
   transformTags: { "*": transform },
 };
 
-/** A pass that decides pictures from the web: the hook, and the `<img>` elements it took out. */
+/**
+ * A pass that decides pictures from the web: the hook, and the class an `<img>` it takes out is written with. Such an
+ * `<img>` is written as nothing but that class, then taken out of what the sanitizer wrote, so it goes whole, its alt
+ * text with it. The class is new on every pass, so no message can write it. (The sanitizer's own `exclusiveFilter`
+ * copies everything written before a picture to take it out: once per picture, up to 1.3 s for 2 MB of tracking
+ * pixels.)
+ */
 interface PicturePass {
   hook: PictureHook;
-  removed: WeakSet<sanitizeHtmlLib.Attributes>;
+  removed: string;
 }
 
 function optionsFor(pass: PicturePass | undefined): sanitizeHtmlLib.IOptions {
   if (!pass) return OPTIONS;
-  return {
-    ...OPTIONS,
-    transformTags: { "*": (tagName, attribs) => transform(tagName, attribs, pass) },
-    // An <img> taken out as a tracker goes whole, its alt text with it.
-    exclusiveFilter: (frame) => pass.removed.has(frame.attribs),
-  };
+  return { ...OPTIONS, transformTags: { "*": (tagName, attribs) => transform(tagName, attribs, pass) } };
 }
 
 function transform(tagName: string, attribs: sanitizeHtmlLib.Attributes, pass?: PicturePass): sanitizeHtmlLib.Tag {
@@ -98,24 +100,29 @@ function transform(tagName: string, attribs: sanitizeHtmlLib.Attributes, pass?: 
   if (tagName === "a" && out.href !== undefined && !linkIsAllowed(out.href)) delete out.href;
   if (tagName === "img" && out.src !== undefined && !imageIsAllowed(out.src)) delete out.src;
   if (out.background !== undefined && !imageIsAllowed(out.background)) delete out.background;
-  if (pass) decidePictures(tagName, out, pass);
+  if (pass && decidePictures(tagName, out, pass) === "remove") return { tagName, attribs: { class: pass.removed } };
   if (tagName === "style") return { tagName, attribs: {} };
   return { tagName, attribs: out };
 }
 
-/** Hands an element's pictures from the web to the hook: an <img>'s src, and a table part's background. */
-function decidePictures(tagName: string, out: sanitizeHtmlLib.Attributes, pass: PicturePass): void {
+/**
+ * Hands an element's pictures from the web to the hook: an <img>'s src, and a table part's background. "remove" when
+ * the `<img>` is to go whole.
+ */
+function decidePictures(tagName: string, out: sanitizeHtmlLib.Attributes, pass: PicturePass): "remove" | undefined {
+  let removed: "remove" | undefined;
   if (tagName === "img" && out.src !== undefined && isRemote(out.src)) {
     const decision = decide(out.src, "img", isTinyOrHidden(out), pass.hook);
     if (decision.kind === "show") out.src = decision.src;
     else delete out.src;
-    if (decision.kind === "remove") pass.removed.add(out);
+    if (decision.kind === "remove") removed = "remove";
   }
   if (out.background !== undefined && isRemote(out.background)) {
     const decision = decide(out.background, "background", false, pass.hook);
     if (decision.kind === "show") out.background = decision.src;
     else delete out.background;
   }
+  return removed;
 }
 
 /** The hook's decision for one address; an address that can't be fetched, or a new one that would be, is held. */
@@ -147,8 +154,11 @@ function imageIsAllowed(src: string): boolean {
  * (style blocks last), and fonts from the web are taken out.
  */
 export function sanitizeHtml(html: string, pictures?: PictureHook): string | undefined {
-  const pass = pictures ? { hook: pictures, removed: new WeakSet<sanitizeHtmlLib.Attributes>() } : undefined;
-  const cleaned = sanitizeHtmlLib(html, optionsFor(pass));
+  const pass = pictures ? { hook: pictures, removed: `usual-removed-${crypto.randomUUID()}` } : undefined;
+  // Bounded as sanitize-html will parse it: it first writes "<![CDATA[" as "<!&#91;CDATA[" (so what such a section
+  // hides is read as markup), and the bound must see the same tags (html-depth.ts).
+  const written = sanitizeHtmlLib(boundedHtml(html.replaceAll("<![CDATA[", "<!&#91;CDATA[")), optionsFor(pass));
+  const cleaned = pass ? written.replaceAll(`<img class="${pass.removed}" />`, "") : written;
   // sanitize-html passes <style> text through untouched; the CSS filter decides what of it stays.
   const out = cleaned
     .replace(/<style>([\s\S]*?)<\/style>/gi, (_, css: string) => {

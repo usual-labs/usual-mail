@@ -1,7 +1,7 @@
 /** Thread keys, message-id lists, list headers and the `automated` rule. */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { headerMap, isAutomated, isNoReplyAddress, listIdOf, messageIds } from "../../src/message/headers.ts";
+import { headerMap, isAutomated, isNoReplyAddress, listIdOf, messageIds, stripBrackets } from "../../src/message/headers.ts";
 import { threadKeyFor } from "../../src/message/thread.ts";
 
 const headers = (pairs: Record<string, string>) => headerMap(Object.entries(pairs).map(([key, value]) => ({ key, value })));
@@ -42,6 +42,17 @@ describe("message id lists", () => {
     assert.deepEqual(messageIds("<a@x> (comment) <b@x>"), ["a@x", "b@x"]);
     assert.deepEqual(messageIds(undefined), []);
     assert.deepEqual(messageIds("   "), []);
+  });
+
+  it("take the brackets off a message id, however many, and read as before 0.1.3 (the closing run read from its start)", () => {
+    assert.equal(stripBrackets(" <<a@x>> "), "a@x");
+    assert.equal(stripBrackets("a>b>>"), "a>b");
+    const before = (value: string) => value.trim().replace(/^<+/, "").replace(/>+$/, "").trim();
+    const parts = ["<", ">", "a", "@", " ", "\t"];
+    for (let round = 0; round < 5_000; round++) {
+      const value = Array.from({ length: Math.floor(Math.random() * 10) }, () => parts[Math.floor(Math.random() * parts.length)]).join("");
+      assert.equal(stripBrackets(value), before(value), JSON.stringify(value));
+    }
   });
 
   it("read the list id inside angle brackets, lower case", () => {

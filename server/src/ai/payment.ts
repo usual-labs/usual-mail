@@ -70,8 +70,8 @@ export function exponentOf(currency: string): number {
  * codes and a minus are ignored: a refund says so itself.
  */
 export function parseAmount(written: string, exponent: number): number | null {
-  const text = written.replace(/[  '’]/g, " ").replace(/[^\d., ]/g, "").replace(/,-$|\.-$/, "").trim()
-    .replace(/^[., ]+|[., ]+$/g, "");
+  const cleaned = written.replace(/[  '’]/g, " ").replace(/[^\d., ]/g, "").replace(/,-$|\.-$/, "").trim();
+  const text = withoutEdgeSeparators(cleaned);
   if (!/\d/.test(text)) return null;
   const last = Math.max(text.lastIndexOf("."), text.lastIndexOf(","));
   const after = last >= 0 ? text.slice(last + 1) : "";
@@ -110,6 +110,19 @@ function markerPattern(marker: string): string {
 export function currencyIn(currency: string, text: string): boolean {
   const lower = text.toLowerCase();
   return markersOf(currency).some((marker) => new RegExp(markerPattern(marker)).test(lower));
+}
+
+/**
+ * The text without the separators (".", "," and spaces) it starts or ends with, as `/^[., ]+|[., ]+$/g` takes them out,
+ * in linear time: that pattern reads from every separator of a long run inside the text to the run's end (0.1.3).
+ */
+function withoutEdgeSeparators(text: string): string {
+  const separator = (at: number) => text[at] === "." || text[at] === "," || text[at] === " ";
+  let start = 0;
+  let end = text.length;
+  while (start < end && separator(start)) start++;
+  while (end > start && separator(end - 1)) end--;
+  return text.slice(start, end);
 }
 
 /**

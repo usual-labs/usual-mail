@@ -267,6 +267,21 @@ describe("tiny or hidden pictures", () => {
       assert.equal(isTinyOrHidden(attribs), tiny);
     });
   }
+
+  it("a width reads as before 0.1.3, when three runs of spaces in the pattern took cubic time", () => {
+    for (const [width, tiny] of [[" 1 px ", true], ["1 PX !important", true], ["1 ! important", true], ["\n1\n", true], ["1 x", false], ["1px!importantx", false]] as const) {
+      assert.equal(isTinyOrHidden({ width }), tiny, JSON.stringify(width));
+    }
+    const before = (value: string) => {
+      const match = /^\s*(\d+(?:\.\d+)?)\s*(?:px)?\s*(?:!\s*important)?\s*$/i.exec(value);
+      return match !== null && Number(match[1]) <= 1;
+    };
+    const parts = ["1", "0", ".", " ", "\n", "px", "!", "important", "x", "\u00a0"];
+    for (let round = 0; round < 5_000; round++) {
+      const width = Array.from({ length: Math.floor(Math.random() * 8) }, () => parts[Math.floor(Math.random() * parts.length)]).join("");
+      assert.equal(isTinyOrHidden({ width }), before(width), JSON.stringify(width));
+    }
+  });
 });
 
 describe("hostile mail through the picture pass", () => {

@@ -6,7 +6,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { dataItems, type ChoiceRequest, type TextRequest } from "../src/index.ts";
-import { cleanText, isStubText, modelText, plainText, readableHtml, STUB_RATIO, STUB_TEXT } from "../src/ai/text.ts";
+import { cleanText, isStubText, modelText, plainText, readableHtml, snippetText, STUB_RATIO, STUB_TEXT } from "../src/ai/text.ts";
 import { historyFromKnown, KNOWN, makeServer, type TestServer } from "./helpers.ts";
 
 describe("cleaning a message's text", () => {
@@ -71,6 +71,21 @@ describe("in linear time (0.1.3)", () => {
     assert.equal(readableHtml("a < b and <b>bold</b>"), "a < b and bold", "a lone < no longer swallows the text up to the next tag");
     assert.equal(cleanText("See https://x.example/a/b)."), "See https://x.example/…).");
     assert.equal(plainText(null, "<style>x</style><p>A</p><b>b</b>"), "A\n b");
+  });
+
+  test("a \"<\" inside an attribute or a comment leaves no piece of a tag; a lone one in the text stays", () => {
+    // The review of 0.1.3's first build: "<[^<>]*>" stopped a tag at the next "<", leaving '<p title="a' in the text.
+    const html = '<p title="a<b">Kept text</p><img alt="I <3 you"><!-- <b>hidden</b> --><p>after</p>';
+    assert.equal(readableHtml(html), "Kept text\nafter");
+    assert.equal(snippetText(null, html), "Kept text after");
+    assert.equal(snippetText(null, '<p>I <3 you</p><p title="x<y">and you</p>'), "I <3 you and you");
+    assert.equal(snippetText("Hi <b class=\"a<b\">there</b>", null), "Hi there", "a tag left in a text part");
+  });
+
+  test("the screening gate's check reads tags as before 0.1.3: each from its \"<\" to the nearest \">\"", () => {
+    const html = '<p title="a<b">Kept text</p><img alt="I <3 you"><!-- <b>hidden</b> --><p>after</p>';
+    assert.equal(plainText(null, html), "Kept text\n hidden --> after");
+    assert.equal(plainText(null, "if a < b then <i>so</i>"), "if a so");
   });
 });
 
