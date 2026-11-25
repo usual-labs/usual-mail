@@ -1,0 +1,17 @@
+{
+  "view": [1.35, 610, 440],
+  "start": {"state": "rail", "pointer": [1120, 690]},
+  "steps": [
+    {"wait": 0.5},
+    {"move": [172, 188], "duration": 1.1},
+    {"click": true, "show": "rail-northwind"},
+    {"wait": 1.2},
+    {"move": [150, 243], "duration": 0.6},
+    {"click": true, "show": "rail-personal"},
+    {"wait": 1.2},
+    {"move": [155, 160], "duration": 0.6},
+    {"click": true, "show": "rail"},
+    {"wait": 0.9},
+    {"back": true}
+  ]
+}

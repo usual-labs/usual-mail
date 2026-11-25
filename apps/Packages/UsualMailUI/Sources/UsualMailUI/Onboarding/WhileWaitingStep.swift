@@ -1,30 +1,43 @@
 import SwiftUI
 import UsualMailKit
 
-/// "While your mail comes in": nine slides on what Usual Mail does (arrows, dots, and the left and right keys), and
-/// at the foot how the first sorting goes and "Go to Home", which is always there. Every slide shows the same picture
-/// of Home for now.
+/// "While your mail comes in": nine slides on what Usual Mail does (arrows, dots, and the left and right keys), each
+/// with its clip of the feature (`TourClip`: the Mac app on the tour's sample, a pointer moving and clicking, looping;
+/// still with Reduce Motion on), and at the foot how the first sorting goes and "Go to Home", which is always there.
 struct WhileWaitingStep: View {
     let home: () -> Void
     @Environment(MailStore.self) private var store
     @State private var index = 0
 
     private let slides = Onboarding.slides
-    /// The picture's own proportions (a 1512 × 982 window).
-    private static let aspect: CGFloat = 1512 / 982
+    /// The clips' proportions (a 1512 × 982 window, framed at 1280 × 832).
+    private static let aspect: CGFloat = TourClip.aspect
+    /// What the card takes beside the clip: its own padding, and on the iPhone its 16 from the screen's edges (it overflowed
+    /// a 402-point screen before, seen 2026-11-25).
+    #if os(iOS)
+        private static let sideRoom: CGFloat = 48 + 32
+    #else
+        private static let sideRoom: CGFloat = 48
+    #endif
 
     var body: some View {
         GeometryReader { geometry in
-            // As wide as the mail card, smaller in a short window, so the whole step stays on screen.
-            let width = min(652, max(300, (geometry.size.height - 320) * Self.aspect))
+            // As wide as the mail card, smaller in a short window or on the iPhone, so the whole step stays on screen.
+            let width = min(
+                652, geometry.size.width - Self.sideRoom, max(300, (geometry.size.height - 320) * Self.aspect))
             VStack(alignment: .leading, spacing: 16) {
-                Image("onboarding-screenshot", bundle: Icon.bundle)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: width)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline) }
-                    .accessibilityLabel("Usual Mail's Home")
+                // One player a slide, crossfading as the slide changes, so a clip always starts from its beginning.
+                ZStack {
+                    TourClipView(clip: TourClip.all[min(index, TourClip.all.count - 1)])
+                        .id(index)
+                        .transition(.opacity)
+                }
+                .frame(width: width, height: width / Self.aspect)
+                .background(Theme.card)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .overlay { RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.hairline) }
+                .accessibilityElement()
+                .accessibilityLabel("A short clip of this in Usual Mail")
                 HStack(alignment: .center, spacing: 12) {
                     arrow("chevron.left", label: "Previous", key: .leftArrow, enabled: index > 0) { show(index - 1) }
                     VStack(alignment: .leading, spacing: 4) {
@@ -54,7 +67,7 @@ struct WhileWaitingStep: View {
             }
             .onboardingCard(width: width + 48)
             .revealOnAppear()
-            .frame(width: geometry.size.width, height: geometry.size.height)
+            .frame(width: geometry.size.width, height: geometry.size.height, alignment: OnboardingLayout.cardAlignment)
         }
     }
 

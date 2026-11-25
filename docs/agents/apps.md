@@ -361,7 +361,8 @@ apps/
   Packages/UsualMailKit/  Models/ API/ Events/ Storage/ Store/ Pairing/ Sample/ Resources/sample.json
   Packages/UsualMailUI/   Theme/ Pieces/ Shell/ Phone/ Home/ Reading/ Screening/ Lists/ Onboarding/ Settings/
                           Thread/ Resources/Assets.xcassets
-  scripts/                check.sh, copy-sample.sh, run-mac.sh, testflight.sh (either app) and make-app-icon.sh
+  scripts/                check.sh, copy-sample.sh, run-mac.sh, testflight.sh (either app), make-app-icon.sh and
+                          make-tour.sh (the onboarding tour's clips, with tour/)
 ```
 
 ## Tests worth knowing
@@ -425,7 +426,7 @@ The split, today's onboarding and the working rules are in the sessions' shared 
 Agreed since:
 - `MailWindow` shows its `OnboardingView` over the whole window (no rail or tabs) while
   `Onboarding.isNeeded(store)`; wired 2026-11-17 evening, replacing the old "Connect your mail" card.
-- Its one screenshot goes in this package's asset catalog as `onboarding-screenshot`.
+- Its tour's clips are this package's `Resources/tour-*.mp4` ([apps-onboarding.md](apps-onboarding.md)).
 - The pairing words above are the owner's.
 
 ## Runs on this Mac

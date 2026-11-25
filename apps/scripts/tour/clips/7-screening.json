@@ -1,0 +1,13 @@
+{
+  "view": [1.35, 610, 440],
+  "start": {"state": "home", "pointer": [1120, 690]},
+  "steps": [
+    {"wait": 0.6},
+    {"move": [1083, 114], "duration": 1.0},
+    {"wait": 0.2},
+    {"click": true, "show": "screening"},
+    {"move": [760, 300], "duration": 1.1},
+    {"wait": 1.6},
+    {"back": true}
+  ]
+}

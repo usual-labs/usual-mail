@@ -16,8 +16,9 @@ This part's files (the rest of `apps/` is the Mac app's, in [apps.md](apps.md)):
   choice row, footer), and since 2026-11-21 the Google client's guided set-up: `GoogleClientSetupView.swift` (states,
   the path choice, `FittedScroll`), `GoogleClientPaths.swift` (`AgentPath`, `StepsPath`, `CopyButton`),
   `GoogleClientFileDrop.swift` (`ClientFileDrop`, `DroppedClientFile`).
-- The one imageset `onboarding-screenshot` in `UsualMailUI/Resources/Assets.xcassets` (agreed with the Mac app
-  session; nothing else in that catalog).
+- The tour's clips, `tour-*.mp4` in `UsualMailUI/Resources` (they replaced the one imageset `onboarding-screenshot` on
+  2026-11-25), `Onboarding/TourClip.swift` and `Shell/TourSample.swift`, and `apps/scripts/make-tour.sh` with
+  `apps/scripts/tour/`.
 - In `UsualMailKit`: `Store/Onboarding.swift` (steps, resume, `isNeeded`, words), `Store/OnboardingProgress.swift`,
   `Store/OnboardingAiKey.swift` (with an internal `MailStore.keep(aiStatus:)`, which writes the status read after
   saving a key through the same versioned path as `ai.status.changed`, as the Mac app session confirmed),
@@ -83,9 +84,26 @@ applies only to inboxes connected after it is set.
    the server that failed, an empty field offers "Test again" (`testAi`).
 7. **While your mail comes in:** nine slides (`Onboarding.slides`, title and line): Home is what needs you, A line on
    every message, Feed, Receipts, Notifications, Reply later / pin / snooze, Screening, Your whole inbox, Your inboxes
-   (Notifications and Your whole inbox added by the owner on 2026-11-20). One screenshot for all for now
-   (`built-home-sample.png`), arrows (also the left and right keys), a dot per slide; at the foot the progress line and
-   "Go to Home" (always enabled, Return), which ends the first run on this Mac.
+   (Notifications and Your whole inbox added by the owner on 2026-11-20). Each slide plays its own clip (`TourClip`,
+   `Onboarding/TourClip.swift`; the owner's words of 2026-11-25: "use dummy data to show properly the features, and
+   even show a cursor animating … with a gif/video instead of image"): the Mac app on the tour's sample, a drawn
+   pointer moving and clicking, crossfades between states and a closer framing, five to nine seconds, silent, looping
+   (`AVPlayerLooper` under an `AVPlayerLayer`, the Mac's and the iPhone's own representable), held at the moment the
+   feature shows with Reduce Motion on; one player a slide, crossfading. Arrows (also the left and right keys), a dot
+   per slide; at the foot the progress line and "Go to Home" (always enabled, Return), which ends the first run on
+   this Mac.
+   - **The clips** (`Resources/tour-<n>-<name>.mp4`, H.264, 1280 × 832, 2.4 MB for the nine; they replace the one
+     screenshot, `onboarding-screenshot`) are made by `apps/scripts/make-tour.sh`: it builds a copy of the Mac app as
+     `labs.usual.preview` (never the real app or its data), opens it in each state with `-UsualMailTour YES` (the
+     sample with every inbox well, nothing left for the AI and a summary on every mail, `Shell/TourSample.swift`,
+     debug builds only) and the place, inbox, mail and open-rail options, captures its window alone, then composes
+     each clip from `apps/scripts/tour/clips/<n>-<name>.json` (`tour/compose.swift`: CoreGraphics frames to ffmpeg).
+     Nothing drives the app (this Mac gives the sessions no pointer): each state is its own capture, the pointer is
+     drawn. Its windows open on screen while it runs. Seen on 2026-11-25 in the Mac preview copy, opened straight at
+     this step with `-UsualMailOnboardingSteps '{ <server name> = whileWaiting; }'` (the defaults' argument domain),
+     and in the iPhone simulator's preview copy the same way. They show the Mac's window on the iPhone too. There the
+     step's card had run past a 402-point screen (its width followed only the window's height); since 2026-11-25 the
+     clip is as wide as the screen leaves it and the card sits at the foot like the other steps.
 
 ## The Google client's guided set-up (2026-11-21)
 

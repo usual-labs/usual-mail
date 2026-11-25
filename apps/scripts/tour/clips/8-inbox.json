@@ -1,0 +1,14 @@
+{
+  "view": [1.35, 610, 440],
+  "start": {"state": "home", "pointer": [1120, 690]},
+  "steps": [
+    {"wait": 0.6},
+    {"move": [112, 444], "duration": 1.1},
+    {"wait": 0.2},
+    {"click": true, "show": "inbox"},
+    {"zoom": 1.35, "center": [760, 440], "duration": 0.6},
+    {"move": [760, 420], "duration": 1.2},
+    {"wait": 1.8},
+    {"back": true}
+  ]
+}

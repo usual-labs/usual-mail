@@ -14,6 +14,8 @@ import UsualMailKit
 /// ```
 ///
 /// - `-UsualMailSample YES`: core's sample data on the device, with no server (it reads as offline).
+/// - `-UsualMailTour YES`: the sample as the onboarding tour's clips show it (`SampleData.tour`: every inbox well,
+///   nothing left for the AI, a summary on every mail); implies `-UsualMailSample`.
 /// - `-UsualMailPairServer <address> -UsualMailPairCode <code>`: pair at launch when not paired. The code is used
 ///   once and kept nowhere; only the token pairing gives is saved, in the Keychain, as pairing by hand does.
 /// - `-UsualMailPlace home|reads|receipts|notifications|reply|pinned|snoozed|screening|search|inbox|settings`,
@@ -45,7 +47,9 @@ public struct LaunchOptions: Sendable {
     }()
 
     #if DEBUG
-        public var sample: Bool { flag("UsualMailSample") }
+        public var sample: Bool { flag("UsualMailSample") || tour }
+        /// `-UsualMailTour YES`: the sample as the onboarding tour's clips show it (`SampleData.tour`).
+        var tour: Bool { flag("UsualMailTour") }
 
         /// The server's address and a pairing code to pair with at launch, when both are given.
         var pairing: (address: String, code: String)? {
@@ -160,7 +164,7 @@ public struct LaunchOptions: Sendable {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .task {
                         do {
-                            store = try await MailStore.sample()
+                            store = try await MailStore.sample(LaunchOptions.current.tour ? .tour : .bundled)
                         } catch {
                             problem = "Couldn't load the sample: \(error.localizedDescription)"
                         }

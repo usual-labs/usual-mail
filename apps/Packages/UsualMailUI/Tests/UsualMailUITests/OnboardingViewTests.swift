@@ -8,8 +8,15 @@ import UsualMailKit
 /// and the welcome keeps usual.dev's margins.
 @MainActor
 struct OnboardingViewTests {
-    @Test func theCarouselsPictureIsBundled() {
-        #expect(Icon.bundle.image(forResource: "onboarding-screenshot") != nil)
+    @Test func everySlideHasItsClipBundled() throws {
+        #expect(TourClip.all.count == Onboarding.slides.count, "one clip a slide")
+        #expect(Set(TourClip.all.map(\.resource)).count == TourClip.all.count)
+        for clip in TourClip.all {
+            let url = try #require(clip.url, "\(clip.resource).mp4 in the package's resources")
+            let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+            #expect(size > 50_000 && size < 1_000_000, "\(clip.resource): \(size) bytes")
+            #expect(clip.still > 0)
+        }
     }
 
     @Test func theWelcomeIsManifestoD() {
