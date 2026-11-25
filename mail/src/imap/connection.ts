@@ -185,8 +185,29 @@ export async function closeClient(client: ImapFlow, ms: number): Promise<void> {
   if (!client.isClosed) client.close();
 }
 
+/**
+ * The response codes (RFC 5530) a server answers LOGIN with when it can't sign anyone in just now: imapflow marks any
+ * NO or BAD to LOGIN or AUTHENTICATE as `authenticationFailed`, these included, but the password may well be right.
+ */
+const TEMPORARY_LOGIN_CODES = new Set(["UNAVAILABLE", "INUSE", "LIMIT", "SERVERBUG"]);
+
 export function readableError(error: unknown, host: string): Error {
-  const e = error as { authenticationFailed?: boolean; code?: string; message?: string; responseText?: string };
+  const e = error as {
+    authenticationFailed?: boolean;
+    code?: string;
+    message?: string;
+    responseText?: string;
+    serverResponseCode?: string;
+  };
+  const answer = e?.responseText || e?.message || "";
+  const temporary = TEMPORARY_LOGIN_CODES.has(String(e?.serverResponseCode ?? "").toUpperCase()) ||
+    // Exchange's when the mailbox's backend isn't reachable: signed in, but it can't serve the mailbox.
+    /authenticated but not connected/i.test(answer);
+  if ((e?.authenticationFailed || e?.code === "AUTHENTICATIONFAILED") && temporary) {
+    // A failure that may pass: the server waits it out rather than asking for a new password.
+    const said = answer || e?.serverResponseCode || "no reason given";
+    return new Error(`The IMAP server at ${host} can't sign in just now: ${said}`);
+  }
   if (e?.authenticationFailed || e?.code === "AUTHENTICATIONFAILED") {
     // Named so the server tells a refused sign-in from a failure that may pass (core's SIGN_IN_REFUSED).
     const refused = new Error(`The IMAP server at ${host} refused the user name or password.`);

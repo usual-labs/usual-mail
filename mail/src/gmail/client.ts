@@ -26,15 +26,24 @@ export class GoogleTokenError extends Error {
   }
 }
 
+/**
+ * What a Gmail error means beyond its status, for the server to sort it (server/src/sync/health.ts): the token lacks
+ * the scope, which a new sign-in fixes; or the Google project's daily quota is spent, which lasts until Google resets
+ * it. The words (`message`) say the same.
+ */
+export type GmailErrorKind = "scope" | "daily_quota";
+
 export class GmailApiError extends Error {
   readonly status: number;
   readonly reason: string | undefined;
+  readonly kind: GmailErrorKind | undefined;
 
-  constructor(status: number, reason: string | undefined, message: string) {
+  constructor(status: number, reason: string | undefined, message: string, kind?: GmailErrorKind) {
     super(message);
     this.name = "GmailApiError";
     this.status = status;
     this.reason = reason;
+    this.kind = kind;
   }
 }
 
@@ -212,17 +221,27 @@ export class GmailClient {
         await this.options.clock.sleep(backoffMs(attempt, response.headers.get("retry-after"), this.options.clock.now()));
         continue;
       }
-      throw new GmailApiError(response.status, reason, readable(response.status, reason, message));
+      const kind = errorKind(response.status, reason, message);
+      throw new GmailApiError(response.status, reason, readable(response.status, kind, message), kind);
     }
   }
 }
 
-function readable(status: number, reason: string | undefined, message: string): string {
+/** The kind of a 403 the words and the server's sorting share: one test, so they always agree. */
+function errorKind(status: number, reason: string | undefined, message: string): GmailErrorKind | undefined {
+  if (status !== 403) return undefined;
+  if (reason === "dailyLimitExceeded") return "daily_quota";
+  if (reason === "insufficientPermissions" || /scope/i.test(message)) return "scope";
+  return undefined;
+}
+
+function readable(status: number, kind: GmailErrorKind | undefined, message: string): string {
   if (status === 401) return "Gmail refused the access token even after refreshing it. Connect the Gmail inbox again.";
-  if (status === 403 && reason === "dailyLimitExceeded") return "The Google project has used up its daily Gmail quota.";
-  if (status === 403 && (reason === "insufficientPermissions" || /scope/i.test(message))) {
-    return "The Gmail token lacks the needed scope (https://www.googleapis.com/auth/gmail.modify).";
+  if (kind === "daily_quota") {
+    return "The Google project has used up its daily Gmail quota. Gmail answers again once Google resets it, at midnight " +
+      "Pacific time.";
   }
+  if (kind === "scope") return "The Gmail token lacks the needed scope (https://www.googleapis.com/auth/gmail.modify).";
   return `Gmail: ${message}`;
 }
 

@@ -3,6 +3,12 @@
 What each pass ran and saw, newest first, split out of [mail.md](mail.md). Commands and the Docker notes are in
 mail.md, "Run and check".
 
+- **IMAP's temporary login refusals and Gmail's error kinds (2026-11-25, the server review of 0.1.2):** mail
+  `npm run check`: tsc clean; 618 tests, 566 passed, 29 skipped, 23 failed, the same Dovecot failures as before
+  ([known-issues.md](known-issues.md)). New: `test/unit/imap-login-errors.test.ts` (a wrong password is
+  `SignInRefused`; `UNAVAILABLE`, `INUSE`, `LIMIT`, `SERVERBUG` and Exchange's "authenticated but not connected" aren't)
+  and Gmail's scope and daily-quota kinds and words.
+
 - **A refused IMAP login named (2026-11-25, 0.1.2):** mail `npm run check`, with Docker answering for the first time:
   tsc clean; 615 tests, 563 passed, 29 skipped, 23 failed, every failure in "IMAP on Dovecot (dovecot/dovecot:2.4.5)",
   whose per-test logins Dovecot refused ("The IMAP server at 127.0.0.1 refused the user name or password."). The

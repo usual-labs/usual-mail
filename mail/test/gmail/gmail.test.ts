@@ -395,8 +395,24 @@ describe("Gmail rate limits", () => {
     await assert.rejects(provider.sync(null), /Gmail/);
     assert.equal(sleeps.length, 2);
     fake.failNext(1, { status: 403, reason: "dailyLimitExceeded", message: "Daily Limit Exceeded" });
-    await assert.rejects(provider.sync(null), /daily Gmail quota/);
+    await assert.rejects(provider.sync(null), (error: Error & { kind?: string }) =>
+      /daily Gmail quota\. Gmail answers again once Google resets it, at midnight Pacific time\./.test(error.message) &&
+      error.kind === "daily_quota");
     assert.equal(sleeps.length, 2, "no wait for a daily limit");
+  });
+
+  it("says a missing scope in the same words and kind, by Gmail's reason or its message", async () => {
+    const { fake, provider } = setup({ maxRetries: 0 });
+    for (const failure of [
+      { status: 403, reason: "insufficientPermissions", message: "Insufficient Permission" },
+      { status: 403, reason: "forbidden", message: "Request had insufficient authentication scopes." },
+    ]) {
+      fake.failNext(1, failure);
+      await assert.rejects(provider.sync(null), (error: Error & { kind?: string }) =>
+        error.kind === "scope" && /lacks the needed scope/.test(error.message));
+    }
+    fake.failNext(1, { status: 403, reason: "accessNotConfigured", message: "Gmail API has not been used in project 1" });
+    await assert.rejects(provider.sync(null), (error: Error & { kind?: string }) => error.kind === undefined);
   });
 
   it("spends quota units at the configured pace", async () => {

@@ -128,7 +128,11 @@ for the next INBOX change).
   answer within `probeMs` (10 s), a new connection is opened. Both cases are tested.
 - A refused login (`authenticationFailed`, `AUTHENTICATIONFAILED`) is an error named `SignInRefused` (core's
   `SIGN_IN_REFUSED`, 0.1.2), "The IMAP server at … refused the user name or password.", so the server says at once
-  that the inbox needs a new password; every other failure may pass (`readableError`).
+  that the inbox needs a new password; every other failure may pass (`readableError`). imapflow marks any NO or BAD to
+  LOGIN or AUTHENTICATE as `authenticationFailed`, so one whose `serverResponseCode` says the server can't sign anyone
+  in just now (RFC 5530's `UNAVAILABLE`, `INUSE`, `LIMIT`, `SERVERBUG`), or Exchange's "authenticated but not
+  connected", is a plain error instead: "… can't sign in just now: …", which waits out the grace
+  (`test/unit/imap-login-errors.test.ts`; the server review of 0.1.2).
 - Timeouts: connect 30 s, greeting 16 s, socket 120 s. `close` waits at most 3 s for LOGOUT, then drops the
   socket, and stops every watcher.
 - Without implicit TLS, STARTTLS is required unless the host is this machine. On this machine (bridges such as

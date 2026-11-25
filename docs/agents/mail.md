@@ -330,6 +330,10 @@ inbox, and what the Cloudflare host passes: [mail-gmail-large.md](mail-gmail-lar
 - Retries up to 6 times on 429, 500, 502, 503, 504 and 403 rate-limit reasons, from 1 s doubling to 32 s with up
   to 1 s of jitter, or Retry-After when longer (capped at 5 minutes). A 401 refreshes the token once.
   `dailyLimitExceeded` isn't retried.
+- A `GmailApiError` carries a `kind` the server sorts by (0.1.2, `errorKind`, the same test as its words): `scope`
+  for a 403 whose reason is `insufficientPermissions` or whose message names a scope ("The Gmail token lacks the needed
+  scope …"; a new sign-in fixes it), `daily_quota` for `dailyLimitExceeded` ("… used up its daily Gmail quota. Gmail
+  answers again once Google resets it, at midnight Pacific time."; it may pass).
 - Gmail's HTTP batch endpoint isn't used: it saves no quota.
 - No `watch`: Gmail push needs a Google Cloud Pub/Sub topic. The server polls.
 
