@@ -17,6 +17,8 @@ import { trackers as shippedTrackers, type Trackers } from "./trackers.ts";
 
 /** How many different addresses of one message are matched against the tracker list at most. */
 export const MAX_EXAMINED_ADDRESSES = 300;
+/** How much of a picture's address is matched against the tracker list. */
+export const TRACKER_READ = 2_048;
 /** How many messages' plans are kept. */
 const KEPT_PLANS = 200;
 /**
@@ -154,7 +156,9 @@ export class PicturePlans {
       if (!makers.has(picture.url)) {
         if (makers.size >= MAX_EXAMINED_ADDRESSES) continue;
         this.work.matches++;
-        makers.set(picture.url, this.#list.match(picture.url));
+        // Only an address's start is matched: the list's patterns name sites and paths, and a long address read whole
+        // could hold the server for long (some patterns scan back and forth).
+        makers.set(picture.url, this.#list.match(picture.url.slice(0, TRACKER_READ)));
       }
       const maker = makers.get(picture.url)!;
       if (maker) names.add(maker);

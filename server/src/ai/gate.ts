@@ -18,15 +18,23 @@ const CODE = /(?<![\p{L}\p{N}#+$€£.,/:_-])(?:\p{Nd}{6,8}|\p{Nd}{3}[ -]\p{Nd}{
 /** How near a code must be to a word that names one, in characters. */
 const NEAR = 80;
 
-/** Whether the text holds a code within 80 characters of a word that names one. */
+/**
+ * Whether the text holds a code within 80 characters of a word that names one. One pass over both, in order (0.1.3:
+ * each code against every word took minutes on a crafted 1 MB message, under the server's lock): words and codes each
+ * come in order and never overlap, so the first word that doesn't end too early for a code is the only one to look at.
+ */
 export function holdsCode(text: string): boolean {
   const words = [...text.matchAll(CODE_WORD)].map((match) => [match.index, match.index + match[0].length] as const);
   if (words.length === 0) return false;
-  return [...text.matchAll(CODE)].some((match) => {
+  let next = 0;
+  for (const match of text.matchAll(CODE)) {
     const start = match.index;
     const end = start + match[0].length;
-    return words.some(([from, to]) => start - to <= NEAR && from - end <= NEAR);
-  });
+    while (next < words.length && words[next]![1] < start - NEAR) next++;
+    if (next === words.length) return false;
+    if (words[next]![0] - end <= NEAR) return true;
+  }
+  return false;
 }
 
 /**

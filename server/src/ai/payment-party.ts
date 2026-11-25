@@ -14,19 +14,23 @@ const LEGAL_SUFFIXES = [
   "S.p.A.", "SpA", "S.r.l.", "Srl", "B.V.", "N.V.", "Pty Ltd", "Pty", "Oyj", "Oy", "K.K.", "Sp. z o.o.", "s.r.o.", "a.s.",
   "Kft.", "Zrt.", "e.K.", "e.V.", "OHG", "GbR", "ApS", "A/S", "AG", "KG", "UG", "SE", "SA", "BV", "NV", "AB", "AS", "KK",
 ].sort((a, b) => b.length - a.length);
-const SUFFIX_PATTERNS = LEGAL_SUFFIXES.map((suffix) => new RegExp(`(?:^|[\\s,]+)${escape(suffix)}$`, /^[A-Z]{2}$/.test(suffix) ? "" : "i"));
-const TEAM = /(?:^|[\s,]+)team$/i;
+// Each run of spaces and commas is read from its start only (`(?<![\s,])`), so these stay linear on a long run.
+const SUFFIX_PATTERNS = LEGAL_SUFFIXES.map((suffix) => new RegExp(`(?:^|(?<![\\s,])[\\s,]+)${escape(suffix)}$`, /^[A-Z]{2}$/.test(suffix) ? "" : "i"));
+const TEAM = /(?:^|(?<![\s,])[\s,]+)team$/i;
+const TRAILING = /(?<![\s,])[\s,]+$/;
+/** The most of a name read: a party's name is a short line, and a long one would be read once per suffix taken off. */
+const NAME_READ = 200;
 
 /**
  * A company's name as a person says it: without a trailing legal suffix ("Hetzner Online GmbH", "Acme, Inc."), and
  * without a trailing "Team" (and then a leading "The"). Null when nothing is left.
  */
 export function partyName(name: string): string | null {
-  let rest = name.trim();
+  let rest = name.slice(0, NAME_READ).trim();
   for (let changed = true; changed;) {
     changed = false;
     for (const pattern of SUFFIX_PATTERNS) {
-      const next = rest.replace(pattern, "").replace(/[\s,]+$/, "");
+      const next = rest.replace(pattern, "").replace(TRAILING, "");
       if (next !== rest) {
         rest = next;
         changed = true;
@@ -34,7 +38,7 @@ export function partyName(name: string): string | null {
     }
     const withoutTeam = rest.replace(TEAM, "");
     if (withoutTeam !== rest) {
-      rest = withoutTeam.replace(/^the\s+/i, "").replace(/[\s,]+$/, "");
+      rest = withoutTeam.replace(/^the\s+/i, "").replace(TRAILING, "");
       changed = true;
     }
   }

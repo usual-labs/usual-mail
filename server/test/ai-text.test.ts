@@ -64,6 +64,16 @@ describe("the screening gate's own check", () => {
   });
 });
 
+describe("in linear time (0.1.3)", () => {
+  test("blocks, tags and links read as before", () => {
+    assert.equal(readableHtml("<style>p { color: red }</style><p>Hi</p><script>x()</script><p>there</p>"), "Hi\nthere");
+    assert.equal(readableHtml("<style>never closed <p>Hi</p>"), "never closed Hi", "a block never closed stays, as before");
+    assert.equal(readableHtml("a < b and <b>bold</b>"), "a < b and bold", "a lone < no longer swallows the text up to the next tag");
+    assert.equal(cleanText("See https://x.example/a/b)."), "See https://x.example/…).");
+    assert.equal(plainText(null, "<style>x</style><p>A</p><b>b</b>"), "A\n b");
+  });
+});
+
 describe("in each job's request", () => {
   let t: TestServer;
   beforeEach(async () => {

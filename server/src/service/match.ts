@@ -31,7 +31,7 @@ export function subjectFor(message: {
 /** "Weekly Build <weekly-build.example.com>" and "weekly-build.example.com" are the same list. */
 export function normalizeListId(value: string | null | undefined): string | null {
   if (!value) return null;
-  const inner = /<([^>]+)>/.exec(value)?.[1] ?? value;
+  const inner = /<([^<>]+)>/.exec(value)?.[1] ?? value;
   return inner.trim().toLowerCase() || null;
 }
 

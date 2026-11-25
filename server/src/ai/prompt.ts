@@ -5,12 +5,12 @@
 // words stay outside it. Pure: the caller loads the thread.
 
 import {
-  ADDRESS_STAND_IN,
   AI_SENT_FIELD_WORDS,
   CATEGORIES,
   CATEGORIZE_TEXT_LIMIT,
   NAMELESS_SENDER,
   OWN_SENDER,
+  SUBJECT_LIMIT,
   SUMMARIZE_TEXT_LIMIT,
   SUMMARY_LIMIT,
   type Category,
@@ -20,6 +20,7 @@ import { z } from "zod";
 import type { ChoiceRequest, ObjectRequest, TextRequest } from "./models.ts";
 import { zonedDate, type DatedText } from "./payment-dates.ts";
 import { PAYMENT_SERVICE_LIST } from "./payment-services.ts";
+import { cutWithoutAddresses, withoutAddresses } from "./addresses.ts";
 import { modelText } from "./text.ts";
 
 export const DATA_TAG = "usual-mail-data";
@@ -113,13 +114,9 @@ export function sentDay(at: number, timeZone: string): string {
   return `${WEEKDAY_NAMES[new Date(`${date}T00:00:00Z`).getUTCDay()]} ${date}`;
 }
 
-/** Anything shaped like an email address. */
-const ADDRESS = /[\p{L}\p{N}._%+'=-]+@[\p{L}\p{N}-]+(?:\.[\p{L}\p{N}-]+)+/gu;
-
-/** The text with every email address in it replaced, so a summary request carries none. */
-export function withoutAddresses(text: string): string {
-  return text.replace(ADDRESS, ADDRESS_STAND_IN);
-}
+// Taking addresses out in linear time (0.1.3: the pattern this replaces took 55 seconds for 128 KB without an "@",
+// under the server's lock): addresses.ts.
+export { cutWithoutAddresses, withoutAddresses } from "./addresses.ts";
 
 /**
  * How the summarize job names a message's sender: "you" for the mailbox's own, their name, or "someone" when they
@@ -160,7 +157,7 @@ function dataNotice(id: string): string {
  */
 export function categorizeRequest(model: string, input: CategorizeInput, id: string): ChoiceRequest {
   const item: Partial<Record<CategorizeField, unknown>> = {
-    subject: input.subject,
+    subject: input.subject.slice(0, SUBJECT_LIMIT),
     from: input.from.name ? { name: input.from.name, email: input.from.email } : { email: input.from.email },
   };
   if (input.listId) item.listId = input.listId;
@@ -197,11 +194,11 @@ export function summarizeRequest(model: string, subject: string, messages: Summa
 
 /** What a summarize request carries, and a details or event request too: the subject, then each message newest first. */
 function summarizeItems(subject: string, messages: SummarizeMessage[], timeZone: string): Array<Partial<Record<SummarizeField, unknown>>> {
-  const items: Array<Partial<Record<SummarizeField, unknown>>> = [{ subject: withoutAddresses(subject) }];
+  const items: Array<Partial<Record<SummarizeField, unknown>>> = [{ subject: cutWithoutAddresses(subject, SUBJECT_LIMIT) }];
   let left = SUMMARIZE_TEXT_LIMIT;
   for (const message of messages) {
     if (left <= 0) break;
-    const text = withoutAddresses(modelText(message.text, message.html)).slice(0, left);
+    const text = cutWithoutAddresses(modelText(message.text, message.html), left);
     left -= text.length;
     items.push({ from: withoutAddresses(message.fromName), ...(message.at !== undefined && { sent: sentDay(message.at, timeZone) }), text });
   }
@@ -350,7 +347,8 @@ export function acceptCategory(answer: string | null, onlyConversation: boolean)
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]/;
 const LINE_BREAKS = /\r\n|[\r\n\u000b\u000c\u0085\u2028\u2029]/g;
-const MARKUP = /<\/?[a-z!?][^>]*>|&(?:[a-z]+|#\d+|#x[0-9a-f]+);/i;
+// A tag ends at its ">" or where the next "<" starts, so no "<" is read past another (linear in the answer's length).
+const MARKUP = /<\/?[a-z!?][^<>]*>|&(?:[a-z]+|#\d+|#x[0-9a-f]+);/i;
 /** Where a sentence may end: `.`, `!` or `?` before a space and a capital, a digit or a quote. */
 const SENTENCE_END = /[.!?](?=\s+["'\u201c\u2018(\p{Lu}\p{N}])/gu;
 /** A first sentence shorter than this is taken for an abbreviation ("U.S. Bank asks…") and read on. */

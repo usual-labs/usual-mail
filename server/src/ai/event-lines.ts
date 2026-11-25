@@ -18,7 +18,7 @@ const CONNECTORS = new Set(["on", "at", "for", "from", "in", "to", "and", "or", 
 export function withoutRelativeWords(status: string): { line: string; changed: boolean } | { dropped: string } {
   const cut = status.replace(RELATIVE_IN_STATUS, " ");
   if (cut === status) return { line: status, changed: false };
-  const left = cut.replace(/\s+/g, " ").replace(/^[\s,;:·|\-–—(]+|[\s,;:·|\-–—(]+$/gu, "").replace(/\(\s*\)/g, "").trim();
+  const left = cut.replace(/\s+/g, " ").replace(/^[\s,;:·|\-–—(]+|(?<![\s,;:·|\-–—(])[\s,;:·|\-–—(]+$/gu, "").replace(/\(\s*\)/g, "").trim();
   const words = left.split(" ").filter((word) => /\p{L}{2,}/u.test(word) && !CONNECTORS.has(word.toLowerCase()));
   if (words.length === 0) return { dropped: "relative_only" };
   return { line: left.charAt(0).toUpperCase() + left.slice(1), changed: true };

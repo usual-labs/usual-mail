@@ -8,6 +8,8 @@ import type { AiConnection, AiGateway, AiJob, AiJobSetting, AiProvider } from ".
 
 /** The most of one message's text the categorize job sends. */
 export const CATEGORIZE_TEXT_LIMIT = 4_000;
+/** The most of a subject any job sends (0.1.3: a subject had no limit, and a long one was read under the server's lock). */
+export const SUBJECT_LIMIT = 1_000;
 /** The most text, over all of a thread's messages, the summarize job sends. */
 export const SUMMARIZE_TEXT_LIMIT = 8_000;
 /** The longest summary the server keeps. */
@@ -43,7 +45,7 @@ function thousands(n: number): string {
  */
 export const AI_SENT_FIELD_WORDS = {
   categorize: {
-    subject: "the subject",
+    subject: `the subject (at most ${thousands(SUBJECT_LIMIT)} characters)`,
     from: "the newest incoming message's sender name and address",
     listId: "its List-Id",
     machineSent: "whether it looks machine-sent",
@@ -52,7 +54,7 @@ export const AI_SENT_FIELD_WORDS = {
       `cut to its site and invisible characters, padding and long divider lines taken out, at most ${thousands(CATEGORIZE_TEXT_LIMIT)} characters`,
   },
   summarize: {
-    subject: "the subject",
+    subject: `the subject (at most ${thousands(SUBJECT_LIMIT)} characters)`,
     text:
       "the text of the thread's messages from the newest back, with links cut to their site and invisible characters " +
       `taken out, at most ${thousands(SUMMARIZE_TEXT_LIMIT)} characters in all`,
