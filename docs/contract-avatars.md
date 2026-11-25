@@ -51,7 +51,7 @@ for the message's From:
    person: initials.
 5. **The domain isn't a mailbox provider anyone can sign up to** (Gmail, Outlook, Hotmail and Live in every country,
    Yahoo, iCloud, Proton, GMX, Zoho, mail.com's whole published list of domains, and others:
-   `server/src/avatars/freemail.ts`), **nor a platform whose customers send from its own domain** (a Microsoft 365
+   `core/src/mail-domains.ts`, one list with the screening gate's), **nor a platform whose customers send from its own domain** (a Microsoft 365
    tenant's `onmicrosoft.com`, a Google group, a newsletter platform's writers, a sending service's shared domain):
    none of those is a brand. Such a provider's own notices come from other domains.
 6. **Its site gave a picture** the server keeps (below). Never the inbox's own mail.

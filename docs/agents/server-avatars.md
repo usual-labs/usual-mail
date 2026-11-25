@@ -30,8 +30,9 @@ src/avatars/                      host-neutral
   host.ts          asciiHost: a host name in ASCII or null
   suffixes.ts      rulesFromList (the list's file), SuffixList (publicSuffix, registrableDomain)
   shipped.ts       the shipped list from suffixes.json, or null
-  freemail.ts      mailbox providers anyone can sign up to
-  rules.ts         organisational (automated or filed), avatarDomain (proved, the address's own, registrable, not freemail)
+  rules.ts         organisational (automated or filed), avatarDomain (proved, the address's own, registrable, not a public
+                   mail domain: core's isPublicMailDomain and isSharedPlatform, in core/src/mail-domains.ts since 2026-11-25,
+                   one list with the screening gate's; it was src/avatars/freemail.ts)
   discover.ts      icons in a page's head and a manifest, bounded; ranking; the conventional fallbacks
   ico.ts, png.ts   ICO's largest image as a PNG; a BMP converted; the server's own PNG writer (CompressionStream)
   picture.ts       avatarPicture: what may be kept (formats, sizes, square-ish, still)

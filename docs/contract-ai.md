@@ -4,7 +4,8 @@ Part of [the contract](contract.md) (fifth revision, 2026-11-17, as amended the 
 the owner removed the per-inbox AI switch; amended 2026-11-18 by the owner's decisions that the AI works through all
 synced mail, that a summary aims for one line, and that a person's Settings show the AI's usage; amended 2026-11-19
 after an audit of the AI's labels: the kinds' words, what a model reads of a message, and asking the AI again once;
-and the same day by the owner's request for payment details on receipts and invoices).
+and the same day by the owner's request for payment details on receipts and invoices; amended 2026-11-25 by the
+owner's decision that more kinds of mail than one-time codes skip Screening, through one more question at the gate).
 Shapes are in
 `core/src/ai.ts` and `core/src/ai-usage.ts`, and what leaves the server, in numbers and in the words a person is shown,
 in `core/src/ai-words.ts`; the words, lists, actions and the sorting of new mail are on the contract's main page.
@@ -88,7 +89,9 @@ in `core/src/ai-words.ts`; the words, lists, actions and the sorting of new mail
   incoming mail joins a thread, it may decide a category for an `unknown` one, and it may move a thread it had filed
   elsewhere to `conversation` (a person answered a newsletter, say); any other answer leaves that thread where it is.
   It never moves a thread out of `conversation`: a thread in `conversation` is never categorized again by the AI. The
-  one exception is the dated one-off of 2026-11-19 below; it is not a standing behaviour.
+  one exception is the dated one-off of 2026-11-19 below; it is not a standing behaviour. **A thread that skipped
+  Screening while its sender isn't let in** (`skippedScreening`) isn't categorized again when mail joins it: the AI
+  could only move it to `conversation`, which would put a stranger's mail in Home.
 - **A thread needs a summary** when it has none, or when incoming mail has joined it since the summary was written,
   unless it is `otp`. **One-time codes are never summarized:** an `otp` thread is not sent to the summarize job, and a
   thread that becomes `otp`, whoever decides it, loses any summary it had. **A `receipt` or an `invoice` needs its
@@ -137,13 +140,14 @@ in `core/src/ai-words.ts`; the words, lists, actions and the sorting of new mail
   and shows in Home unless it is screened, done or stacked. Interfaces show the snippet in place of a summary.
 - **What a categorize does:** it sets the category and `categorizedBy: "ai"`, clears `reason`, raises the version,
   sends `thread.changed` and writes the thread back to where it now belongs (its label). Putting a thread in `otp`
-  also removes its summary and, if it is screened by the sender gate, stops screening it only when the server's own
-  check holds (below). **What a summary does:** it sets `summary`, raises the version and sends `thread.changed`;
+  also removes its summary. For a thread screened by the sender gate, it stops screening it only when the server's own
+  check confirms a kind of mail that may skip Screening (below), and then sets `skippedScreening` to that kind. **What a summary does:** it sets `summary`, raises the version and sends `thread.changed`;
   payment details set `payment` and `summary` (their `what`) the same way.
   Nothing else: the AI never marks done, stacks, screens or lets in, sets `need`, trashes, sends, drafts or changes a
   rule.
-- **Cost:** at most one categorize request and one summarize request per thread for each incoming message; no
-  summarize request for a one-time code, no categorize request for a thread in `conversation` once decided, and none
+- **Cost:** at most one categorize request and one summarize request per thread for each incoming message, and for a
+  thread at the screening gate at most one more on the categorize job's model: the gate's question, asked only when
+  the server's own check could let the mail through (below); no summarize request for a one-time code, no categorize request for a thread in `conversation` once decided, and none
   at all for a done thread, a blocked sender or spam. Asking again costs one categorize request per thread it marks,
   once.
 
@@ -174,11 +178,14 @@ to the company that runs the model, or that provider itself). These words are `A
 - **To categorize it:** the subject (at most 1,000 characters); the newest incoming message's sender name and
   address, its List-Id and whether it looks machine-sent; and that message's text (made from its HTML when it has no
   text part or only a short stub of one), with each link cut to its site and invisible characters, padding and long
-  divider lines taken out, at most 4,000 characters.
+  divider lines taken out, at most 4,000 characters. For machine-sent mail from a sender you haven't let in, the same
+  may be sent once more, to ask whether it is a sign-in link, a security alert, an order update or another notice that
+  may skip Screening (below).
 - **To summarize it:** the subject (at most 1,000 characters), and the text of the thread's messages from the newest
   back, with links cut to their site and invisible characters taken out, at most 8,000 characters in all, each with
   its sender's name ("someone" when the sender gave none, "you" for your own) and the day it was sent (its weekday and
-  date where the server runs). Any email address in the subject or the text is replaced with [address], so no address is sent.
+  date where the server runs). Any email address in the subject or the text is replaced with [address], so no
+  address is sent.
   Never for a one-time code. For a receipt or an invoice the same is sent, and in place of a summary the AI is asked
   who the money goes to or came from, how much, whether it is paid, will be charged or is to be paid, whether it is a
   refund, when it is due or charged and what it was for. For a notification the same is sent, and with the summary
@@ -521,19 +528,57 @@ Mail is untrusted input to a model, exactly as it is to an outside agent. The se
 - **never lets a model's answer alone lift the screening gate** (below);
 - **never shows anything a model wrote as HTML.** Interfaces show summaries as plain text.
 
-**A model's `otp` at the screening gate.** Mail can talk a model into calling it a one-time code, and `otp` is the one
-category that unscreens a thread whose sender isn't let in. So for such a thread (screened by the sender gate, not
-filed under Screening by the mailbox) the server's AI's `otp` lifts the gate only when the server's own check also
-holds for the message the model read (the newest incoming one); otherwise the thread stays screened, in `otp`. The
-check is conservative on purpose, so a code it misses waits in Screening rather than a stranger skipping it:
+**A model's answer at the screening gate** (2026-11-17 for one-time codes; every kind since the owner's decision of
+2026-11-25). Mail can talk a model into calling it anything, and phishing imitates exactly the mail that may skip
+Screening: sign-in links, security alerts, password resets, receipts. So for a thread screened by the sender gate (not
+filed under Screening by the mailbox) the server's AI lifts the gate only when the server's own check also holds for the
+message the model read (the newest incoming one); otherwise the thread stays screened, in the model's category. The
+check is conservative on purpose, so what it misses waits in Screening rather than a stranger skipping it
+(`server/src/ai/gate.ts`, `gate-evidence.ts`):
 
-- the message looks machine-sent by the provider's test (`ProviderMessage.automated`: bulk, auto-submitted, a list
-  header or no-reply), **and**
-- its subject or text holds a code within 80 characters of one of the words `code`, `codes`, `passcode`, `one-time`,
-  `otp`, `verification` or `verify` (whole words, any case). A code is six to eight digits, or two groups of three or
-  four digits joined by one space or hyphen (`482913`, `482 913`, `4829-1375`), standing alone: no letter, digit or
-  one of `# + $ € £ . , / : _ -` right before it, and no letter or digit, nor one of `. , / : -` followed by a digit,
-  right after it. A sign-in link without such a code doesn't count.
+- **the mailbox provider's checker proved the From domain,** and it is the address's own: `fromCheck` is `verified`
+  for exactly that domain, by the rules sender pictures use ([sender pictures](contract-avatars.md), "When a picture
+  is shown", 3), and the domain is no public mail domain or shared platform (core's `isPublicMailDomain`,
+  `isSharedPlatform`). A server without the Public Suffix List, and an IMAP inbox, prove nothing, so nothing skips
+  Screening there; **and**
+- **the message looks machine-sent** by the provider's test (`ProviderMessage.automated`: bulk, auto-submitted, a list
+  header or no-reply); **and**
+- **it shows the kind's evidence**, read in its subject and text (made from its HTML when it has none), links whole,
+  words whole and in any case, a phrase's words joined by a space, a hyphen or nothing ("sign in", "sign-in",
+  "signin"):
+  - **a one-time code** (`code`, for the AI's `otp`): a code within 80 characters of one of the words `code`, `codes`,
+    `passcode`, `one-time`, `otp`, `verification` or `verify`. A code is six to eight digits, or two groups of three or
+    four digits joined by one space or hyphen (`482913`, `482 913`, `4829-1375`), standing alone: no letter, digit or
+    one of `# + $ € £ . , / : _ -` right before it, and no letter or digit, nor one of `. , / : -` followed by a digit,
+    right after it;
+  - **a sign-in link** (`sign_in`): a web link (in the text, or one of the HTML's own links) and "sign in", "log in"
+    or "magic link";
+  - **an email confirmation** (`email_confirmation`): a link, a word for confirming ("confirm", "verify",
+    "activate", "validate" and their nouns) and one for what ("email", "address", "account", "sign up",
+    "registration", "subscription");
+  - **a security alert** (`security`): a security phrase ("new sign-in", "new device", "was this you", "suspicious",
+    "unusual activity", "password changed", "two-factor", "recovery codes", "passkey" and the like);
+  - **a password reset or account change** (`account`): a link with a reset phrase ("reset your password", "password
+    reset"), or an account change ("email address changed", "plan changed", "account deleted", "data export",
+    "download your data" and the like);
+  - **a receipt or order update** (`order`): an order or shipping word and either a reference (five to thirty capital
+    letters, digits and hyphens with at least one digit, within 40 characters after "order", "booking",
+    "confirmation", "tracking", "reference", "ticket" and the like) or an amount (a currency's symbol or ISO code next
+    to a number);
+  - **a booking** (`booking`): a booking word ("booking", "reservation", "flight", "hotel", "ticket",
+    "appointment" and the like) and a reference, an amount, or a day or time;
+  - **a payment alert** (`payment`): a payment word ("payment", "charged", "card", "renewal", "declined", "fraud"
+    and the like) and an amount or a card's last four digits ("ending in 4242", "•••• 4242").
+
+**The gate's question.** For an answer of `otp` whose code the check accepts, nothing more is asked. Otherwise, when
+the AI's category may be one of the kinds and the proof, machine-sent mail and one of those kinds' evidence hold, the
+categorize job's model is asked once which kind it is (`server/src/ai/pass-prompt.ts`): the same item the categorize
+request carried, inside its own marked data block, a choice among that category's kinds (core's
+`SCREENING_PASS_CATEGORIES`) and `none`; a decision model answers it on the gateway, a language model through
+structured output limited to the options. Only an answer among the options counts, and the kind it names must then
+pass the check itself. It is counted in the usage as a categorize request. When the service fails it, the category
+stands, screened, and the failure counts like any other. **An `invoice` is never asked about and never skips
+Screening.**
 
 A person's own `categorize` to `otp` lifts the gate as before; the check applies only to the server's AI.
 

@@ -125,8 +125,12 @@ the guided Google set-up of 2026-11-21):**
   notification's event (status, about, when; migration 0016), each checked against
   the mail; migration 0012) in place of its summary; requests
   held to core's words (no address in a summary request,
-  nothing of a blocked sender's), the key scrubbed in any form, its own check before a model's `otp` lifts the
-  screening gate, a model of the wrong kind for its job failing the test in words; every inbox's mail once a key is
+  nothing of a blocked sender's), the key scrubbed in any form, its own check before a model's answer lifts the
+  screening gate (since 2026-11-25 for one-time codes, sign-in links, email confirmations, security alerts, password
+  resets and account changes, receipts and order updates, bookings and payment alerts: the provider's proof of the
+  From domain, machine-sent mail, the kind's evidence, and one question to the AI; `Thread.skippedScreening`;
+  [server-screening.md](server-screening.md)), senders let in without the AI (another inbox on the server, a
+  colleague at the inbox's own domain, both proved), a model of the wrong kind for its job failing the test in words; every inbox's mail once a key is
   set. Google sign-in for Gmail (state, PKCE, exchange, connect or reconnect in place, the page, the outcome, tokens
   sealed with the host's secret added when opened, revocation on removal). Rules a person taught apply
   whatever the trust; a new server reads recent filed mail as not done; a blocked sender writing into a thread

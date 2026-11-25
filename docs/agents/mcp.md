@@ -107,6 +107,9 @@ Registered in this order, the same for every agent token. Nothing that needs a p
 | `write_brief` | `writeBrief` | Times normalised; `from` before `to`. The server fills in counts and each highlight's `subject` |
 | `get_brief` | `latestBrief` or `brief`, `listInboxes` | Each highlight's `subject` as the brief carries it; no thread is read. Has the brief view |
 
+- A thread's state (every tool that returns threads) carries `skippedScreening` when the thread skipped Screening while
+  its sender isn't let in (2026-11-25): core's line, "Skipped Screening: a security alert", so an agent can say why a
+  stranger's mail isn't in Screening.
 - Every result is short text: the connector's own sentence, then one data block, then what to do next. Lists end
   their data with `{"nextCursor": ...}` when there is more.
 - `list_threads`, `get_brief`, `act_on_threads` and `undo_action` also return `structuredContent`, which the views

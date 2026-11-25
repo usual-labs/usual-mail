@@ -95,14 +95,12 @@ pages and Anthropic's model list; the gateway's categorize default changed on 20
   keeps their decision. A due flag is cleared only if no incoming mail joined since the request was built.
 - **Categorizing** goes through the action engine as a `categorize` by `{ kind: "ai", job: "categorize", model }`:
   always applied, always silent unless the write-back is refused or carries a note, `categorizedBy: "ai"` and
-  `categorizedByActor` the AI with its model, reason cleared, written back. **An `otp` at the screening gate** (the
-  thread screened by the sender gate, not by the mailbox) lifts it only when `looksLikeCode` (`gate.ts`) holds for the
-  message the model read: machine-sent (`messages.automated`) and a code (six to eight digits, or two groups of three
-  or four joined by a space or hyphen, standing alone) within 80 characters of "code", "codes", "passcode",
-  "one-time", "otp", "verification" or "verify"; otherwise `perform` gets `holdGate` and the thread stays screened in
-  `otp`. A thread the AI filed elsewhere is only ever moved to `conversation`; any other answer leaves
-  it, unless it is asked again (below). **A summary** sets `summary` with a version and `thread.changed`; it isn't
-  recorded.
+  `categorizedByActor` the AI with its model, reason cleared, written back. **At the screening gate** (the thread
+  screened by the sender gate, not by the mailbox) the AI's categorize always carries `gate` to `perform`: a kind
+  lifts the gate and sets `skipped_screening`; none keeps the thread screened whatever the category
+  ([server-screening.md](server-screening.md)). A thread the AI filed elsewhere is only ever moved to `conversation`;
+  any other answer leaves it, unless it is asked again (below). **A summary** sets `summary` with a version and
+  `thread.changed`; it isn't recorded.
 - **Accepted answers** (`prompt.ts`): one of the six decided categories (only `conversation` where the AI may only
   move a thread there). A summary (`acceptSummary`, since 2026-11-18): line breaks become spaces; then the safety
   checks on the **whole** answer (control, zero-width or direction characters; markup or an HTML entity; the data
@@ -142,6 +140,11 @@ pages and Anthropic's model list; the gateway's categorize default changed on 20
   conversations, 5 of them with mail the mailbox sent and 1 with only a forged "From: me", and 125 newsletters the AI
   filed, plus done, trashed, removed, person's, rule's, agent's and mailbox's ones), with the first id recorded: the
   migration changes no row, this build's first start marks exactly 212, a second marks none.
+
+## The screening gate
+
+The server's own check, the gate's one question and the kind a thread skipped Screening with are in
+[server-screening.md](server-screening.md) (2026-11-25), with the sender rules that let a person's own addresses in.
 
 ## The sorting words (`prompt.ts`)
 
@@ -227,7 +230,7 @@ The owner's request for the Receipts tab; the rules are the contract's ("Payment
 - **One name per domain, and a district** (the same build): `senderKey` (`payment-store.ts`) is the domain after the
   @, the registrable domain with the Public Suffix List (`ctx.avatars.suffixes` live; the start-up pass gets the same
   list from `suffixListOf` in `avatars/service.ts`, since it runs before the sender pictures' service exists), the
-  whole address at a free mailbox or a shared platform (the sender pictures' `isFreemail`, `isSharedPlatform`), null
+  whole address at a free mailbox or a shared platform (core's `isPublicMailDomain`, `isSharedPlatform`, once the sender pictures' `isFreemail`), null
   for a payment service. `cutDisplayText` gives null for a single lowercase word before the separator.
   `PAYMENT_RULES` was `2026-11-19 payment rules, by domain`: the pass runs once more with both.
 - **A party that is one lowercase word** (2026-11-19, a real store kept one from an earlier cut): `isOneLowercaseWord`
@@ -365,8 +368,11 @@ amount answer loses its leading and trailing separators by a scan from each end 
   the instructions. Nothing from the mailbox; `test/search-ask.test.ts` fails if a sender's name, an inbox's name,
   address or id, or the key is in the request. On the summarize job's model, counted in the usage as `ask`.
 - **Categorize:** the subject, cut to `SUBJECT_LIMIT` (1,000 characters); the newest incoming message's sender name
-  and address, its List-Id and whether it looks machine-sent; that message's text as a model reads it (`modelText`, below), at most 4,000 characters.
-- **Summarize:** the subject, cut to `SUBJECT_LIMIT` (1,000 characters), and the thread's messages newest first, each with its sender's name ("someone" when
+  and address, its List-Id and whether it looks machine-sent; that message's text as a model reads it (`modelText`,
+  below), at most 4,000 characters. The screening gate's question carries the same item (`categorizeItem`;
+  [server-screening.md](server-screening.md)).
+- **Summarize:** the subject, cut to `SUBJECT_LIMIT` (1,000 characters), and the thread's messages newest first, each
+  with its sender's name ("someone" when
   they gave none or their name holds an address, `summarizeSender`; "you" for the mailbox's own), the day it was sent
   (`sent`, `sentDay`: weekday and date in the server's zone), each text as a model reads it (`modelText`), at most
   8,000 characters of text in all, with every address in the subject and the text replaced with `[address]`

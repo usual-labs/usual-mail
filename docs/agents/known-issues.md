@@ -22,6 +22,26 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   cut before it's read: a message with more HTML than that and a text part shows the text part whole, one without
   shows text made from the first 2,000,000, and if what was kept sanitizes under the 1,000,000 characters the server
   shows, that HTML is shown without saying it was cut (it takes over a megabyte of markup the sanitizer drops).
+- **Mail that skips Screening: what the server's check doesn't stop** (server, 2026-11-25, by design; open as limits,
+  [server-screening.md](server-screening.md)). (1) **A look-alike domain that authenticates well passes:** a phisher
+  who owns `lumen-bank-security.example`, publishes DMARC and sends machine-looking mail with security words passes as a
+  "security alert" if the model agrees: the check proves the From domain is the sender's own, not that it is the brand
+  it imitates. Letting it through shows no logo (its sender isn't let in), and the line "Skipped Screening: a security
+  alert" says why it is there. A list of known brands' domains, or holding back mail whose links lead elsewhere, would
+  narrow it; neither is built. (2) **Once through, a thread stays through:** its sender writing into it again (a
+  phisher's follow-up "reply") stays out of Screening in that thread's list, though it lets nobody in and the AI won't
+  move it to Home. (3) **The evidence words are English only** ("sign in", "order", "booking"): a German shop's
+  "Bestellung" or a French "connexion" never passes, so such mail waits in Screening as before. (4) **IMAP inboxes let
+  nothing skip Screening, codes included,** since IMAP has no checker the server trusts; a code that passed there
+  before 2026-11-25 now waits in Screening. Same for a server built without the Public Suffix List. (5) **Invoices
+  never skip it,** also a renewal the AI calls an invoice. (6) **The question's quality is untried:** no real model has
+  answered it (`liquid/d1.2` on the gateway, `gpt-6-luna`, `claude-haiku-5-5`); the fake answers by words. (7) **Mail
+  stored before the server read `fromCheck`** has none, but only new mail meets the gate, so that matters only for a
+  thread asked again (`ask-again.ts`), which then stays screened.
+- **The sender rules match exactly** (server, 2026-11-25, by design): a colleague at a subdomain of the inbox's domain
+  (`eu.work.example` for `me@work.example`), a second domain the company owns, or another inbox's alias (Gmail's dots
+  and `+` tags, a "send mail as" address) isn't let in by them and waits in Screening until the person lets them in.
+  The "own addresses" rule needs the receiving inbox to be Gmail (the proof), whatever the other inbox is.
 
 - **Syncing can fall behind without a warning in three ways** (server, found 2026-11-25 by the review of the apps'
   warning; open). Fixed in 0.1.2 (the owner's "Yes, fix it", [contract](../contract-sync.md#when-an-inbox-needs-attention)):
@@ -1082,9 +1102,10 @@ server):
   padded or not, being the same once separators are ignored) or hexadecimal (either case), with spaces and separators
   between characters ignored, so a spaced-out or broken key goes too. `server/test/key-scrub.test.ts`.
 - **Mail could talk the AI into a one-time code, which lifted the screening gate** (server). The AI's `otp` lifts the
-  gate only when the message the model read is machine-sent and holds a code near the word "code" (`looksLikeCode` in
-  `server/src/ai/gate.ts`); otherwise the thread stays screened in `otp` (`PerformInput.holdGate`). A person's `otp`
-  lifts it as before. Tests in `server/test/ai-sorting.test.ts`.
+  gate only when the message the model read is machine-sent and holds a code near the word "code" (then `looksLikeCode`
+  in `server/src/ai/gate.ts`); otherwise the thread stays screened in `otp` (then `PerformInput.holdGate`). A person's
+  `otp` lifts it as before. Tests in `server/test/ai-sorting.test.ts`. Since 2026-11-25 the From domain must be proved
+  too, and other kinds pass the same way ([server-screening.md](server-screening.md)).
 - **A rule a person taught only proposed in a `suggest` inbox** (server). Rules of source `person` or `correction` now
   apply whatever the trust, `trash` and `block_sender` included (`gate` in `server/src/service/actions.ts`, `taught`
   from `applyRule`), so they fill Handled with no proposals. Agents' rules stay under trust. Tests in

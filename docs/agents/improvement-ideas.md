@@ -346,3 +346,12 @@ and the notes:
 - **Complete a held move by asking the provider** (2026-11-18). A copy held because its stored twin's ref was never
   reported removed (a restart between the provider's own move and another app's) stays held. A provider op
   asking whether a ref still exists would settle it at the next sync.
+- **Narrow what skips Screening further** (2026-11-25, with the screening gate; known-issues.md). A look-alike domain
+  that authenticates well can pass as a security alert or a sign-in link. Ideas, none built: hold back mail whose links
+  lead to a site other than the From domain's; keep a short list of brands' own domains for the security and payment
+  kinds; ask the question again when mail joins a thread that skipped Screening, and screen it again on a "none".
+- **Evidence words in more languages** (2026-11-25). The gate's evidence (`server/src/ai/gate-evidence.ts`) is English;
+  German, French and Spanish words for order, booking, sign-in and payment would let such mail pass the same way.
+- **Show why a thread skipped Screening in the apps** (2026-11-25): the contract says what to show
+  (contract.md, "Skipped Screening"); the dashboard and the connector show it; the Swift apps are left to the
+  coordinator, since another agent was changing the iPhone app.

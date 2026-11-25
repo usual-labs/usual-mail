@@ -161,6 +161,8 @@ app.all("*", (c) => dashboard(c.req.raw));        // last
 - Every record shows what the provider said: on a failed record "It didn't go through: <error>"; on any other
   record with an error "Undo didn't go through: <error>"; a note as "Note from the provider: <note>".
 - A record whose thread is now in the trash stays listed, marked "In the trash", with Undo when it is undoable.
+- A record whose thread skipped Screening while its sender isn't let in (`Thread.skippedScreening`, 2026-11-25) is
+  marked with core's line, "Skipped Screening: a sign-in link" (`skippedScreeningLine`), as a badge beside the others.
 
 #### An inbox's settings
 

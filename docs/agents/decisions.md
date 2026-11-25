@@ -810,6 +810,56 @@ otherwise ([contract-sync.md](../contract-sync.md#sync), "How far a first sync h
   in its status column, the Mac app mirrors them (`FirstSyncProgress.words`) and keeps its own "Fetching mail from Ana ·
   120 of 340" in the corner note. The connector gives agents the numbers (`firstSync`) and says so in `list_inboxes`.
 
+## 2026-11-25: mail that skips Screening, and senders let in without the AI
+
+The owner's words: "lets put a jev infront of screening, not all new addresses should go to screening, some should just
+pass directly through screening. for example: security notifications, confirmation links or OTP or magic links". "jev"
+is `typesafe-ai/jev`, the gateway's decision model the categorize job used before `liquid/d1.2`: a decision-model check
+in front of Screening. The owner's decisions, as the coordinator's brief gave them the same day:
+
+- **Mail kinds that skip Screening, the sender not let in** (exactly how one-time codes already worked): one-time codes;
+  sign-in and magic links; email confirmations and verify-your-email links; security alerts (a new sign-in or device,
+  "is this you?", a password, 2FA or recovery changed, suspicious activity); password resets and account changes
+  (reset links, email or plan changed, account deleted, data export ready); receipts, order confirmations and shipping
+  or delivery updates; bookings (flight, train, hotel, ticket and appointment confirmations); payment and bank alerts
+  (a failed payment, a card charged, a subscription renewal, a fraud check). The thread lands in its category's list,
+  not Screening, and the sender's next newsletter is still screened.
+- **Senders let in for good, without AI:** the person's own addresses (mail whose From is another inbox connected on
+  this server) and their company domain (a sender at the inbox's own custom domain; never a public mail domain, with
+  the list kept in core). Both need the mailbox provider's proof of the From domain; the inbox's own address is still
+  never let in by itself. They let the sender in like the other ways in, recorded the same way.
+- **No new categories** (each kind maps to an existing one), **no settings**, **a model's answer alone never lifts the
+  gate** (the server's own check must hold for every kind: the proof, machine-sent mail, the kind's evidence), **one
+  extra decision at most, only for senders not let in**, and **the apps show why** (an optional contract field; the
+  Swift apps are left to another agent). With the AI off or failing only the sender rules apply.
+
+The builder's choices, for the review ([server-screening.md](server-screening.md); the contract has the details):
+
+- **A second small question, not folded into categorizing.** The categorize words and choices were tuned by two
+  audits of the AI's labels on real mail ([decisions-ai.md](decisions-ai.md)); another choice set for strangers' mail
+  would undo that for exactly the mail at the gate, with no way to try it against the real models here. The question
+  goes out only when the server's own check could let the mail through (proved, machine-sent, a kind's evidence), on
+  the categorize model, as one more choice: the same for the gateway's decision models and the two providers'
+  structured output. Most mail costs nothing more; a code the server's check accepts needs no question.
+- **The category stays the AI's;** a kind counts only in its own categories (`SCREENING_PASS_CATEGORIES`): sign-in
+  links, email confirmations and resets in `otp` or `notification`, orders in `receipt` or `notification`, and so on.
+  **An invoice never skips Screening:** a bill from a stranger is the commonest fraud, so payment alerts land in
+  `notification` or `receipt` only.
+- **The proof applies to one-time codes too,** as "for every kind" says: an IMAP inbox, and a server without the
+  Public Suffix List, now let nothing skip Screening, codes included (since 2026-11-17 a code passed there on
+  machine-sent mail and a code alone).
+- **`Thread.skippedScreening`, not `reason`:** the AI gives no reason, the Mac app ignores `reason` for the AI's
+  decisions, and a kind lets an app say it its own way; core's `skippedScreeningLine` gives the words.
+- **Writing into a thread that skipped Screening lets nobody in, and the AI doesn't move it to `conversation`** while
+  its sender isn't let in. Otherwise Gmail's threading (a shipping update joins its order's thread) would let the shop
+  in at its second message, and its newsletter wouldn't be screened. This closes the same gap codes had.
+- **The sender rules match exactly:** another inbox's exact address; the inbox's own domain itself, not a subdomain.
+  No record, like the other ways in. The public mail domains moved from the server's sender pictures into core
+  (`core/src/mail-domains.ts`), one list for both.
+
+Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
+mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").
+
 The Cloudflare host's own decisions (its address, pairing count and time zone; its limits, start-up and pictures) are
 in [decisions-cloudflare.md](decisions-cloudflare.md).
 
