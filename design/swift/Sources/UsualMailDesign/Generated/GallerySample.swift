@@ -6,7 +6,7 @@ extension GalleryContent {
         inboxes: [
             GalleryInbox(name: "Northwind Studio", address: "hello@northwind.example", stored: "#2F6FED", hat: "blue", icon: .building, trust: "Act with undo", trustIcon: .trustActWithUndo, attention: nil),
             GalleryInbox(name: "Harbor & Pine", address: "founder@harborpine.example", stored: "#1F8A5B", hat: "green", icon: .shop, trust: "Suggest", trustIcon: .trustSuggest, attention: nil),
-            GalleryInbox(name: "Personal", address: "me@home.example", stored: "#C2541D", hat: "orange", icon: .person, trust: "Act silently", trustIcon: .trustActSilently, attention: "The mail server refused the password. Sign in again."),
+            GalleryInbox(name: "Personal", address: "me@home.example", stored: "#C2541D", hat: "orange", icon: .person, trust: "Act silently", trustIcon: .trustActSilently, attention: "The IMAP server at imap.home.example refused the user name or password."),
         ],
         brief: GalleryBrief(
             title: "Brief", period: "Since yesterday 15:00", writtenBy: "Claude Code",
