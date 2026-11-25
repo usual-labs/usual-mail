@@ -3,10 +3,12 @@
     import UsualMailDesign
     import UsualMailKit
 
-    /// The iPhone's top row, over the wallpaper (the owner's concept of 2026-11-20): search on the left, the switcher in
-    /// the middle, settings on the right. Together they are the Mac's rail: search opens over the stack showing; the
-    /// switcher's menu goes to a profile's mail or to To reply, Pinned, Snoozed or the Inbox page, each a stack kept as
-    /// it was left (`Navigation`); settings is its own stack. The glass is the Mac's (`GlassControl`), at the iPhone's
+    /// The iPhone's top row, over the wallpaper: the switcher at the left, search at the right, nothing between (the
+    /// owner's words of 2026-11-25, "move the search control to the right side and then the drop down menu to the left
+    /// side. So center will be empty"; the concept of 2026-11-20 had search at the left, the switcher in the middle and
+    /// settings at the right). Together they are the Mac's rail: search opens over the stack showing; the switcher's
+    /// menu goes to a profile's mail, to To reply, Pinned, Snoozed or the Inbox page, or to Settings, each a stack kept
+    /// as it was left (`Navigation`). The glass is the Mac's (`GlassControl`), at the iPhone's
     /// size, 44 points with 20-point icons and 14-point words (`ControlSize`; the owner's words of 2026-11-25, "make
     /// the header liquid glass controls size bigger"), a finger's size, so nothing takes touches beyond it. Its ink
     /// follows the wallpaper under it as the rail's does (`RailTone`).
@@ -17,32 +19,20 @@
         let counts: Counts?
         /// A profile was chosen in the menu (nil: every inbox).
         let chooseProfile: (String?) -> Void
-        /// Search, settings or one of the menu's pages was pressed.
+        /// Search, Settings or one of the menu's pages was pressed.
         let press: (Place) -> Void
-        @Environment(MailStore.self) private var store
-        @Environment(\.windowSize) private var window
-        @State private var addingGmail = false
-
         var body: some View {
             GlassEffectContainer(spacing: ControlSize.spacing) {
                 HStack(spacing: 0) {
-                    round(.search)
-                    Spacer(minLength: 4)
                     switcher
-                    Spacer(minLength: 4)
-                    round(.settings)
+                    Spacer(minLength: 12)
+                    round(.search)
                 }
             }
             .animation(Motion.move, value: nav.place)
-            .sheet(isPresented: $addingGmail) {
-                AddGmailSheet { addingGmail = false }
-                    .environment(store)
-                    .environment(\.windowSize, window)
-                    .presentationDetents([.medium, .large])
-            }
         }
 
-        /// Search or settings: a round glass button, lit while its page shows.
+        /// Search: a round glass button, lit while its page shows.
         private func round(_ target: Place) -> some View {
             let lit = nav.place == target
             return Button {
@@ -80,10 +70,10 @@
                     }
                 }
                 Section {
-                    row(icon: .add, chosen: false) {
-                        addingGmail = true
+                    row(icon: .settings, chosen: PhoneSwitch.ticks(.settings, nav: nav)) {
+                        press(.settings)
                     } title: {
-                        Text(PhoneSwitch.addGmail)
+                        Text(Place.settings.title)
                     }
                 }
             } label: {

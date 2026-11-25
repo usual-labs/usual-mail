@@ -39,11 +39,15 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   to scroll under it. The card's ground runs under that row and the home indicator. The first run and the wait before
   the server's first answer are the Mac's (`MailStage`). Coming back to the front refreshes the store, since iOS stops
   the connection in the background and events aren't replayed.
-- **`PhoneTopBar`**: search (opens over the stack, its field given the focus), the switcher, settings; search and
-  settings lit while their page shows. The switcher's capsule names what shows (`PhoneSwitch.label`: an inbox by its
-  address, "All inboxes", or the page) and opens the system's menu: every inbox and All inboxes (the one showing in
-  the mail stack chosen), then To reply, Pinned and Snoozed with the server's counts as badges and Inbox (the one
-  showing chosen), then "Add Gmail" (the shared sheet, "Add a Gmail account"). The rows are plain buttons, so the
+- **`PhoneTopBar`**: the switcher at the left, search at the right (opens over the stack, its field given the focus,
+  lit while its page shows), nothing between (the owner's words of 2026-11-25: "remove the setting button and then
+  move it into the center drop down menu ... move the search control to the right side and then the drop down menu
+  to the left side. So center will be empty"; until then search sat at the left, the switcher in the middle and a
+  settings button at the right). The switcher's capsule names what shows (`PhoneSwitch.label`: an inbox by its
+  address, "All inboxes", or the page, Settings too) and opens the system's menu: every inbox and All inboxes (the one
+  showing in the mail stack chosen), then To reply, Pinned and Snoozed with the server's counts as badges and Inbox
+  (the one showing chosen), then Settings (chosen while it shows). "Add Gmail" left the menu the same day: adding a
+  Gmail account is Settings' Accounts tab's "Add a Gmail account…", under the inboxes. The rows are plain buttons, so the
   menu keeps no column for ticks; the chosen row's icon is a check mark instead (owner's words of 2026-11-24), and
   every icon is drawn into the same 18-point box (`Icon.menuImage`; the design package's inbox icons, as the rocket,
   showed larger than the app's own). The menu's words are cut to one line in the middle

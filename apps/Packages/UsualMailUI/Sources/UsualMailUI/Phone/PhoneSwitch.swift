@@ -1,10 +1,12 @@
 import UsualMailKit
 
-/// What the iPhone's switcher, the capsule in the middle of its top row, says of where the window is (the owner's
+/// What the iPhone's switcher, the capsule at the left of its top row, says of where the window is (the owner's
 /// concept of 2026-11-20: "a drop down selector, which would include all the inboxes and also all the other pages"):
-/// in the mail stack, the profile, an inbox by its address, or every inbox; in another stack, that page. Search is
-/// over a stack and Settings has its own button, so under either it still names the stack. Its menu's rows are the
-/// Mac rail's: the profiles, then To reply, Pinned, Snoozed and the Inbox page.
+/// in the mail stack, the profile, an inbox by its address, or every inbox; in another stack, that page, Settings
+/// among them. Search is over a stack, so under it it still names the stack. Its menu's rows are the Mac rail's: the
+/// profiles, then To reply, Pinned, Snoozed and the Inbox page, then Settings (the owner's words of 2026-11-25: "remove
+/// the setting button and then move it into the center drop down menu"; adding a Gmail account is Settings' Accounts
+/// tab's, where every inbox is listed).
 struct PhoneSwitch: Equatable {
     let icon: Icon
     let title: String
@@ -27,9 +29,6 @@ struct PhoneSwitch: Equatable {
             return PhoneSwitch(icon: nav.stackPlace.icon, title: nav.stackPlace.title)
         }
     }
-
-    /// The menu's "Add a Gmail account", short enough for one line.
-    static let addGmail = "Add Gmail"
 
     /// The most characters a menu row's words keep on one line. The system's menu takes no line limit and wraps a
     /// long address (owner's words of 2026-11-24: "dont let the items wrap, do ellipsis"); in the simulator it wrapped

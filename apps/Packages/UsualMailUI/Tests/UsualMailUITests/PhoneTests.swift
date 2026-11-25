@@ -49,9 +49,12 @@ struct PhoneTests {
         #expect(nav.place == .search)
         #expect(PhoneSwitch.label(nav: nav, inboxes: inboxes).title == "Pinned")
         #expect(PhoneSwitch.ticks(.pinned, nav: nav))
-        // Settings is a stack of its own, with its own button: the switcher names it and ticks nothing.
+        // Settings is a stack of its own, the menu's last row (the owner's words of 2026-11-25): the switcher names
+        // it and ticks it alone.
+        #expect(!PhoneSwitch.ticks(.settings, nav: nav))
         nav.press(.settings)
         #expect(PhoneSwitch.label(nav: nav, inboxes: inboxes) == PhoneSwitch(icon: .settings, title: "Settings"))
+        #expect(PhoneSwitch.ticks(.settings, nav: nav))
         #expect(PhoneSwitch.pages.allSatisfy { !PhoneSwitch.ticks($0, nav: nav) })
         // A profile chosen from there goes back to the mail stack.
         nav.choose(profile: nil)
@@ -65,7 +68,7 @@ struct PhoneTests {
         #expect(PhoneSwitch.menuTitle("sixteen-letters!") == "sixteen-letters!")
         #expect(PhoneSwitch.menuTitle("someone@far-away.example") == "someon…y.example")
         #expect(PhoneSwitch.menuTitle("someone@far-away.example").count == PhoneSwitch.menuLength)
-        #expect(PhoneSwitch.addGmail.count <= PhoneSwitch.menuLength)
+        #expect(Place.settings.title.count <= PhoneSwitch.menuLength)
     }
 
     // MARK: The row at the card's foot
