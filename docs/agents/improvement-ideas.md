@@ -45,6 +45,12 @@ and the notes:
 
 ## Ideas
 
+- **Remake the iPhone's tour clips once its top row settles** (2026-11-25): `tour-phone-*.mp4` show the top row as it
+  was (search at the left, the switcher in the middle, settings at the right) and the 32-point controls; since then the
+  switcher moved to the left with Settings in its menu, search to the right, and the controls grew to 44. Left alone
+  while the iPhone's screens are still changing; `scripts/make-tour.sh phone` remakes them, its clips' taps
+  (`scripts/tour/clips/phone/`) moved to the new places first.
+
 - **Ship each app only its own tour clips** (the clip review of 2026-11-25): the Mac's `tour-mac-*.mp4` and the
   iPhone's `tour-phone-*.mp4` are both resources of `UsualMailUI`, which both apps link, so each carries the other's,
   about 2.3 MB. Two resource-only targets (one a platform), each a dependency of `UsualMailUI` with a platform

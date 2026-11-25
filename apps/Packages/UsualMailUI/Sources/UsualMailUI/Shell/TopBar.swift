@@ -56,7 +56,7 @@ struct TopBar: View {
     var body: some View {
         let items = TopBar.items(place: place, reading: reading, compact: compact)
         // Whether the chosen tab is named: always on the Mac; on the iPhone when the row fits it.
-        let names = room.map { BarFit.width(items, title: { title(of: $0, names: true) }) <= $0 } ?? true
+        let names = room.map { BarFit.fits(items, room: $0, title: { title(of: $0, names: true) }) } ?? true
         GlassEffectContainer(spacing: ControlSize.spacing) {
             HStack(spacing: ControlSize.spacing) {
                 ForEach(items) { item in
@@ -90,6 +90,10 @@ struct TopBar: View {
 
     /// The tab whose page is showing, if a tab's is.
     private var selectedTab: Tab? { place.tab }
+
+    /// The screening capsule's ends and the room between its icon and its count, a little less than the others'.
+    static let screeningInset: CGFloat = 10
+    static let screeningSpacing: CGFloat = 4
 
     /// A back button's name: none on the iPhone, where the arrow alone leaves room for the mail's buttons.
     private func backTitle(_ title: String) -> String? { compact && reading ? nil : title }
@@ -275,7 +279,7 @@ struct TopBar: View {
             ) {
                 Group {
                     if action == .snooze {
-                        SnoozeMenu { choice in choose(.comeBack(at: choice.at, ifNoReply: choice.ifNoReply)) }
+                        SnoozeMenu { choice in choose(choice.input) }
                     } else {
                         MoreMenu(mail: mail) { choose($0) }
                     }
@@ -332,8 +336,8 @@ struct TopBar: View {
         if reading && place == .screening {
             Button(action: back) {
                 capsule(
-                    .screening, icon: .back, title: title(of: .screening, names: names), tinted: true, spacing: 4,
-                    inset: 10)
+                    .screening, icon: .back, title: title(of: .screening, names: names), tinted: true,
+                    spacing: Self.screeningSpacing, inset: Self.screeningInset)
             }
             .buttonStyle(PlainControlStyle())
             .keyboardShortcut(.cancelAction)
@@ -348,7 +352,7 @@ struct TopBar: View {
                 // elsewhere how many wait.
                 capsule(
                     .screening, icon: .screening, title: title(of: .screening, names: names), tinted: here,
-                    spacing: 4, inset: 10)
+                    spacing: Self.screeningSpacing, inset: Self.screeningInset)
             }
             .buttonStyle(PlainControlStyle())
             .tooltip(here ? nil : "Screening")

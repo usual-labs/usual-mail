@@ -68,6 +68,8 @@ struct AccountsTab: View {
             AddGmailSheet { addingGmail = false }
                 .environment(store)
                 .environment(\.windowSize, window)
+                // On the iPhone half the screen first, as the switcher's sheet was.
+                .presentationDetents([.medium, .large])
         }
         .confirmationDialog("Disconnect from this server?", isPresented: $confirming) {
             Button("Disconnect", role: .destructive) { Task { await session.disconnect() } }

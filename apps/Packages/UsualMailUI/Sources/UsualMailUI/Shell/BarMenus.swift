@@ -114,6 +114,9 @@ struct SnoozeChoice: Identifiable, Equatable {
     let at: Date
     var ifNoReply: Bool? = nil
 
+    /// What choosing it does, wherever it is offered (the mail page's snooze, the row's menu, a swipe).
+    var input: ActionInput { .comeBack(at: at, ifNoReply: ifNoReply) }
+
     var id: String { "\(title)\(at.timeIntervalSince1970)" }
 
     static func choices(now: Date, calendar: Calendar = .current) -> [SnoozeChoice] {

@@ -94,6 +94,15 @@ struct FeedPostHeader: View {
     /// Whether it is stuck to the top of the feed.
     @State private var stuck = false
 
+    /// The room above and below its row.
+    #if os(iOS)
+        static let above: CGFloat = 10
+        static let below: CGFloat = 10
+    #else
+        static let above: CGFloat = 0
+        static let below: CGFloat = 8
+    #endif
+
     var body: some View {
         let sender = HomeWords.shownSender(of: thread, inbox: inbox)
         let name = FeedWords.sender(of: thread, inbox: inbox)
@@ -111,7 +120,6 @@ struct FeedPostHeader: View {
                         .foregroundStyle(Theme.time)
                 }
             }
-            .padding(.vertical, 10)
             .contentShape(Rectangle())
             .rowHover()
         }
@@ -123,6 +131,10 @@ struct FeedPostHeader: View {
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .accessibilityHint("Opens the mail")
+        // Outside the hover's box, which hugs the row: on the iPhone room above and below for the ground it sticks
+        // on; on the Mac the 8 the subject had under it before.
+        .padding(.top, Self.above)
+        .padding(.bottom, Self.below)
         #if os(iOS)
             .background { stuckGround }
             // Stuck once its top reaches the top of the feed's scroll view.
@@ -178,7 +190,8 @@ struct FeedPost: View {
                     .fill(Theme.hairline)
                     .frame(height: 1)
                     .padding(.top, 32)
-                    .padding(.bottom, 22)
+                    // 32 to the next post's header row, its own room above counted.
+                    .padding(.bottom, 32 - FeedPostHeader.above)
                     .accessibilityHidden(true)
             }
         }

@@ -35,7 +35,7 @@ enum RowMenu {
         // already there.
         let stacks = [BarAction.replyLater, .pin].compactMap { item($0.button(for: thread, now: now)) }
         let snooze = SnoozeChoice.choices(now: now, calendar: calendar).map {
-            Item.act($0.title, .comeBack(at: $0.at, ifNoReply: $0.ifNoReply))
+            Item.act($0.title, $0.input)
         }
         var later: [Item] = stacks + [.menu("Snooze", snooze)]
         // A mail that waits to come back can also be unsnoozed, as the mail page's snooze button then does.

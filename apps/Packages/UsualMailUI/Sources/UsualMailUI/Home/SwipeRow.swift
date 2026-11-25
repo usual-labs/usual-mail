@@ -16,11 +16,13 @@ extension View {
     import UIKit
 
     /// A Home row under a finger moving sideways (`SwipeAction`, the owner's words of 2026-11-25): the row follows the
-    /// finger; behind it, in the room it leaves, what letting go would do, its icon and words, in a light grey until
-    /// the row has gone `threshold` points, then in the ink, with a tap of the haptics. Let go past it, the row comes
-    /// back and the action is done, as the row's menu does it (the undo strip says so); short of it, nothing. Snooze
-    /// asks when first, with the menu's times. A way set to do nothing doesn't move. Only a sideways drag moves the row
-    /// (`HorizontalPan`), so the list still scrolls, and a tap still opens the mail.
+    /// finger, then resists, never going past `SwipeDrag.limit`. Behind it, a rounded box at the row's edge as wide as
+    /// the room the row leaves, with the action's icon and words at that edge: the icons' navy on a faint grey until the
+    /// row has gone `SwipeDrag.threshold` points, then white on the ink, with a tap of the haptics. Let go past it, or
+    /// flicked fast enough to reach it (`SwipeDrag.commits`), the row comes back and the action is done, as the row's
+    /// menu does it (the undo strip says so); short of it, nothing. Snooze asks when first, with the menu's times. A
+    /// way set to do nothing doesn't move. Only a sideways drag moves the row (`HorizontalPan`), so the list still
+    /// scrolls, and a tap still opens the mail.
     struct SwipeRow: ViewModifier {
         let thread: MailThread
         @AppStorage(SwipeAction.leftKey) private var left = SwipeAction.leftDefault
@@ -29,14 +31,12 @@ extension View {
         @State private var offset: CGFloat = 0
         @State private var choosingSnooze = false
 
-        /// How far the row goes before letting go acts.
-        static let threshold: CGFloat = 88
-
         func body(content: Content) -> some View {
             let now = store.now
             let steps = (left: left.step(for: thread, now: now), right: right.step(for: thread, now: now))
-            let shown = offset < 0 ? steps.left : offset > 0 ? steps.right : nil
-            let past = abs(offset) >= Self.threshold
+            let step = { (side: SwipeDrag.Side?) in side == .left ? steps.left : side == .right ? steps.right : nil }
+            let shown = step(SwipeDrag.side(of: offset))
+            let past = abs(offset) >= SwipeDrag.threshold
             content
                 .offset(x: offset)
                 .background(alignment: offset < 0 ? .trailing : .leading) {
@@ -45,27 +45,29 @@ extension View {
                 .gesture(
                     HorizontalPan { translation in
                         // A way that does nothing doesn't move.
-                        if translation < 0 && steps.left == nil || translation > 0 && steps.right == nil {
-                            offset = 0
-                        } else {
-                            offset = translation
-                        }
-                    } ended: { translation in
-                        let step = translation < 0 ? steps.left : steps.right
+                        offset = step(SwipeDrag.side(of: translation)) == nil ? 0 : SwipeDrag.offset(for: translation)
+                    } ended: { translation, velocity in
+                        let chosen = step(SwipeDrag.side(of: translation))
                         withAnimation(Motion.move) { offset = 0 }
-                        if abs(translation) >= Self.threshold, let step { finish(step) }
+                        if let chosen, SwipeDrag.commits(translation: translation, velocity: velocity) {
+                            finish(chosen)
+                        }
                     }
                 )
                 .sensoryFeedback(.impact(weight: .medium), trigger: past) { was, now in now && !was }
                 .confirmationDialog("Snooze until", isPresented: $choosingSnooze, titleVisibility: .visible) {
                     ForEach(SnoozeChoice.choices(now: store.now)) { choice in
-                        Button(choice.title) { act(.comeBack(at: choice.at, ifNoReply: choice.ifNoReply)) }
+                        Button(choice.title) { act(choice.input) }
                     }
                 }
                 .accessibilityActions {
-                    // The same actions without a swipe, for VoiceOver.
-                    ForEach([steps.left, steps.right].compactMap(\.self), id: \.words) { step in
-                        Button(step.words) { finish(step) }
+                    // The same actions without a swipe, for VoiceOver, in the row menu's words; one when both ways
+                    // do the same.
+                    if let left = steps.left {
+                        Button(left.spoken) { finish(left) }
+                    }
+                    if let right = steps.right, right != steps.left {
+                        Button(right.spoken) { finish(right) }
                     }
                 }
         }
@@ -83,7 +85,7 @@ extension View {
             Task { await store.perform(input, on: [thread.id]) }
         }
 
-        /// What shows in the room the row leaves: as wide as that room, the icon and words at its inner edge.
+        /// The box in the room the row leaves, at the row's edge, its icon and words at that edge.
         private func backdrop(_ step: SwipeStep, past: Bool) -> some View {
             let ink = past ? Color.white : Theme.icon
             return HStack(spacing: 6) {
@@ -108,10 +110,11 @@ extension View {
     }
 
     /// A pan that starts only when the finger moves more sideways than up or down, so a list's scroll keeps the rest:
-    /// `changed` with how far it has gone, `ended` with how far it went (nothing when cancelled).
+    /// `changed` with how far it has gone, `ended` with how far it went and how fast it was moving (nothing when
+    /// cancelled).
     struct HorizontalPan: UIGestureRecognizerRepresentable {
         let changed: (CGFloat) -> Void
-        let ended: (CGFloat) -> Void
+        let ended: (CGFloat, CGFloat) -> Void
 
         func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
 
@@ -125,8 +128,8 @@ extension View {
             let translation = recognizer.translation(in: recognizer.view).x
             switch recognizer.state {
             case .changed: changed(translation)
-            case .ended: ended(translation)
-            case .cancelled, .failed: ended(0)
+            case .ended: ended(translation, recognizer.velocity(in: recognizer.view).x)
+            case .cancelled, .failed: ended(0, 0)
             default: break
             }
         }

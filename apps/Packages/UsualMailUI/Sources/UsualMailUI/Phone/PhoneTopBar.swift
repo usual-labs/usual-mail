@@ -83,7 +83,7 @@
             .buttonStyle(.plain)
             .accessibilityLabel("Showing \(label.title)")
             .accessibilityValue(PhoneSwitch.warning(inboxes: inboxes) ?? "")
-            .accessibilityHint("Chooses an inbox or a list.")
+            .accessibilityHint("Chooses an inbox, a list or Settings.")
         }
 
         /// A profile's row: the mail stack on it, from any stack, at the page the mail stack last had. Its name only,

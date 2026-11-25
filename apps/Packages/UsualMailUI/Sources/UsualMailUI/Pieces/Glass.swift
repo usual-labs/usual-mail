@@ -21,19 +21,29 @@ enum Pointer {
 /// header liquid glass controls size bigger", "make the bottom glass tabs and controls bigger"): 44 points, the least
 /// Apple asks for a touch, 20-point icons, 14-point words, 12 from the ends (so an icon's capsule is round), 8 between.
 enum ControlSize {
+    static let mac = ControlMeasures(height: 32, icon: 16, text: 12, inset: 14, spacing: 10)
+    static let phone = ControlMeasures(height: 44, icon: 20, text: 14, inset: 12, spacing: 8)
     #if os(iOS)
-        static let height: CGFloat = 44
-        static let icon: CGFloat = 20
-        static let text: CGFloat = 14
-        static let inset: CGFloat = 12
-        static let spacing: CGFloat = 8
+        static let current = phone
     #else
-        static let height: CGFloat = 32
-        static let icon: CGFloat = 16
-        static let text: CGFloat = 12
-        static let inset: CGFloat = 14
-        static let spacing: CGFloat = 10
+        static let current = mac
     #endif
+
+    static var height: CGFloat { current.height }
+    static var icon: CGFloat { current.icon }
+    static var text: CGFloat { current.text }
+    static var inset: CGFloat { current.inset }
+    static var spacing: CGFloat { current.spacing }
+}
+
+/// One platform's glass controls' measures (`ControlSize`): kept as values, so either platform's can be reasoned about
+/// on the other (`BarFit`).
+struct ControlMeasures: Equatable, Sendable {
+    let height: CGFloat
+    let icon: CGFloat
+    let text: CGFloat
+    let inset: CGFloat
+    let spacing: CGFloat
 }
 
 /// The design's controls on the wallpaper: `ControlSize.height` high, round, of Liquid Glass. A selected one is tinted with the

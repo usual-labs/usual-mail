@@ -14,7 +14,8 @@ inboxes and also all the other pages like reply, pin, snooze, and the main inbox
 setting page. Everything else would be kinda the same." The picture shows Home: search, the switcher (a person icon,
 an inbox's address, a chevron) and settings as 32-point glass over the wallpaper (44 since 2026-11-25); the card as wide as the screen,
 rounded at the top, running to the foot; at its foot Home (named), Feed, Receipts, Notifications and the screening
-capsule with its count. Text and controls are the Mac's sizes (12-point text, 32-point controls).
+capsule with its count. Text and controls are the Mac's sizes (12-point text, 32-point controls; the controls 44
+points since 2026-11-25, below).
 
 ## How it is built
 
@@ -75,7 +76,8 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   capsules are 44 points high with 20-point icons and 14-point words, 8 apart, 16 from the screen's edges like the
   top row (`ControlSize`, `PhoneLayout.barMargin`; owner's words of 2026-11-25, "make the bottom glass tabs and
   controls bigger"). The chosen tab is named only when the row fits it (`BarFit`, measured in Geist at that size
-  against the row's width): on a 402-point screen "Notifications" fits; where it doesn't, the chosen tab is its lit
+  against the row's width): on a 402-point screen "Notifications" fits beside a count of up to two digits (Not done,
+  "Narrow screens"); where it doesn't, the chosen tab is its lit
   icon alone. On Settings the five tabs sit in the middle of the row, not at its right as on the Mac (`TopBar.centres`;
   owner's words of 2026-11-24, "only in iphone"); for a while on 2026-11-25 a back button sat at the row's left with
   the tabs at its right, at the owner's word, then went at their next ("bring back the settings tabs to center and
@@ -85,9 +87,13 @@ capsule with its count. Text and controls are the Mac's sizes (12-point text, 32
   or a seen one unseen; swiped right, it snoozes, asking when with the menu's times. Each way is a setting in
   Settings' Appearance tab, "Swiping a mail" (`SwipeAction`, `SwipeSettings`: seen or unseen, snooze, reply later,
   pin, archive or nothing), kept on the iPhone (`UserDefaults`). The row follows the finger (`SwipeRow`; a UIKit pan
-  that starts only for a sideways move, so the list scrolls as before and a tap opens); in the room it leaves, the
-  action's icon and words, light grey until 88 points, then in the ink with a tap of the haptics; let go past it, it
-  acts as the row's menu does. VoiceOver has the same two as actions. Seen in the simulator on the sample: both ways
+  that starts only for a sideways move, so the list scrolls as before and a tap opens), then resists past 132
+  points, never going past 200 (`SwipeDrag`); behind it, a rounded box at the row's edge as wide as the room the row
+  leaves, with the action's icon and words at that edge, the icons' navy on a faint grey until 88 points, then white on
+  the ink with a tap of the haptics. Let go past 88, or flicked fast enough to get there (the drag carried on 0.15
+  seconds at the finger's speed, as iOS judges a flick by where it would end), it acts as the row's menu does
+  (`SnoozeChoice.input` gives snooze's times as the menu and the mail page give them). VoiceOver has the same two as
+  actions, named as the menu names them ("Mark as read"), one when both ways do the same. Seen in the simulator on the sample: both ways
   moved the row and showed their words, and letting go of snooze opened its times; the sample takes no action (its
   menu's "Mark as read" doesn't either), so what they do there is the menu's, not seen.
 - **Screening's let in and block** (and more from a sender) are a 20-point icon on a 40-point circle, always shown,
@@ -229,9 +235,13 @@ the test depended on the Mac's memory pressure, not on the iPhone work, and was 
 ## Not done, not verified
 
 - **Never on a device;** other screen sizes unseen; of the actions, only pin and its undo were tried on a server.
-- **Narrow screens:** with Notifications chosen the tabs and the screening capsule need about 351 points; the row has
-  362 on a 402-point screen (seen), 353 on a 393-point one and too little on a 375-point one.
+- **Narrow screens:** at 44 points (since 2026-11-25) the row has 343 points on a 375-point screen, 361 on a 393 and
+  370 on a 402 (seen). By `BarFit`'s sums (Geist at 14 points as CoreText measures it, `PhoneTests`), "Notifications"
+  named needs 355 with Screening empty, 361 with a one-digit count, 367 with two and 373 with three: so on a 393-point
+  phone its name shows with at most one digit, on a 402 with at most two, and never on a 375, where the chosen tab is
+  its lit icon. The review of 2026-11-25 measured a little more (364 for one digit), so on a 393 the edge is that close;
+  not seen on those screens.
 - **Text size:** the design's fixed 10 and 12 points, which don't follow the iPhone's text size setting.
-- Swipe actions on rows; drag and drop; the corner note of what the server is doing; a launch screen of its own; dark
+- Drag and drop; the corner note of what the server is doing; a launch screen of its own; dark
   mode; iPad; notifications (the server would have to push); a run on a device.
 - `PhoneWindow` repeats `MailWindow`'s small helpers (read, back, act, the kept scroll places).

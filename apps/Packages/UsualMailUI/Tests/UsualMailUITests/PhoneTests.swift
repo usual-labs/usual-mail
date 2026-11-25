@@ -98,11 +98,11 @@ struct PhoneTests {
 
     @Test func theRowIsMeasuredAsItIsDrawn() {
         // Every word 7 points a letter. An icon's capsule is round; one with words is its insets, its icon, 6 and the
-        // words; the screening capsule's insets are 10 and its gap 4; a gap is at its least; spacing between all.
+        // words; the screening capsule's insets and gap are its own; a gap is at its least; spacing between all.
         let words: (String) -> CGFloat = { CGFloat($0.count) * 7 }
         let round = max(ControlSize.height, 2 * ControlSize.inset + ControlSize.icon)
         let named = 2 * ControlSize.inset + ControlSize.icon + 6 + 4 * 7
-        let screening = 2 * 10 + ControlSize.icon + 4 + 7
+        let screening = 2 * TopBar.screeningInset + ControlSize.icon + TopBar.screeningSpacing + 7
         let items: [TopBar.Item] = [.tab(.home), .tab(.reads), .tab(.receipts), .tab(.notifications), .gap, .screening]
         let titles: [TopBar.Item: String] = [.tab(.home): "Home", .screening: "3"]
         #expect(
@@ -112,6 +112,30 @@ struct PhoneTests {
         #expect(
             BarFit.width(items, title: { $0 == .screening ? "3" : nil }, words: words)
                 == 4 * round + ControlSize.spacing + screening + 5 * ControlSize.spacing)
+    }
+
+    @Test func theIPhoneNamesTheChosenTabOnlyWhereItFits() {
+        // The iPhone's measures, with Geist's widths at 14 points as CoreText measures them. The row has 343 points
+        // on a 375-point screen, 361 on a 393 and 370 on a 402 (16 from each edge).
+        let geist: [String: CGFloat] = ["Home": 38, "Notifications": 81, "1": 6, "12": 12, "123": 18]
+        let words: (String) -> CGFloat = { geist[$0] ?? 0 }
+        let items: [TopBar.Item] = [.tab(.home), .tab(.reads), .tab(.receipts), .tab(.notifications), .gap, .screening]
+        func fits(_ chosen: Tab, count: String?, room: CGFloat) -> Bool {
+            BarFit.fits(
+                items, room: room,
+                title: { item in
+                    item == .tab(chosen) ? chosen.title : item == .screening ? count : nil
+                }, words: words, measures: ControlSize.phone)
+        }
+        // "Notifications" named: 355 points with Screening empty, 361 with one digit, 367 with two, 373 with three.
+        #expect(fits(.notifications, count: nil, room: 361))
+        #expect(fits(.notifications, count: "1", room: 361))
+        #expect(!fits(.notifications, count: "12", room: 361))
+        #expect(fits(.notifications, count: "12", room: 370))
+        #expect(!fits(.notifications, count: "123", room: 370))
+        #expect(!fits(.notifications, count: nil, room: 343))
+        // "Home" fits the narrowest.
+        #expect(fits(.home, count: "12", room: 343))
     }
 
     @Test func theCompactRowHasNoTitleCapsule() {

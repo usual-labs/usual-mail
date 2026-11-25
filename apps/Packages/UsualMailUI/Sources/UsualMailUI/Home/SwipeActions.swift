@@ -36,8 +36,8 @@ enum SwipeAction: String, CaseIterable, Identifiable, Sendable {
         switch self {
         case .seen:
             return thread.unread
-                ? SwipeStep(words: "Seen", icon: .seen, input: .read)
-                : SwipeStep(words: "Unseen", icon: .unseen, input: .unread)
+                ? SwipeStep(words: "Seen", icon: .seen, input: .read, spoken: "Mark as read")
+                : SwipeStep(words: "Unseen", icon: .unseen, input: .unread, spoken: "Mark as unread")
         case .snooze:
             let button = BarAction.snooze.button(for: thread, now: now)
             return SwipeStep(words: button.title, icon: .snoozed, input: button.input)
@@ -52,9 +52,53 @@ enum SwipeAction: String, CaseIterable, Identifiable, Sendable {
 }
 
 /// One swipe on a row: what shows behind the row as it moves, and what letting go past the threshold does. No input is
-/// snooze's: its times to choose from first.
+/// snooze's: its times to choose from first (`SnoozeChoice.input`). `spoken` is its name as a VoiceOver action, the row
+/// menu's ("Mark as read").
 struct SwipeStep: Equatable {
     let words: String
     let icon: Icon
     let input: ActionInput?
+    var spoken: String
+
+    init(words: String, icon: Icon, input: ActionInput?, spoken: String? = nil) {
+        self.words = words
+        self.icon = icon
+        self.input = input
+        self.spoken = spoken ?? words
+    }
+}
+
+/// How a sideways drag on a Home row goes (`SwipeRow`), kept apart from the view so it is tested.
+enum SwipeDrag {
+    /// Which way's setting a drag reads: the finger moving left (`translation` below 0) reads `SwipeAction.leftKey`'s.
+    enum Side: Equatable {
+        case left, right
+    }
+
+    /// How far the row goes before letting go acts.
+    static let threshold: CGFloat = 88
+    /// How far the row follows the finger one for one; past it the row moves a third as far, and never past `limit`.
+    static let free: CGFloat = 132
+    static let limit: CGFloat = 200
+    /// How far ahead the finger's speed carries a flick, in seconds, as iOS judges a flick by where it would end.
+    static let projection: CGFloat = 0.15
+
+    static func side(of translation: CGFloat) -> Side? {
+        translation < 0 ? .left : translation > 0 ? .right : nil
+    }
+
+    /// Where the row is drawn for a finger `translation` away: one for one, then resisting, at most `limit`.
+    static func offset(for translation: CGFloat) -> CGFloat {
+        let distance = abs(translation)
+        let resisted = distance <= free ? distance : min(limit, free + (distance - free) / 3)
+        return translation < 0 ? -resisted : resisted
+    }
+
+    /// Whether letting go acts: the drag, carried on by the finger's speed (`projection`), reaches `threshold` the
+    /// same way it went, so a fast short flick counts as a long drag does.
+    static func commits(translation: CGFloat, velocity: CGFloat) -> Bool {
+        guard let side = side(of: translation) else { return false }
+        let projected = translation + velocity * projection
+        return self.side(of: projected) == side && abs(projected) >= threshold
+    }
 }
