@@ -438,8 +438,10 @@ answered `needs_person`, also for an inbox it may read.
      updates, bookings, and payment alerts. **A model's answer alone never lifts the gate:** the server's own check
      must also hold for the message the model read: the mailbox provider's checker proved its From domain (Gmail's;
      not a public mail domain's or a shared platform's), it looks machine-sent, it has the shape of mail sent to this
-     person by that organisation alone (no List-Id, every Reply-To at the From's own domain, To or Cc naming the inbox,
-     not a help desk's or shop's tenant on its platform), and it shows that kind's evidence (see
+     person by that organisation alone (no List-Id, every Reply-To at the From's own domain, To or Cc naming the inbox
+     in a field the sender's own signature vouches for, not a help desk's or shop's tenant on its platform, not a
+     notifier that carries its users' words such as a document's comments or a payment service's requests), and it
+     shows that kind's evidence (see
      [mail as untrusted input](contract-ai.md#mail-is-untrusted-input-to-a-model)). A one-time code needs only the
      proof, machine-sent mail addressed to the inbox and a code; in an IMAP inbox, whose provider has no checker,
      those without the proof, as before 2026-11-25. For an answer of `otp` with such a code, that is all. Otherwise,
@@ -460,7 +462,8 @@ answered `needs_person`, also for an inbox it may read.
      below, never reaches this step.) **Mail joining a thread that skipped Screening** from anyone not let in (its own
      sender, or someone threaded onto it) screens it again, drops the kind and is judged by this step again, the newest
      message read: a qualifying update skips Screening again, held unwritten meanwhile; anything else waits in
-     Screening. The AI never makes such a thread a `conversation` while its sender isn't let in.
+     Screening. While its sender isn't let in, the AI keeps such a thread to its kind's categories: never a
+     `conversation`, never an `invoice`.
   4. **Otherwise** (its sender is let in): the server's AI categorizes it.
 
 

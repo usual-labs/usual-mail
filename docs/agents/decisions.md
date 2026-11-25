@@ -878,6 +878,21 @@ proof's parser sound, and agreed that invoices never skip and with the separate 
   provider having no checker at all, codes only, with the code check and the To or Cc check; Gmail's missing or failed
   proof never falls back.
 
+**The second security review, the same day** (NO-GO again; the first round's fixes confirmed with mutations):
+
+- **The summary path's address removal was quadratic, under the lock, and in 0.1.2 too;** so was the snippet's
+  markdown link. Every pattern that reads mail text or headers was swept with adversarial 1 MB inputs (the list in
+  [server-screening.md](server-screening.md)); a request's text and subject are cut before addresses are taken out,
+  and a subject sent to any job is at most 1,000 characters.
+- **A replay with an added header beat the To or Cc check:** the parser merges a second To, and most signers don't sign
+  an absent Cc. So the field naming the inbox must be given once and named in the `h=` of every aligned DKIM signature
+  Gmail's checker passed (`ProviderMessage.signedRecipients`, read by the mail part). It stops Bcc copies and
+  added-header replays, not every replay.
+- **Platform notices addressed to the person pass the shape:** a deny list of notifiers that carry users' words (a
+  document's comments, a file shared, a calendar event, payment services' requests), refusing an address whole where
+  a request can't be told from an alert at it; more tenant platforms. What is assumed about real headers is said so.
+- **While its sender isn't let in, a thread that skipped Screening keeps to its kind's categories,** whoever asks again.
+
 Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
 mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").
 

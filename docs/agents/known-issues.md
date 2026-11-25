@@ -28,22 +28,26 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   person passes as a "security alert" if the model agrees: the check proves the From domain is the sender's own, not
   that it is the brand it imitates. It shows no logo (its sender isn't let in), and "Skipped Screening: a security
   alert" says why it is there. A list of brands' own domains, or holding back mail whose links lead elsewhere, would
-  narrow it; neither is built. (2) **A platform's notice carrying a user's words** still passes when it has the shape
-  of the platform's own mail: addressed to the person, no List-Id, no Reply-To elsewhere, not a tenant subdomain
-  (`TENANT_PLATFORMS`). The security review's four cases (a shared document's comment or share, a project mention, a
-  money request, a help desk trial) are stopped by the Reply-To, the List-Id and To, the Reply-To, and the tenant list
-  as their real mail carries them; a platform that writes a user's words with none of those passes. (3) **Once
-  through, a thread is judged again** when anyone not let in writes into it (fixed by the review: it is screened
-  again and the newest message judged), but mail from someone let in into it changes nothing. (4) **The evidence words
-  are English only** ("sign in", "order", "booking"): a German "Bestellung" or a French "connexion" waits in Screening.
-  (5) **Mail sent to an alias or a forwarding address** never skips Screening, codes included: To or Cc must name the
-  inbox's own address (a `+tag` and Gmail's dots aside), so a "send mail as" alias, a second domain or a forwarder's
-  address doesn't count. (6) **Invoices never skip it,** also a renewal the AI calls an invoice. (7) **Mail that
-  arrived while the AI was off, paused or failing stays in Screening** when the AI categorizes it later, codes
-  included (since 2026-11-25; before, a code passed then and moved out of Screening). (8) **The question's quality is
-  untried:** no real model has answered it (`liquid/d1.2` on the gateway, `gpt-6-luna`, `claude-haiku-5-5`); the fake
-  answers by words. (9) On IMAP only codes pass, as before 2026-11-25; a server without the Public Suffix List lets
-  nothing through on Gmail.
+  narrow it; neither is built. (2) **Platform notices that carry a user's words.** Refused by name: Google's
+  notifiers for a document's comments and mentions, a file shared, a calendar event and a form's answers, and every
+  address at paypal.*, venmo.com, square.com, squareup.com, stripe.com and sharepointonline.com (their real alerts
+  wait in Screening, the accepted cost); tenant subdomains of help desks and tools. **Assumed, not verified on real
+  mail:** that those Google addresses are the ones such notices come from, and how other platforms' notices are
+  headed. No real header samples were read: the tests build them. A platform not on the lists that writes a user's
+  words in mail addressed to the person, with no List-Id and no Reply-To elsewhere, still passes when the model
+  agrees (another file share or calendar, a marketplace's message, a code-hosting site's notice without a List-Id).
+  (3) **Replays:** a copy sent on by Bcc, or with a To or Cc added on top, doesn't pass (the field naming the inbox must
+  be given once and signed by the sender's aligned DKIM signature; checked against real parsing, with made-up
+  signatures). Not every replay: a sender who signs a field naming someone else is beyond it, and the check relies on
+  Gmail's `header.b` naming the passing signature (else its domain). Mail authenticated by SPF alone (no DKIM) never
+  passes. (4) **Once through, a thread is judged again** when anyone not let in writes into it, but mail from someone
+  let in into it changes nothing. (5) **The evidence words are English only** ("sign in", "order", "booking"): a German
+  "Bestellung" or a French "connexion" waits in Screening. (6) **Mail sent to an alias or a forwarding address** never
+  skips Screening, codes included: To or Cc must name the inbox's own address (a `+tag` and Gmail's dots aside).
+  (7) **Invoices never skip it,** also a renewal the AI calls an invoice. (8) **Mail that arrived while the AI was off,
+  paused or failing stays in Screening** when the AI categorizes it later, codes included. (9) **The question's quality
+  is untried:** no real model has answered it; the fake answers by words. (10) On IMAP only codes pass, as before
+  2026-11-25; a server without the Public Suffix List lets nothing through on Gmail.
 - **The sender rules match exactly, and may never fire for colleagues** (server, 2026-11-25; open). A colleague at a
   subdomain of the inbox's domain (`eu.work.example` for `me@work.example`), a second domain the company owns, or
   another inbox's alias (Gmail's dots and `+` tags, a "send mail as" address) isn't let in by them. A colleague must be

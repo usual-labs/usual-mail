@@ -170,6 +170,15 @@ batch's `progress`.
   `;`, `(` or `)`, or an `smtp.*` property on a DKIM or DMARC result makes the header unreadable). The message's own
   headers only, never an attached message's. The Gmail provider then also has `fromChecks(refs)`: the same read again from the metadata form
   (`Authentication-Results` and `From` only, 20 quota units a message) for mail stored before.
+- `signedRecipients` (2026-11-25, the screening gate's second security review; [contract](../contract-ai.md#mail-is-untrusted-input-to-a-model)):
+  only when `fromCheck` is verified. Which of To and Cc the sender's own DKIM signature vouches for
+  (`message/signed-recipients.ts`): none when the message gives To or Cc twice (postal-mime merges a second field
+  into the first, so an added one would otherwise read as the sender's); else each field given once that every
+  aligned DKIM signature matching a pass in Gmail's trusted result names in its `h=` (a signature matched by the first
+  characters Gmail prints, `header.b`, else by its domain; the intersection, so a signature added later only takes a
+  field away; tags read whitespace-free, a tag twice or over 16 KB unreadable, at most 16 signatures). Gmail's large
+  messages keep every header when rebuilt (`gmail/payload.ts`), so the same holds there. Tests:
+  `test/unit/signed-recipients.test.ts` (8).
 - A message the parser refuses becomes a short note instead of failing the sync.
 - **Thread keys (IMAP):** the first id in References, else In-Reply-To, else the own Message-ID (`mid:<id>`);
   with no ids, a hash of From, To, Date and Subject. A client that keeps only In-Reply-To deep in a

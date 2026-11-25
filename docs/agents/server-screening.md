@@ -3,7 +3,9 @@
 Built 2026-11-25 on the branch `screening-pass`, from the owner's decision of that day ([decisions.md](decisions.md),
 "2026-11-25: mail that skips Screening"), then changed the same day after its security review (NO-GO, fixed: the
 shape of the mail, linear patterns, judging only while held and only the newest message, a stranger joining a thread
-that skipped Screening, the colleague a person, IMAP's codes as before). The contract's words are in
+that skipped Screening, the colleague a person, IMAP's codes as before), and again after a second review (NO-GO,
+fixed: To or Cc only in a field the sender's signature vouches for, a deny list of notifiers that carry users' words,
+more tenant platforms, the kind's categories kept, and a sweep of every pattern that reads mail). The contract's words are in
 [contract.md](../contract.md) ("Words": Skipped Screening; "Rules and learning", step 3 and "Letting a sender in") and
 [contract-ai.md](../contract-ai.md) ("A model's answer at the screening gate"); the kinds, their words and their
 categories are core's (`core/src/screening.ts`), and the public mail domains too (`core/src/mail-domains.ts`, moved from
@@ -13,13 +15,14 @@ categories are core's (`core/src/screening.ts`), and the public mail domains too
 core/src/screening.ts          SCREENING_PASSES, SCREENING_PASS_WORDS, SCREENING_PASS_CATEGORIES, skippedScreeningLine
 core/src/mail-domains.ts       isPublicMailDomain (was isFreemail), MAIL_COM_DOMAINS, isSharedPlatform
 server/src/ai/gate.ts          gateCheck (mayPass, worthAsking, pass), trustsChecker, askableKinds, holdsCode
-server/src/ai/gate-shape.ts    soleSender: no List-Id, Reply-To at home, addressed to the inbox (mailboxKey), TENANT_PLATFORMS
+server/src/ai/gate-shape.ts    soleSender: no List-Id, Reply-To at home, addressed (mailboxKey), TENANT_PLATFORMS, carriers
+mail/src/message/signed-recipients.ts   signedRecipients: To and Cc given once and signed by the aligned, passed DKIM
 server/src/ai/gate-evidence.ts EVIDENCE per kind (phrases, links, references, amounts, cards, days), holdsLink
 server/src/ai/pass-prompt.ts   passRequest (the question), PASS_OPTIONS, passInstructions, acceptPass
 server/src/ai/process.ts       judging, checkAtGate, planPass, applyCategory
 server/src/sync/sorting.ts     newMailInThread: a stranger joining a thread that skipped Screening screens it again
 server/src/sync/let-in.ts      provedOwnSender, letInOwnSender, serverAddresses
-server/migrations/0022_skipped_screening.sql   threads.skipped_screening
+server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threads.skipped_screening
 ```
 
 ## The screening gate
@@ -31,9 +34,14 @@ server/migrations/0022_skipped_screening.sql   threads.skipped_screening
   inbox's provider is Gmail) and the server carries the Public Suffix List. **Every kind but a code** needs `home`,
   `messages.automated`, `soleSender` (gate-shape.ts: (a) no List-Id; (b) every Reply-To's registrable domain is
   `home`; (c) `addressedTo`: To or Cc's `mailboxKey` is the inbox's, a `+tag` dropped and dots at gmail.com and
-  googlemail.com; (d) the proved domain isn't under a `TENANT_PLATFORMS` entry) and `EVIDENCE[kind]`. **A code**
+  googlemail.com, on Gmail only in a field `messages.signed_recipients` holds (the mail part's `signedRecipients`:
+  given once, named in the `h=` of every aligned DKIM signature Gmail's checker passed; null for mail stored before,
+  so it never passes); (d) the proved domain isn't under a `TENANT_PLATFORMS` entry; (e) `carriesUsersWords`: not one
+  of Google's notifier addresses for comments, shares, calendar events and forms, nor any address at paypal.* (by
+  name), venmo.com, square.com, squareup.com, stripe.com or sharepointonline.com) and `EVIDENCE[kind]`. **A code**
   needs machine-sent mail, (c), `holdsCode` and `home`, or no `home` when the inbox's provider has no checker (IMAP:
-  0.1.2's behaviour, the coordinator's decision); a Gmail inbox's missing or failed proof never falls back.
+  0.1.2's behaviour, the coordinator's decision, (c) read on To and Cc as given); a Gmail inbox's missing or failed
+  proof never falls back.
   `pass(category, chosen)`: `code` when the category is `otp` and the code passes; otherwise the chosen kind when the
   category is one of its (`SCREENING_PASS_CATEGORIES`) and `mayPass` holds; else null.
 - **Linear patterns:** every quantifier in gate-evidence.ts is bounded (the reference's lookahead `{0,29}`, a card's
@@ -64,8 +72,8 @@ server/migrations/0022_skipped_screening.sql   threads.skipped_screening
   again and drops the kind; `stateColumns` writes null whenever the thread is screened; `toThread` serves it only while
   not screened.
 - **After it skipped Screening** (`skippedWhileUnknown` in `service/store.ts`: the kind is set, the thread isn't
-  screened, its sender isn't `known`): mail written into it lets nobody in (`ingest.ts`); `applyCategory` drops an
-  answer of `conversation` for it; and `newMailInThread` (`sync/sorting.ts`), for mail from anyone not let in, screens
+  screened, its sender isn't `known`): mail written into it lets nobody in (`ingest.ts`); `applyCategory` drops any
+  answer outside its kind's categories (`fitsItsKind`: never `conversation`, never `invoice`, asked again or not); and `newMailInThread` (`sync/sorting.ts`), for mail from anyone not let in, screens
   it again (`screened`, the kind cleared, `category_due`, and `gate_pending` when the AI may answer now; the
   `screened` part's undo retired), so the gate judges the newest message: a qualifying update passes again without
   ever being written under Screening, anything else is written under Screening. Mail from someone let in asks nothing.
@@ -86,28 +94,46 @@ server/migrations/0022_skipped_screening.sql   threads.skipped_screening
 
 ## Tests
 
-- `screening-gate` (45, pure): each kind passing, a card alone, a day or time alone; unproved, another domain, a
+- `screening-gate` (47, pure): each kind passing, a card alone, a day or time alone; unproved, another domain, a
   person's mail, a public domain, a shared platform, no Public Suffix List, no link, no evidence, ordinary words, a
-  kind its category can't be, invoices; each shape: a List-Id (a project's mention), a Reply-To elsewhere (a comment on
-  a shared document, a money request) and at home, not addressed (Bcc, undisclosed, codes too), Cc in any case, a
-  `+tag` and Gmail's dots, tenant platforms; a code without the rest of the shape; IMAP (a code without proof, nothing
-  else) and Gmail never falling back; whether to ask; the question; nine adversarial 1 MB bodies under 3 s each.
-- `screening-pass` (16): a sign-in link, a security alert, an order update, a code without a question; Gmail's four
-  failed proofs; IMAP's code (and not by Bcc, nothing else there); look-alikes not even asked; the shapes through the
-  server; none, a kind not offered, a kind the check refuses; invoices; AI off; the AI turned on afterwards and a
-  retried categorize (still screened, never moved out of Screening); the question failing; held while it waits.
-- `screening-after` (8): undo; letting the sender in; its sender's qualifying update judged again and passing, never
-  written under Screening; its sender writing like a person (screened again, not let in); a third party threaded in
-  (out of Receipts, written under Screening, not let in); someone let in writing into it; mail joining while the
-  question is out; the AI never making it a conversation.
-- `screening-senders` (13): another inbox's proved address; spoofed; the inbox's own address; a colleague proved, not
-  proved, at a subdomain, at another inbox's domain; a public mail domain; a blocked colleague; a filing under
-  Screening (the label stays, the colleague isn't let in); a relaying group with a List-Id; a tool's machine-sent mail;
-  an IMAP inbox; with the AI on and failing.
-- `ai-text` (the linear readers), `migration-0022`, `migration-0018`, `ai-sorting`, `e2e-ai-gmail` (a proved code via
-  a real `Authentication-Results`), `e2e-ai-imap` (back to 0.1.2's: a code passes, the Screening folder never made).
-- Cloudflare: `test/cloudflare/screening.test.ts` (1, workerd and the fake Gmail): a colleague whose message carries
-  Gmail's DMARC pass is let in; one without is screened. The AI's half isn't tried there (no fake models).
-- Mutation-checked: reading the planned message instead of the newest, dropping the `conversation` guard, dropping
-  `gate_pending`, not screening a joined thread again, and each of `let-in.ts`'s guards (the filing, person only,
-  Gmail only) each fail a test.
+  kind its category can't be, invoices; each shape: a List-Id, a Reply-To elsewhere and at home, not addressed (Bcc,
+  undisclosed, codes too), a signed Cc in any case, a Cc added after signing, To given twice, nothing read, a `+tag`
+  and Gmail's dots (with names Gmail wouldn't allow), tenants on each listed platform (the reserved label `ab--cd`,
+  which no tenant has), Google's and payment services' notifiers (and the provider's own account alerts still passing);
+  a code without the rest of the shape; IMAP (a code without proof, nothing else) and Gmail never falling back; whether
+  to ask; the question; and the 1 MB bodies in workers (below).
+- `screening-pass` (16) and `screening-after` (12): as before, with the fixtures signed, through the server: a Cc added,
+  To given twice, a document's mention; a joined message that would pass on its own but wasn't asked about; asked
+  again to an invoice; the stored and served "a screened thread carries no kind" backups.
+- `screening-senders` (13), `migration-0022` (both columns), `e2e-ai-gmail` (the code carries a DKIM-Signature whose b=
+  starts with Gmail's `header.b`, signing To), mail's `signed-recipients` (8: given once and signed, a Cc added, To or
+  Cc twice, a forged signature copying the passing one's first characters, failed or unaligned signatures, the domain
+  fallback, unreadable signatures, and through the parser).
+- **Speed** (`test/linear.ts`): 20 bodies of 1 MB, each run in a worker thread that is terminated at 10 seconds, since
+  a slow pattern blocks the event loop and node:test's own timeout can't fire: the gate's check (`screening-gate`), and
+  the requests, snippets, a model's answers, names, List-Ids and pictures' addresses (`ai-linear`), each under 3 s
+  (all well under 1 s). Mutation-checked: the old address, markdown-link and markup patterns each fail at 10 s.
+- Mutation-checked too: reading the planned message instead of the newest, dropping the newest-message id check,
+  going back to `conversation` only, dropping `gate_pending`, not screening a joined thread again, dropping the
+  stored or served backups, and each of `let-in.ts`'s guards.
+
+## The pattern sweep (2026-11-25, the second security review)
+
+Every entry point in the server, core and mail that reads mail text or headers, run on about 85 adversarial inputs
+(each of 33 characters repeated; 53 short units repeated, such as `<a`, `<style `, `[](mailto:`, `&#`, `1,`, `order `,
+`card `, `ending `; and a long run of 25 characters with something else at each end), first at 16 and 32 KB (flagged
+when 32 KB took over 40 ms and nearly four times 16 KB), then at 1 MB. Core holds no pattern over mail. Found and
+fixed: `prompt.ts`'s address pattern (55 s at 128 KB), the snippet's markdown link, the answers' markup check, party
+names (a comma run), the status line's trailing trim, `normalizeListId`, and the tracker list's input (capped, as only
+`present.ts` reaches it; the list's own patterns stay as shipped). The worst time at 1 MB after the fixes, per entry
+point: `modelText` 50 ms; `readingText`, `snippetText`, `isStubText`, `plainLine` up to 109 ms; `withoutAddresses` 51 ms and
+the summarize, details and event requests up to 105 ms (the address pattern read once per run of address characters;
+bounded alone it took 600 ms on 1 MB of letters); the categorize request 169 ms; `acceptSummary` 64 ms; `checkDetails` 145 ms; `checkEvent` 263 ms; `checkReference` 70 ms; payment
+`plainLine`, `parseAmount`, `currencyIn`, `writtenIn`, party names, the date and time readers and `appointmentLike`
+under 45 ms; the gate's check 86 ms, `holdsCode` and the evidence 26 ms; `mailboxKey` and `addressedTo` under 20 ms;
+search's `tokens`, `parseSearch`, `fold`, `tokensOf`, `runsOf` and `oneLine` under 80 ms; `presentPictures` 640 ms;
+`iconsInPage` 15 ms; `asciiHost`, `normalizeListId`, `ruleMatches` 2 ms; `scrubKey` 100 ms; mail's `messageIds`,
+`listIdOf`, `isNoReplyAddress`, `isAutomated` under 50 ms, `firstFromAddress` 194 ms, the authentication readers and
+`signedRecipients` under 2 ms, `htmlToText` 80 ms, `sanitizeHtml` 339 ms, the CSS sanitizers and `servableCss` up to
+292 ms, `canonicalPictureUrl` 22 ms, and `parseMessage` 719 ms (headers) and 406 ms (body). The sweep itself was a
+scratch script, not kept; the worker tests above keep the cases that were slow.

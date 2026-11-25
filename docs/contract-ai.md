@@ -90,8 +90,9 @@ in `core/src/ai-words.ts`; the words, lists, actions and the sorting of new mail
   elsewhere to `conversation` (a person answered a newsletter, say); any other answer leaves that thread where it is.
   It never moves a thread out of `conversation`: a thread in `conversation` is never categorized again by the AI. The
   one exception is the dated one-off of 2026-11-19 below; it is not a standing behaviour. **A thread that skipped
-  Screening while its sender isn't let in** (`skippedScreening`) is never made a `conversation` by the AI, which
-  would put a stranger's mail in Home. Mail from someone let in joining it asks nothing; mail from anyone not let in
+  Screening while its sender isn't let in** (`skippedScreening`) keeps to its kind's categories whoever asks again
+  (core's `SCREENING_PASS_CATEGORIES`): never a `conversation`, which would put a stranger's mail in Home, never an
+  `invoice`. Mail from someone let in joining it asks nothing; mail from anyone not let in
   screens it again and the gate judges the newest message, with any category allowed
   ([rules and learning](contract.md#rules-and-learning), step 3).
 - **A thread needs a summary** when it has none, or when incoming mail has joined it since the summary was written,
@@ -209,8 +210,11 @@ its scheme and site and loses the rest ("https://site/…"; a link that is only 
 zero-width characters go, other spaces count as one, a run of four or more of one divider character becomes three,
 and blank lines and spaces at the ends of lines collapse; the limits cut what is left. Since 2026-11-25 the screening
 gate's own check (below) reads the same, as far as the model read it; and every pattern that reads a message runs in
-time linear in its length, since a message is read under the server's lock (the gate's security review: a link
-followed by many ")" or a run of "<" took seconds for 40,000 characters).
+time linear in its length, since a message is read under the server's lock (the gate's security reviews: a link
+followed by many ")" or a run of "<" took seconds for 40,000 characters; taking addresses out of a summary request took
+55 seconds for 128 KB without an "@"). Since then a request's text and subject are cut to their limits, with room for
+one address, before addresses are taken out, and no part of an address cut there can come within the limit. A
+subject sent to any job is at most 1,000 characters (`SUBJECT_LIMIT`).
 - **To search by a sentence** (2026-11-20, [asking in a sentence](contract-search.md#asking-in-a-sentence)): only
   when a person asks search in a sentence, and only then: the sentence as they wrote it, with today's date and weekday
   (in the time zone the app gives), to be turned into search filters. Nothing from the mail goes with it: no message,
@@ -553,8 +557,18 @@ conservative on purpose, so what it misses waits in Screening rather than a stra
   own domain, a comment on a shared document, a mention, a money request, a help desk's free trial, and a brand's real
   alert can be sent on to others with its signature intact): (a) no List-Id; (b) every Reply-To at the From's
   registrable domain; (c) To or Cc names the inbox's own address, a `+tag` ignored and dots at gmail.com (and
-  googlemail.com), which a copy sent on by Bcc doesn't; (d) not from a platform whose customers send from their own
-  subdomain of it (`TENANT_PLATFORMS` in `gate-shape.ts`: zendesk.com, freshdesk.com, atlassian.net and the like);
+  googlemail.com), and on Gmail only in a field the sender's own DKIM signature vouches for
+  (`ProviderMessage.signedRecipients`: the field is given once, and every aligned signature Gmail's checker passed
+  names it in its `h=`; a message giving To or Cc twice has none). This stops a copy sent on by Bcc and a replay with a
+  To or Cc added on top (the second security review: a real signed alert to the attacker, with `Cc: victim` added,
+  passed before); it doesn't stop every replay: a sender who signs a field naming someone else is beyond it, and mail
+  signed with no DKIM at all (DMARC by SPF alone) never passes; (d) not from a platform whose customers send from
+  their own subdomain of it (`TENANT_PLATFORMS` in `gate-shape.ts`: zendesk.com, freshdesk.com, atlassian.net,
+  helpscoutapp.com, service-now.com, intercom-mail.com, my.salesforce.com, gitbook.io, notion.site and the like);
+  (e) not from a notifier whose mail carries its users' words: a document's comments, a file shared, a calendar
+  event, a form's answers (Google's own notifier addresses for those), and payment services' requests and receipts
+  (paypal.*, venmo.com, square.com, squareup.com, stripe.com; sharepointonline.com too); where a request can't be
+  told from a security alert at the same address, the address is refused, and a real alert waits in Screening;
   **and**
 - **it shows the kind's evidence**, read in its subject (at most 1,000 characters) and its text as the model read it
   (above: made from its HTML when needed, links cut to their site, at most 4,000 characters), words whole and in any
