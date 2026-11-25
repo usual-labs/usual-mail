@@ -22,9 +22,11 @@ struct WhileWaitingStep: View {
 
     var body: some View {
         GeometryReader { geometry in
-            // As wide as the mail card, smaller in a short window or on the iPhone, so the whole step stays on screen.
-            let width = min(
-                652, geometry.size.width - Self.sideRoom, max(300, (geometry.size.height - 320) * Self.aspect))
+            // As wide as the mail card, smaller in a short window or on the iPhone, so the whole step stays on screen;
+            // never below nothing, as when the reader's first size is zero.
+            let width = max(
+                0,
+                min(652, geometry.size.width - Self.sideRoom, max(300, (geometry.size.height - 320) * Self.aspect)))
             VStack(alignment: .leading, spacing: 16) {
                 // One player a slide, crossfading as the slide changes, so a clip always starts from its beginning.
                 ZStack {

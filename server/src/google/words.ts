@@ -90,6 +90,15 @@ export const attention = {
   otherClient:
     "This inbox was connected with another Google client than the one this server has now. Sign in with Google again " +
     "to reconnect it with this one; its rules and history stay.",
+  /**
+   * Gmail's `accessNotConfigured`: the Gmail API is off in the Google Cloud project of the inbox's client, the host's
+   * (`hostClient`: signed in with Google) or, for an inbox connected by hand, the person's own. Turning it on there
+   * fixes it, on any host; another client or a new sign-in isn't needed.
+   */
+  gmailApiOff: (hostClient: boolean) =>
+    `Gmail refused ${hostClient ? "this server's" : "this inbox's"} Google client: the Gmail API is turned off in that ` +
+    `client's Google Cloud project. ${hostClient ? "The host must turn it on there" : "Turn it on there"} (APIs and ` +
+    "services, Library, Gmail API, Enable); then the inbox syncs again.",
 };
 
 /**

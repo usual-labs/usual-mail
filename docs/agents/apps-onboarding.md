@@ -103,7 +103,8 @@ applies only to inboxes connected after it is set.
      this step with `-UsualMailOnboardingSteps '{ <server name> = whileWaiting; }'` (the defaults' argument domain),
      and in the iPhone simulator's preview copy the same way. They show the Mac's window on the iPhone too. There the
      step's card had run past a 402-point screen (its width followed only the window's height); since 2026-11-25 the
-     clip is as wide as the screen leaves it and the card sits at the foot like the other steps.
+     clip is as wide as the screen leaves it and the card sits at the foot like the other steps. The width is never
+     below zero (the geometry reader's first size can be zero, and SwiftUI then logged "Invalid frame dimension").
 
 ## The Google client's guided set-up (2026-11-21)
 

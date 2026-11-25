@@ -216,7 +216,8 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   Accounts", starting nothing; `providerError` and `notSyncing` "Try again". No reason (a server before 0.1.2) acts as
   a refused sign-in did. What the button does is `SyncNoticeDispatch` (`Shell/SyncRetry.swift`), out of the view.
   Try again (`SyncRetry`, the review of 2026-11-25): the server only queues a sync, so a good answer says "Asked your
-  server to sync." and the button stays busy until the inbox's status, words or last sync change or 30 seconds pass;
+  server to sync." and the button stays busy until the inbox's status, words or last sync change or 30 seconds pass
+  (a change while the request is on its way ends it once the server answers: the final review of 2026-11-25);
   a refusal says "Your server couldn't be asked to sync." and why, in the refusal's red; each line is said to
   VoiceOver. The notice is one view per action (`.id(notice.action)`), so a busy button never carries over to another
   inbox's notice. Two inboxes are named, more counted, with "Open Accounts". Seen on the sample in a preview copy

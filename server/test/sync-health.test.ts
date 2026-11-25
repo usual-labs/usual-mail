@@ -58,8 +58,12 @@ describe("sorting a failed sync", () => {
     // A missing scope, as mail's words and kind say it (by Gmail's reason or its message): a new sign-in fixes it.
     assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "insufficientPermissions", kind: "scope" })), "needs_sign_in");
     assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "forbidden", kind: "scope" })), "needs_sign_in");
-    assert.equal(sorted(signedIn, named("GmailApiError", { status: 403, reason: "accessNotConfigured" })), "host_setup");
-    assert.equal(sorted(byHand, named("GmailApiError", { status: 403, reason: "accessNotConfigured" })), "needs_sign_in");
+    // The Gmail API off in the client's project: whoever's client it is turns it on, in the server's words.
+    const apiOff = named("GmailApiError", { status: 403, reason: "accessNotConfigured" });
+    assert.deepEqual(classifyFailure(signedIn, apiOff), { reason: "host_setup", words: attention.gmailApiOff(true) });
+    assert.match(attention.gmailApiOff(true), /^Gmail refused this server's Google client: the Gmail API is turned off .* The host must turn it on there/);
+    assert.deepEqual(classifyFailure(byHand, apiOff), { reason: "needs_sign_in", words: attention.gmailApiOff(false) });
+    assert.match(attention.gmailApiOff(false), /^Gmail refused this inbox's Google client: .* Turn it on there \(APIs and services, Library, Gmail API, Enable\)/);
     for (const error of [
       named("GmailApiError", { status: 503 }), named("GmailApiError", { status: 429 }),
       // The daily quota passes once Google resets it: its words (mail's) say until when.
@@ -194,6 +198,29 @@ describe("a sync that keeps failing", () => {
     await s.tick(MINUTE);
     s.clock.sleep(8 * 60 * MINUTE);
     // Awake: the poll that was due comes, fails again, and starts a new run; nothing has stopped syncing either.
+    await s.tick(2 * MINUTE);
+    assert.deepEqual([(await listed(s)).status, changes(heard.events)], ["ok", []]);
+    for (let minute = 1; minute <= 10; minute++) await s.tick(MINUTE);
+    assert.equal((await listed(s)).statusReason, "provider_error", "ten minutes of failing once awake");
+    heard.stop();
+  });
+
+  test("nor does it sleeping during an attempt: the attempt's length is the time the machine was awake", async () => {
+    t = await makeServer();
+    const s = t;
+    let lidCloses = false;
+    slow(s, () => {
+      // The lid closes with a sync in flight: eight hours pass on the wall clock, none on the monotonic one.
+      if (!lidCloses) return;
+      lidCloses = false;
+      s.clock.sleep(8 * 60 * MINUTE);
+    });
+    const { mailbox } = await s.connect({ address: "me@acme.example" });
+    const heard = listen(s);
+    mailbox.failSync = "getaddrinfo ENOTFOUND imap.acme.example";
+    lidCloses = true;
+    await s.tick(MINUTE);
+    // Awake, the attempt fails, and so does the next poll's: two failures a minute or so apart, not eight hours.
     await s.tick(2 * MINUTE);
     assert.deepEqual([(await listed(s)).status, changes(heard.events)], ["ok", []]);
     for (let minute = 1; minute <= 10; minute++) await s.tick(MINUTE);

@@ -173,14 +173,17 @@ new mail are on the contract's main page.
   inbox connected by hand, Google refusing its own client is this too.
 - **`host_setup`, at once:** the host's own setup stops it: the server has no Google client any more, Google refused
   it, or the Gmail API is off in its project, for an inbox connected by signing in with Google. The host fixes it,
-  and the words say how on this host (`usual-mail google set`; on Cloudflare, the Worker's secrets); signing in again
-  doesn't help.
+  and the words say how on this host (`usual-mail google set`; on Cloudflare, the Worker's secrets), or, for the
+  Gmail API, that the host turns it on in the client's Google Cloud project; signing in again doesn't help. The Gmail
+  API off for an inbox connected by hand is `needs_sign_in`, in words saying to turn it on in that client's project.
 - **`provider_error`, after a grace:** any other failure (no connection, a name that doesn't resolve, a timeout, the
   provider's own error or limits, Gmail's spent daily quota, which lasts until Google resets it) may pass, so it
   leaves the status as it was until failures have gone on for `SYNC_FAILURE_GRACE_MS` (ten minutes), across two failed
   attempts at least. The run counts from the start of the first failed attempt after the last good sync, so a long
   hang before a failure is failing time; an attempt that begins more than `notSyncingAfterMs` after the last one ended
-  (the server stopped, its machine asleep) starts the run again. After `not_syncing`, a failed attempt is
+  (the server stopped, its machine asleep) starts the run again. An attempt's start is its end less its length on a
+  clock that doesn't run while the machine sleeps, so a machine asleep during an attempt is a gap too, not failing
+  time. After `not_syncing`, a failed attempt is
   `provider_error` at once. `statusDetail` is the provider's words.
 - **`not_syncing`:** no sign of life of an open inbox for `notSyncingAfterMs` (the larger of 15 minutes and five poll
   intervals) while the server ran: no attempt finished, good or failed, no batch was stored, no first sync said how

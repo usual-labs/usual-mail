@@ -64,13 +64,16 @@ export class SyncEngine {
   #comeBackCancel: (() => void) | null = null;
   /** Whether syncs still finish (watch.ts): looks every `everyMs` while the engine runs. */
   readonly #liveness: SyncWatch;
+  /** The host's monotonic clock (`Clock.monotonic`), or the wall clock where it has none. */
+  readonly #monotonic: () => number;
 
   constructor(ctx: Ctx) {
     this.#ctx = ctx;
     this.#queues = new WorkQueues((error) => ctx.host.log.error("Background mail work failed", error));
     this.#firstSync = new FirstSyncCounts(ctx, (work) => this.#queues.track(work));
     const clock = ctx.host.clock;
-    this.#liveness = new SyncWatch(() => clock.monotonic?.() ?? clock.now(), notSyncingAfterMs(ctx.options.pollIntervalMs));
+    this.#monotonic = () => clock.monotonic?.() ?? clock.now();
+    this.#liveness = new SyncWatch(this.#monotonic, notSyncingAfterMs(ctx.options.pollIntervalMs));
     this.#liveness.onSilent = (inboxIds) => markNotSyncing(ctx, inboxIds, this.#liveness);
     // Life again after `not_syncing` (a batch stored mid-sync, a write-back done): settled at once.
     this.#liveness.onRevived = (inboxId) =>
@@ -179,8 +182,9 @@ export class SyncEngine {
     const ctx = this.#ctx;
     const inbox = await getInbox(ctx, inboxId);
     if (!inbox || inbox.paused || this.#closing.has(inboxId)) return;
-    // A failure's run counts from here, so a long hang before it is failing time, not a gap (health.ts).
-    const startedAt = ctx.now();
+    // A failure's run counts from here, so a long hang before it is failing time, not a gap (health.ts). Its length is
+    // on the monotonic clock: a machine asleep mid-attempt (a Mac's lid closed) is a gap, never failing time.
+    const began = this.#monotonic();
     try {
       await this.#checkGoogleClient(inbox);
       await this.#checkWindow(inbox);
@@ -257,7 +261,8 @@ export class SyncEngine {
       this.#repairDue.add(inboxId);
       // A refused sign-in or the host's setup needs the person at once; a failure that may pass only after the grace.
       const failure = classifyFailure(inbox, error, ctx.google?.clientFix);
-      const attempt = { startedAt, endedAt: ctx.now() };
+      const endedAt = ctx.now();
+      const attempt = { startedAt: endedAt - (this.#monotonic() - began), endedAt };
       await storeHealth(ctx, inboxId, (row) => afterFailure(row, failure, attempt, this.#liveness.afterMs));
       // After storing, so a `not_syncing` this attempt ends goes to what it found, not to `ok` first.
       this.#liveness.alive(inboxId);

@@ -172,7 +172,7 @@ struct SyncNoticeView: View {
         .background(UsualColor.dangerTint, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .accessibilityElement(children: .contain)
         .animation(Motion.reveal, value: retry)
-        // The inbox changed (its status, words or last sync): the wait is over.
+        // The inbox changed (its status, words or last sync): the wait is over, or will be once the server answers.
         .onChange(of: watched) { _, now in retry.saw(now, at: .now) }
         // Or `waitLimit` passed with nothing changed.
         .task(id: retry.phase) {
@@ -183,10 +183,11 @@ struct SyncNoticeView: View {
     }
 
     private func press() {
-        retry.began()
+        // The inbox as pressed. The task below holds this view as it was then, so a change meanwhile comes through `saw`.
+        retry.began(inbox: watched)
         Task {
             let asked = await dispatch.run(notice.action)
-            retry.answered(asked, inbox: watched, at: .now)
+            retry.answered(asked, at: .now)
             if let line = retry.line { AccessibilityNotification.Announcement(line).post() }
         }
     }

@@ -297,7 +297,8 @@ function dataCheck(ctx: Context, dataDir: string): Check {
 
 /**
  * What to do about an inbox that needs attention, by why it does (`Inbox.statusReason`, docs/contract-sync.md): new
- * details or signing in again, the host's Google client, or trying again. A server before 0.1.2 gives no reason.
+ * details or signing in again, the host's Google client or the Gmail API in its project, or trying again. A server
+ * before 0.1.2 gives no reason.
  * `runsHere`: this command runs the server (`usual-mail start`), so it gives the Google client and restarts it; for a
  * server it doesn't run (on Cloudflare, say) the host does both its own way, which the server's words name.
  */
@@ -310,8 +311,8 @@ export function attentionFix(inbox: Inbox, runsHere = true): string {
         : `Give the new password: \`usual-mail inbox reconnect ${quoted}\`.`;
     case "host_setup":
       return runsHere
-        ? "It is this server's own setup: give it the right Google client with `usual-mail google set --file <it>`. The inbox syncs again by itself."
-        : "It is this server's own setup: its host gives it the right Google client, as the words above say (on Cloudflare, the Worker's secrets USUAL_MAIL_GOOGLE_CLIENT_ID and USUAL_MAIL_GOOGLE_CLIENT_SECRET). The inbox syncs again by itself.";
+        ? "It is this server's own setup: give it the right Google client with `usual-mail google set --file <it>`, or, when the words above say the Gmail API is off, turn it on in that client's Google Cloud project (APIs and services, Library, Gmail API). The inbox syncs again by itself."
+        : "It is this server's own setup: its host gives it the right Google client, as the words above say (on Cloudflare, the Worker's secrets USUAL_MAIL_GOOGLE_CLIENT_ID and USUAL_MAIL_GOOGLE_CLIENT_SECRET), or turns on the Gmail API in that client's Google Cloud project when they say it is off. The inbox syncs again by itself.";
     case "provider_error":
       return `The provider kept failing: once it answers, \`usual-mail inbox sync ${quoted}\` tries again (the server does too).`;
     case "not_syncing":

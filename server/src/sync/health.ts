@@ -17,10 +17,11 @@ export interface Failure {
 }
 
 /**
- * Sorts why a sync of `inbox` failed. For an inbox connected by signing in with Google the host's client is the
- * host's: Google refusing it, or the Gmail API off in its project, is `host_setup`, in words naming how this host gives
- * the client (`clientFix`, `GoogleOptions.clientFix`). For one connected by hand the client is the person's own, so the
- * same is theirs to fix with new credentials (`needs_sign_in`). Gmail's missing scope (`kind` "scope", the same test
+ * Sorts why a sync of `inbox` failed. For an inbox connected by signing in with Google the client is the host's:
+ * Google refusing it is `host_setup`, in words naming how this host gives the client (`clientFix`,
+ * `GoogleOptions.clientFix`), and the Gmail API off in its project is too, in words saying to turn it on there. For one
+ * connected by hand the client is the person's own, so the same is theirs to fix (`needs_sign_in`): new credentials,
+ * or the Gmail API turned on in their client's project. Gmail's missing scope (`kind` "scope", the same test
  * as its words) needs a new sign-in; its spent daily quota (`daily_quota`) may pass, in words saying until when.
  */
 export function classifyFailure(inbox: InboxRow, error: unknown, clientFix?: string): Failure {
@@ -44,7 +45,7 @@ export function classifyFailure(inbox: InboxRow, error: unknown, clientFix?: str
       const gmailReason = typeof named.reason === "string" ? named.reason : "";
       if (status === 401 || named.kind === "scope") return { reason: "needs_sign_in", words };
       if (status === 403 && gmailReason === "accessNotConfigured") {
-        return { reason: signedIn ? "host_setup" : "needs_sign_in", words };
+        return { reason: signedIn ? "host_setup" : "needs_sign_in", words: attention.gmailApiOff(signedIn) };
       }
       return { reason: null, words };
     }
@@ -59,7 +60,10 @@ export type Health = Pick<
   "status" | "statusDetail" | "statusReason" | "lastAttemptAt" | "failingSince" | "failures"
 >;
 
-/** A sync attempt's start and end, on the wall clock. */
+/**
+ * A sync attempt's start and end, on the wall clock. The engine takes the start as the end less the attempt's length
+ * on the monotonic clock, so time the machine slept during it is left out: it falls in the gap before the attempt.
+ */
 export interface Attempt {
   startedAt: number;
   endedAt: number;

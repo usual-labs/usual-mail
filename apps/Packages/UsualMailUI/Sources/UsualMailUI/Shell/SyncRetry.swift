@@ -54,13 +54,14 @@ struct SyncSnapshot: Equatable {
 
 /// Try again on the notice, as it goes (the review of 2026-11-25). The server only queues a sync, so a good answer can
 /// only say it asked: the button stays busy until the inbox changes (`SyncSnapshot`) or `waitLimit` passes, and the
-/// notice goes by itself once a sync is good. A refusal says why, in the refusal's red. Each line is also said to
-/// VoiceOver (`SyncNoticeView`).
+/// notice goes by itself once a sync is good. A change while the request is on its way counts too: the wait is over
+/// once the server answers (the final review of 2026-11-25). A refusal says why, in the refusal's red. Each line is
+/// also said to VoiceOver (`SyncNoticeView`).
 struct SyncRetry: Equatable {
     enum Phase: Equatable {
         case idle
-        /// The request is on its way.
-        case asking
+        /// The request is on its way: the inbox as it was when pressed (`from`), and as it is now (`now`).
+        case asking(from: SyncSnapshot?, now: SyncSnapshot?)
         /// The server took it at `since`, the inbox then `from`.
         case waiting(since: Date, from: SyncSnapshot?)
         case refused(String)
@@ -93,24 +94,36 @@ struct SyncRetry: Equatable {
         if case .refused = phase { true } else { false }
     }
 
-    /// The button was pressed.
-    mutating func began() {
-        phase = .asking
+    /// The button was pressed, the inbox then `inbox` (nil for a step that asks the server nothing).
+    mutating func began(inbox: SyncSnapshot?) {
+        phase = .asking(from: inbox, now: inbox)
     }
 
-    /// The step returned: `asked` for Try again, nil for a step that asks the server nothing.
-    mutating func answered(_ asked: SyncNoticeDispatch.Asked?, inbox: SyncSnapshot?, at now: Date) {
+    /// The step returned: `asked` for Try again, nil for a step that asks the server nothing. Asked, it waits for the
+    /// inbox to change, unless it already did while the request was on its way.
+    mutating func answered(_ asked: SyncNoticeDispatch.Asked?, at now: Date) {
         switch asked {
-        case .asked?: phase = .waiting(since: now, from: inbox)
+        case .asked?:
+            guard case .asking(let from, let seen) = phase, seen == from else {
+                phase = .idle
+                return
+            }
+            phase = .waiting(since: now, from: from)
         case .refused(let words)?: phase = .refused(words)
         case nil: phase = .idle
         }
     }
 
-    /// The inbox as it is now, at `now`: waiting ends once it changed or `waitLimit` passed.
+    /// The inbox as it is now, at `now`: kept while asking; waiting ends once it changed or `waitLimit` passed.
     mutating func saw(_ inbox: SyncSnapshot?, at now: Date) {
-        guard case .waiting(let since, let from) = phase else { return }
-        if inbox != from || now.timeIntervalSince(since) >= Self.waitLimit { phase = .idle }
+        switch phase {
+        case .asking(let from, _):
+            phase = .asking(from: from, now: inbox)
+        case .waiting(let since, let from):
+            if inbox != from || now.timeIntervalSince(since) >= Self.waitLimit { phase = .idle }
+        case .idle, .refused:
+            break
+        }
     }
 
     /// Why the server couldn't be asked: its own words, or the app's for an unreachable server.

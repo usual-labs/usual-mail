@@ -61,9 +61,9 @@ struct SyncRetryTests {
         let failing = try snapshot(.needsAttention)
         var retry = SyncRetry()
         #expect(!retry.busy && retry.line == nil)
-        retry.began()
+        retry.began(inbox: failing)
         #expect(retry.busy && retry.line == nil, "working while the request is on its way")
-        retry.answered(.asked, inbox: failing, at: start)
+        retry.answered(.asked, at: start)
         #expect(retry.busy && retry.line == "Asked your server to sync." && !retry.refused)
         // Nothing changed yet: still waiting, twenty seconds on.
         retry.saw(failing, at: start.addingTimeInterval(20))
@@ -72,29 +72,48 @@ struct SyncRetryTests {
         retry.saw(failing, at: start.addingTimeInterval(30))
         #expect(!retry.busy && retry.line == nil)
         // The inbox's words changed: done at once.
-        retry.began()
-        retry.answered(.asked, inbox: failing, at: start)
+        retry.began(inbox: failing)
+        retry.answered(.asked, at: start)
         retry.saw(try snapshot(.needsAttention, detail: "Timed out"), at: start.addingTimeInterval(2))
         #expect(!retry.busy)
         // Gone from the store (removed meanwhile): done too.
-        retry.began()
-        retry.answered(.asked, inbox: failing, at: start)
+        retry.began(inbox: failing)
+        retry.answered(.asked, at: start)
         retry.saw(nil, at: start.addingTimeInterval(1))
+        #expect(!retry.busy)
+    }
+
+    @Test func aChangeWhileAskingEndsTheWaitOnceTheServerAnswers() throws {
+        let start = Date(timeIntervalSince1970: 1_000_000)
+        let failing = try snapshot(.needsAttention)
+        var retry = SyncRetry()
+        // The sync it asked for finished before the answer came: no thirty seconds of waiting for a change already seen.
+        retry.began(inbox: failing)
+        retry.saw(try snapshot(.ok, detail: nil), at: start)
+        #expect(retry.busy, "still working while the request is on its way")
+        retry.answered(.asked, at: start.addingTimeInterval(1))
+        #expect(!retry.busy && retry.line == nil)
+        // Changed and back again while asking: as pressed, so it waits for the next change.
+        retry.began(inbox: failing)
+        retry.saw(try snapshot(.needsAttention, detail: "Timed out"), at: start)
+        retry.saw(failing, at: start)
+        retry.answered(.asked, at: start)
+        #expect(retry.busy && retry.line == "Asked your server to sync.")
+        retry.saw(try snapshot(.ok, detail: nil), at: start.addingTimeInterval(3))
         #expect(!retry.busy)
     }
 
     @Test func aRefusalSaysWhyAndLeavesTheButtonFree() {
         var retry = SyncRetry()
-        retry.began()
-        retry.answered(
-            .refused("Your server couldn't be asked to sync. Can't reach your server."), inbox: nil, at: Date())
+        retry.began(inbox: nil)
+        retry.answered(.refused("Your server couldn't be asked to sync. Can't reach your server."), at: Date())
         #expect(!retry.busy && retry.refused)
         #expect(retry.line == "Your server couldn't be asked to sync. Can't reach your server.")
         // Pressed again: the refusal goes while it asks.
-        retry.began()
+        retry.began(inbox: nil)
         #expect(retry.busy && retry.line == nil)
         // A step that asks the server nothing ends at once.
-        retry.answered(nil, inbox: nil, at: Date())
+        retry.answered(nil, at: Date())
         #expect(retry.phase == .idle)
     }
 }

@@ -5,7 +5,8 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
 
 - `SyncRetryTests` (UI, 2026-11-25, the review's): `SyncNoticeDispatch` opens the dashboard, moves the window or asks
   the server, and only Try again asks it, a refusal in words; `SyncRetry` busy while asking, "Asked your server to
-  sync." until the inbox changes, it goes, or 30 seconds pass, and a refusal's line, the button free again.
+  sync." until the inbox changes, it goes, or 30 seconds pass, a change while asking ending it once the server
+  answers (and one changed back not), and a refusal's line, the button free again.
 - `SyncWarningTests` (UI, 2026-11-25): only `needs_attention` warns; the notice on every list with the inbox's
   mail and not on Settings, search or an open mail; its words for one inbox (the server's, or a line of its own when
   there are none), two and three; Gmail's "Sign in again", another single inbox's "Reconnect on the dashboard"
