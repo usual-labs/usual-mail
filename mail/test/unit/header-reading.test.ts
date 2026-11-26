@@ -49,6 +49,7 @@ describe("line ends, as bytes", () => {
     assert.equal(headerBlockReadable(bytes("A: b\nC: d\r\n\r\nbody")), false, "LF, then CRLF");
     assert.equal(headerBlockReadable(bytes("A: b\r\nC: d\r\n\nbody")), false, "the blank line ends differently");
     assert.equal(headerBlockReadable(bytes("A: b\r\nC: d\r")), false, "a CR at the very end");
+    assert.equal(headerBlockReadable(bytes("A: b\r\n: no name\r\n\r\nbody")), false, "a colon with no name before it");
   });
 
   it("one line end throughout reads: all CRLF, or all LF; and whatever follows the blank line isn't read", () => {

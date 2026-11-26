@@ -222,6 +222,12 @@ describe("the shape of mail sent to this person by that organisation alone (ever
     assert.equal(passes("security", mail("Sam replied to your post", "Sam wrote: we noticed a new sign-in. Was this you?")), false);
   });
 
+  test("it reads what the model read: the subject's first 1,000 characters and the text's first 4,000", () => {
+    const code = (subject: string, text: string) => passes("code", { ...PASSING.code.message, subject, text });
+    assert.deepEqual([code(`${"x".repeat(980)} code 482913`, "Hi."), code(`${"x".repeat(1_000)} code 482913`, "Hi.")], [true, false]);
+    assert.deepEqual([code("Hi", `${"x ".repeat(1_990)}code 482913`), code("Hi", `${"x ".repeat(2_000)}code 482913`)], [true, false]);
+  });
+
   test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {
     assert.equal(passes("code", { ...PASSING.code.message, listId: "codes.service.example", replyTo: [{ email: "x@elsewhere.example" }] }), true);
   });

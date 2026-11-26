@@ -8,7 +8,8 @@ import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, test } from "node:test";
 import { failure } from "../src/index.ts";
 import type { DeliverInput } from "../src/testing/index.ts";
-import { makeServer, type TestServer } from "./helpers.ts";
+import { remoteId } from "../src/search/remote.ts";
+import { at, DAY, makeServer, type TestServer } from "./helpers.ts";
 
 let t: TestServer;
 beforeEach(async () => {
@@ -128,6 +129,19 @@ describe("a proof without the sender's signature (the final security review of 2
     const colleague = await t.receive(work.inbox, { ...COLLEAGUE, subject: "Lunch, SPF only", signedRecipients: [] });
     assert.deepEqual([own.screened, colleague.screened], [true, true]);
     const next = await t.receive(work.inbox, { from: COLLEAGUE.from, subject: "Notes", text: "Attached." });
+    assert.equal(next.screened, true, "not let in by it");
+  });
+});
+
+describe("where the rules don't run", () => {
+  test("a conversation opened from a search of the mailbox is history: it lets nobody in, however proved", async () => {
+    // Older than the first sync's window, so no sync lists it: only opening it from a search brings it in.
+    const old = { ...COLLEAGUE, subject: "Lunch last year", threadKey: "old", date: at(-400 * DAY) };
+    const { inbox } = await t.connect({ address: "me@work.example", mailbox: { kind: "gmail" }, history: [old] });
+    await assert.rejects(t.threadBySubject("Lunch last year"), Error, "outside the window");
+    const opened = await t.server.openRemote(t.person, remoteId(inbox.id, "old"));
+    assert.equal(opened.messages.length, 1);
+    const next = await t.receive(inbox, { from: COLLEAGUE.from, subject: "Notes", text: "Attached." });
     assert.equal(next.screened, true, "not let in by it");
   });
 });
