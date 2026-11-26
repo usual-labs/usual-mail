@@ -133,7 +133,8 @@ export async function seedSample(host: Host, demo: Demo, sample: SampleData, shi
 
     const known = new Set<string>();
     for (const thread of inboxThreads) {
-      if (thread.screened) continue;
+      // A thread that skipped Screening lets nobody in (docs/contract.md, "Skipped Screening").
+      if (thread.screened || thread.skippedScreening) continue;
       for (const person of thread.participants) known.add(person.email.toLowerCase());
     }
     for (const message of sample.messages.filter((m) => m.inboxId === inbox.id && m.outgoing)) {

@@ -353,6 +353,8 @@ and the notes:
   catch only some of them).
 - **Evidence words in more languages** (2026-11-25). The gate's evidence (`server/src/ai/gate-evidence.ts`) is English;
   German, French and Spanish words for order, booking, sign-in and payment would let such mail pass the same way.
-- **Show why a thread skipped Screening in the apps** (2026-11-25): the contract says what to show
-  (contract.md, "Skipped Screening"); the dashboard and the connector show it; the Swift apps are left to the
-  coordinator, since another agent was changing the iPhone app.
+- **Whether a thread's sender is let in** (2026-11-26): the apps show why a thread skipped Screening, with Let in and
+  Block sender for its sender (contract.md, "Skipped Screening"), but can't tell a sender let in since, except by a
+  sender picture, so they still offer Let in to one without a picture ([known-issues.md](known-issues.md), "Let in is
+  offered for a sender already let in"). A thread field saying whether its sender is let in (or the senders list in the
+  apps) would hide it.

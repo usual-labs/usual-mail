@@ -135,6 +135,14 @@ extension WhyWords {
         return "Skipped Screening: \(what)"
     }
 
+    /// The sender's choices under the skipped line, as a screened mail offers them: let in and block, for a mail with
+    /// a sender (as the row menu's block needs one). Let in is left out once a sender picture shows, since the server
+    /// gives one only for a sender let in; a sender let in without a picture is still offered it (known-issues.md).
+    static func senderChoices(_ thread: MailThread) -> [BarAction] {
+        guard thread.skippedScreening != nil, thread.sender != nil else { return [] }
+        return thread.avatar == nil ? [.letIn, .block] : [.block]
+    }
+
     /// What each kind is, as core's `SCREENING_PASS_WORDS` says it.
     static func words(_ pass: ScreeningPass) -> String? {
         switch pass {

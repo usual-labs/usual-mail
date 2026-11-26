@@ -26,8 +26,11 @@ struct MoreMenu: View {
                     .padding(.horizontal, 10)
                     .padding(.bottom, 6)
                     .fixedSize(horizontal: false, vertical: true)
-                MenuRow(icon: .letIn, title: "Let in") { choose(.allowSender) }
-                MenuRow(icon: .block, title: "Block sender") { choose(.blockSender) }
+                ForEach(WhyWords.senderChoices(mail), id: \.self) { choice in
+                    MenuRow(icon: choice.icon, title: choice.senderTitle) {
+                        if let input = choice.input { choose(input) }
+                    }
+                }
             }
             Divider().padding(.vertical, 2)
             if mail.category != .newsletter {
@@ -96,11 +99,15 @@ struct SnoozeMenu: View {
                 }
             } else {
                 let title = WhyWords.title(for: mail, rules: store.lists.rules(inbox: mail.inboxId))
-                if WhyWords.skipped(mail) != nil {
+                let choices = WhyWords.senderChoices(mail)
+                if !choices.isEmpty {
                     // Out of Screening without its sender let in: the sender's choices Screening offers, under why.
                     Section(title) {
-                        item("Let in", icon: .letIn) { choose(.allowSender) }
-                        item("Block sender", icon: .block, destructive: true) { choose(.blockSender) }
+                        ForEach(choices, id: \.self) { choice in
+                            item(choice.senderTitle, icon: choice.icon, destructive: choice == .block) {
+                                if let input = choice.input { choose(input) }
+                            }
+                        }
                     }
                     Section { moves }
                 } else {

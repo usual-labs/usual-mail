@@ -100,4 +100,18 @@ struct ExplanationTests {
         #expect(WhyWords.skipped(other) == nil)
         #expect(WhyWords.title(for: other) == WhyWords.line(for: other))
     }
+
+    /// Under the skipped line, the sender's choices: let in and block; block only once a sender picture shows (the
+    /// server gives one only for a sender let in); none without a sender, as the row menu's block needs one.
+    @Test func theSendersChoicesUnderTheSkippedLine() throws {
+        var code = try #require(sample.threads.first { $0.id == "thr_15" })
+        #expect(WhyWords.senderChoices(code) == [.letIn, .block])
+        #expect(WhyWords.senderChoices(code).map(\.senderTitle) == ["Let in", "Block sender"])
+        code.avatar = SenderPicture(picture: "/v1/avatars/5b0e7c1f3a9d4e2b8c6f1a0d9e7b3c21", fit: .fill, size: 180)
+        #expect(WhyWords.senderChoices(code) == [.block])
+        code.sender = nil
+        #expect(WhyWords.senderChoices(code).isEmpty)
+        let other = try #require(sample.threads.first { $0.id == "thr_6" })
+        #expect(WhyWords.senderChoices(other).isEmpty)
+    }
 }

@@ -34,6 +34,11 @@ enum BarAction: CaseIterable, Hashable, Sendable {
         }
     }
 
+    /// Its words in a menu about the sender: "Let in", "Block sender".
+    var senderTitle: String {
+        self == .block ? "Block sender" : title
+    }
+
     /// The action itself; snooze and more open a menu first.
     var input: ActionInput? {
         switch self {

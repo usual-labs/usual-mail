@@ -4,6 +4,12 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
+- **Let in is offered for a sender already let in** (apps, 2026-11-26, open). A mail that skipped Screening keeps
+  `skippedScreening` after its sender is let in (it says how the thread came out), and the apps offer Let in under
+  its line. They hide it only once a sender picture shows (`WhyWords.senderChoices`; the server gives a picture only
+  for a sender let in), so a sender let in whose domain has no picture, or on IMAP, is still offered it. Letting them
+  in again changes nothing. A full fix needs the contract to say whether a thread's sender is let in
+  ([improvement-ideas.md](improvement-ideas.md), "Whether a thread's sender is let in").
 - **Linear only where they run** (server, mail and core, 2026-11-26, the sweep behind 0.1.3's freeze fix; open by
   choice). These patterns take more than linear time on a crafted string of their own, but every caller hands them
   one that is short: the thousands separator `\B(?=(\d{3})+(?!\d))` (core's `ai-words.ts` and `first-sync.ts`, the
