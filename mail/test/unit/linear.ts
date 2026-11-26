@@ -6,12 +6,14 @@
 
 import { isMainThread, parentPort, Worker, workerData } from "node:worker_threads";
 import { rebuildMessage } from "../../src/gmail/payload.ts";
+import { fromAuthentication, parseAuthenticationResults, type AuthenticationOptions } from "../../src/message/auth-results.ts";
 import { messageIds, stripBrackets } from "../../src/message/headers.ts";
 import { htmlToText } from "../../src/message/html-to-text.ts";
 import { MAX_HTML_DEPTH, MAX_PARSED_HTML } from "../../src/message/html-depth.ts";
 import { parseMessage } from "../../src/message/parse.ts";
 import { remotePictures, rewritePictures } from "../../src/message/pictures.ts";
 import { sanitizeHtml } from "../../src/message/sanitize.ts";
+import { headerBlockReadable, signedRecipients } from "../../src/message/signed-recipients.ts";
 
 export const MB = 1024 * 1024;
 
@@ -54,6 +56,28 @@ export const BRACKETS = `a${">".repeat(MB)}b`;
 /** The same with 450 KB of ">", so four such fields fit the parser's 2 MB of headers (counted over all parts). */
 const FIELD = `a${">".repeat(450_000)}b`;
 
+/** Gmail's checker, and organisations as the last two labels: what the screening gate's header readers are given. */
+const GMAIL: AuthenticationOptions = { checker: "mx.google.com", organisationalDomain: (domain) => domain.split(".").slice(-2).join(".") || null };
+const PASSED = "mx.google.com; dkim=pass header.i=@brand.example header.b=AbCd; dmarc=pass header.from=brand.example";
+/** About 1.5 MB, so a message of it with its other headers stays within the parser's 2 MB of headers. */
+const HEADER = 1_500_000;
+
+/**
+ * Header fields the screening gate's readers go through (0.1.4: the proof, the signed recipients, the header block),
+ * each about 1.5 MB or as many lines as the parser reads, in a message that passes Gmail's checker for brand.example.
+ */
+export const SIGNED: Record<string, string> = {
+  "an Authentication-Results of comments": `Authentication-Results: mx.google.com; dkim=pass ${fill("(note) ", HEADER)}`,
+  "an Authentication-Results of unquoted values": `Authentication-Results: mx.google.com; dkim=pass header.b=${fill("a/b=", HEADER)}`,
+  "an Authentication-Results of results": `Authentication-Results: mx.google.com; ${fill("dkim=pass header.d=brand.example; ", HEADER)}`,
+  "a DKIM-Signature signing a field name over and over": `DKIM-Signature: v=1; d=brand.example; s=s1; b=AbCd; h=${fill("from:", HEADER)}to`,
+  "a DKIM-Signature of tags": `DKIM-Signature: v=1; d=brand.example; s=s1; b=AbCd; h=from:to; ${fill("x=y; ", HEADER)}`,
+  "a To of addresses": `To: ${fill("me@inbox.example, ", HEADER)}me@inbox.example`,
+  // The parser counts each header line as at least 64 bytes: 32,768 lines at most.
+  "30,000 short header lines": fill("X-A: b\r\n", 30_000 * 8).trimEnd(),
+  "a field folded 30,000 times": `X-A: ${fill("b\r\n ", 30_000 * 4)}c`,
+};
+
 /** Which HTML, and how long. */
 export interface Input {
   shape: string;
@@ -61,7 +85,7 @@ export interface Input {
 }
 
 /** What reads mail before it's stored, and what the server's picture pass reads again each time a message is opened. */
-const WORK: Record<"html" | "headers" | "rebuild", (input: Input) => Promise<Record<string, number>>> = {
+const WORK: Record<"html" | "headers" | "rebuild" | "signed", (input: Input) => Promise<Record<string, number>>> = {
   /** Each reader of mail HTML, timed apart. */
   async html({ shape, length }) {
     const html = HTML[shape]!(length);
@@ -93,6 +117,24 @@ const WORK: Record<"html" | "headers" | "rebuild", (input: Input) => Promise<Rec
     return { headers: performance.now() - started };
   },
   /** The large-message rebuild reading a forwarded message's Content-Transfer-Encoding, a megabyte of "(". */
+  /** One of the screening gate's header shapes: the whole message parsed with Gmail's checker, then each reader alone. */
+  async signed({ shape }) {
+    const field = SIGNED[shape]!;
+    const raw = [`Authentication-Results: ${PASSED}`, "From: Brand <no-reply@brand.example>", "DKIM-Signature: v=1; d=brand.example; s=s1; h=from:to; b=AbCd", field, "To: me@inbox.example", "Subject: Hi", "", "Hi."].join("\r\n");
+    const value = field.slice(field.indexOf(":") + 1);
+    const took: Record<string, number> = {};
+    const time = async (name: string, read: () => unknown) => {
+      const started = performance.now();
+      await read();
+      took[name] = performance.now() - started;
+    };
+    await time("parseMessage", () => parseMessage(raw, { ownAddresses: [], authentication: GMAIL }));
+    await time("parseAuthenticationResults", () => parseAuthenticationResults(value));
+    await time("fromAuthentication", () => fromAuthentication([{ key: "Authentication-Results", value }, { key: "From", value: "a@brand.example" }], GMAIL));
+    await time("signedRecipients", () => signedRecipients([{ key: "Authentication-Results", value: PASSED }, { key: "DKIM-Signature", value }, { key: "To", value }], "brand.example", GMAIL));
+    await time("headerBlockReadable", () => headerBlockReadable(raw));
+    return took;
+  },
   async rebuild() {
     const started = performance.now();
     const part = (name: string, value: string) => ({ name, value });

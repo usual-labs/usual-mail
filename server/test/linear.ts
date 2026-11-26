@@ -7,6 +7,7 @@ import { isMainThread, parentPort, Worker, workerData } from "node:worker_thread
 import { SHIPPED_SUFFIXES } from "../src/avatars/shipped.ts";
 import { EVIDENCE, holdsLink } from "../src/ai/gate-evidence.ts";
 import { askableKinds, gateCheck, holdsCode } from "../src/ai/gate.ts";
+import { acceptPass, passRequest } from "../src/ai/pass-prompt.ts";
 import { categorizeRequest, detailsRequest, eventRequest, summarizeRequest, withoutAddresses } from "../src/ai/prompt.ts";
 import { modelText, readingText, snippetText } from "../src/ai/text.ts";
 import { checkEvent } from "../src/ai/event.ts";
@@ -63,6 +64,12 @@ const WORK = {
     };
     const check = gateCheck(message, { suffixes: SHIPPED_SUFFIXES, inbox: { address: "me@inbox.example", provider: "gmail" } });
     for (const kind of ["code", ...askableKinds("notification")] as const) check.mayPass(kind);
+    // Its shape (gate-shape.ts) on addresses and a List-Id of the body's length, and the question it asks.
+    const shaped = { ...message, from: { email: body }, fromVerified: body, to: [{ email: body }], cc: [{ email: body }], replyTo: [{ email: body }], listId: body };
+    const shape = gateCheck(shaped, { suffixes: SHIPPED_SUFFIXES, inbox: { address: body, provider: "gmail" } });
+    for (const kind of ["code", ...askableKinds("receipt")] as const) shape.mayPass(kind);
+    const question = passRequest("m", { subject: body, from: { name: body, email: "a@b.example" }, listId: body, automated: true, text: body, html: body }, "notification", "id");
+    if (question) acceptPass(body, question);
     for (const evidence of Object.values(EVIDENCE)) evidence({ words: body, link: true });
     holdsLink(body, body);
     holdsCode(body);

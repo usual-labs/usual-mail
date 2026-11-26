@@ -751,14 +751,14 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
   a model reads and in snippets a tag starts where HTML starts one and runs to its nearest ">", comments end where
   htmlparser2 ends them ("<!-->", "<!--->", "-->", "--!>"), so a lone "<" in text no longer swallows the text up to
   the next tag and a "<" inside an attribute leaves no piece of one ([server-ai.md](server-ai.md), "In linear time");
-  the screening gate's `plainText` reads tags as before. Stored snippets aren't made again: on stored HTML, which is
+  0.1.3's screening gate read tags in `plainText` as before. Stored snippets aren't made again: on stored HTML, which is
   sanitized, they read as before; only a message with no HTML part whose text part is HTML source keeps 0.1.2's until
   its thread changes. Tests: the server's `ai-linear` (27 bodies of 1 MB through the requests and snippets, a model's
   answers, names, List-Ids and pictures, and the code check) and mail's `linear.test.ts` (17 HTML shapes at the cap,
   5 of them at 1 MB too, each reader timed apart; message ids of 1 MB of ">"; the rebuild), each in a worker stopped
   at its limit; `html-depth.test.ts`; each fix's test failing with that fix undone, but the tracker removal's (its old
-  cost stays under the tests' 3 s). Still open: the patterns below in "Linear only where they run", and the address
-  leaks in [server-ai.md](server-ai.md) (a quoted local part, an address literal, the part before a second @).
+  cost stays under the tests' 3 s). Still open: the patterns in "Linear only where they run", and the address leaks
+  in "A summary request can still carry an unusual address" (both under Open, above).
   Since 0.1.4 the screening gate's own patterns are linear too: its card and reference patterns ("card " and 80,000
   "*" took 7.6 s; "order " and 80,000 "-", 2.6 s) are bounded, the gate reads only what the model read (the subject's
   first 1,000 characters and 4,000 of the model's text), and `plainText`, which 0.1.3's gate read, is gone. Tests in

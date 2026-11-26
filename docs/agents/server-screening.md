@@ -117,10 +117,14 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   `header-reading` (11, on raw bytes, the fifth review): a lone LF read as a blank line, a stray CR, mixed line ends,
   the 2 MiB limit and the early stop, sixteen signatures and a seventeenth, a top-level header the large-message
   rebuild drops (through `fromFullForm`), and Gmail's result with unquoted "/" and "=".
-- **Speed** (`test/linear.ts`): 20 bodies of 1 MB, each run in a worker thread that is terminated at 10 seconds, since
-  a slow pattern blocks the event loop and node:test's own timeout can't fire: the gate's check (`screening-gate`), and
-  the requests, snippets, a model's answers, names, List-Ids and pictures' addresses (`ai-linear`), each under 3 s
-  (all well under 1 s). Mutation-checked: the old address, markdown-link and markup patterns each fail at 10 s.
+- **Speed** (`test/linear.ts`): 0.1.3's 27 bodies of 1 MB, each run in a worker thread that is terminated at 10
+  seconds, since a slow pattern blocks the event loop and node:test's own timeout can't fire: the gate's check of each
+  kind on the text, and on From, To, Cc, Reply-To and List-Id of the body's length, its evidence, `holdsLink`,
+  `holdsCode` and the gate's question (`ai-linear`'s gate work; slowest 275 ms), and the requests, snippets, a model's
+  answers, names, List-Ids and pictures' addresses, each under 3 s. Mail's `linear.test.ts` runs the header readers the
+  gate depends on (the proof, signed recipients, the header block) on eight shapes of about 1.5 MB or 30,000 lines,
+  each in a whole message read with Gmail's checker and through each reader alone (slowest: a To of 1.5 MB of
+  addresses, 101 ms). Mutation-checked: the old address, markdown-link and markup patterns each fail at 10 s.
 - Mutation-checked too: reading the planned message instead of the newest, dropping the newest-message id check,
   going back to `conversation` only, dropping `gate_pending`, not screening a joined thread again, dropping the
   stored or served backups, and each of `let-in.ts`'s guards.
@@ -144,4 +148,23 @@ search's `tokens`, `parseSearch`, `fold`, `tokensOf`, `runsOf` and `oneLine` und
 `listIdOf`, `isNoReplyAddress`, `isAutomated` under 50 ms, `firstFromAddress` 194 ms, the authentication readers and
 `signedRecipients` under 2 ms, `htmlToText` 80 ms, `sanitizeHtml` 339 ms, the CSS sanitizers and `servableCss` up to
 292 ms, `canonicalPictureUrl` 22 ms, and `parseMessage` 719 ms (headers) and 406 ms (body). The sweep itself was a
-scratch script, not kept; the worker tests above keep the cases that were slow.
+scratch script, not kept; the worker tests above keep the cases that were slow. Its inputs repeated one unit and
+missed what 0.1.3's review found in the same readers (a run of ">" in message ids, htmlparser2's nesting, a picture's
+width of spaces, a transfer encoding's "(", an amount's separators): [known-issues.md](known-issues.md), "Reading a
+message could take minutes".
+
+## The sweep after the rebase onto 0.1.3 (2026-11-26, 0.1.4)
+
+The branch's own patterns, swept as 0.1.3's were. First every pattern literal in the 33 source files the branch
+changes (100 of them; a prefix, a run of 2,000 and of 8,000 of one character or pair, and a suffix, flagged when the
+time grows faster than the length): only patterns already listed as linear where they run (core's thousands
+separator, `shortenSummary`'s trim, the fake model's), and the MCP's `htmlToText` (below). Then each reader the branch
+adds or changes, as a function, the same way, which also reaches gate-evidence's patterns built at run time: the
+gate's check with the text, the subject, From, To and Cc, and Reply-To and List-Id each pumped; each kind's evidence
+with and without a link; `holdsLink`, `holdsCode`, `mailboxKey`, `addressedTo`, `onTenantPlatform`,
+`carriesUsersWords`, `soleSender`, `passRequest`, `acceptPass`, `isPublicMailDomain`, `isSharedPlatform`,
+`parseAuthenticationResults`, `fromAuthentication`, `signedRecipients` (a pumped signature, a pumped result) and
+`headerBlockReadable`: 35 readers, none slower than linear. Then 1 MB at the cap, kept as tests (Speed, above). The
+MCP's `htmlToText` (in 0.1.3 too, outside the branch) read from every space of a long run to its end before a letter
+(`[ \t]+\n`: 80,000 spaces took 2.5 s, in a message with no text part); it now reads a run from its start only,
+tested in `mcp/test/hostile.test.ts`.

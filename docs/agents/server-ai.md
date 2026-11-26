@@ -355,8 +355,8 @@ one address, back to where none is split. A subject goes to every job cut to `SU
 a model reads (`readableHtml`) start where HTML starts one ("<" or "</", then a letter, "!" or "?") and run to their
 nearest ">", and comments end where htmlparser2 ends them ("<!-->" and "<!--->" are whole, any other runs to its
 nearest "-->" or "--!>"; one never closed stays), each found by a forward scan: a lone "<" in text stays, and a "<"
-inside an attribute leaves no piece of the tag; the gate's `plainText` reads tags as before 0.1.3, each from any "<" to
-the nearest ">". On stored HTML, sanitized so that a "<" in text or an attribute is written `&lt;` and comments are
+inside an attribute leaves no piece of the tag. The screening gate reads the same text the model read (0.1.4;
+`plainText`, which 0.1.3's gate read with tags from any "<" to the nearest ">", is gone). On stored HTML, sanitized so that a "<" in text or an attribute is written `&lt;` and comments are
 gone, snippets and model text read as 0.1.2's (38,794 comparisons), so `SNIPPET_PASS` isn't run again: only a message
 with no HTML part whose text part is HTML source keeps a snippet 0.1.2 made, until its thread changes. A model's
 amount answer loses its leading and trailing separators by a scan from each end (`parseAmount`). Tests: `ai-linear`
@@ -394,16 +394,14 @@ amount answer loses its leading and trailing separators by a scan from each end 
   link to `scheme://host/…` (`scheme://host` when nothing follows the host; who signed in dropped, a full stop or
   bracket after it kept); a run of four or more of one punctuation, maths, modifier or box-drawing character (single
   spaces between allowed) to three; runs of spaces to one, lines trimmed, blank lines at most one. The limits cut after
-  cleaning, and summaries' addresses are replaced after it. Since 2026-11-25 the screening gate's check reads the same
-  (`plainText`, the old reading, is gone), and every pattern here is linear: tags stripped as `<[^<>]*>` (a lone `<`
-  no longer swallows text up to the next tag), style, script, head and title blocks taken out by `withoutBlocks` (a
-  scan that stops looking for a closing tag once none follows), a link's trailing punctuation read from its end, and
-  the snippet's tag, angle-link and markdown-link patterns kept from reading past a `<` or `[`. Tests: `ai-text` (8),
-  and `screening-gate`'s 1 MB bodies. A summary, payment-details or event request takes addresses out without a
-  pattern that scans back and forth (`ai/addresses.ts`, re-exported by `prompt.ts`: each at sign, "@" or "＠", read
-  once; its domain from there, any number of labels of any length dotted by ".", "。", "．" or "｡", letters, digits and
-  marks; its local part back from it: the whole run of address characters when at most 256 long, else its last 64),
-  after cutting the text to its limit and room for one address, back to where no address is split; when a run of
+  cleaning, and summaries' addresses are replaced after it. The screening gate's check reads the same (0.1.4), and
+  every pattern here is linear ("In linear time", above, has how tags and comments are read): style, script, head and
+  title blocks taken out by `withoutBlocks` (a scan that stops looking for a closing tag once none follows), a link's
+  trailing punctuation read from its end, and the snippet's angle-link and markdown-link patterns kept from reading
+  past a `<` or `[`. Tests: `ai-text`, and `screening-gate`'s and `ai-linear`'s 1 MB bodies. A summary,
+  payment-details or event request takes addresses out without a pattern that scans back and forth
+  (`ai/addresses.ts`, as above), after cutting the text to its limit and room for one address, back to where no
+  address is split; when a run of
   address characters goes on past that room, at the limit unless an at sign behind it (whose domain reaches it) or
   ahead of it within a local part's length, in code units, means an address could cross it, then just before that
   address and any it is joined to (`cutWithoutAddresses`, `safeCut`); the subject goes to every job cut

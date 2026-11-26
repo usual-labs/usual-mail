@@ -7,7 +7,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { HTML, MAX_PARSED_HTML, MB, within, type Input } from "./linear.ts";
+import { HTML, MAX_PARSED_HTML, MB, SIGNED, within, type Input } from "./linear.ts";
 
 /** Each reader within 3 seconds; the whole worker is stopped at 30. */
 async function fast(input: Input): Promise<void> {
@@ -37,4 +37,13 @@ describe("header values", () => {
     const { rebuild } = await within(15_000, "rebuild");
     assert.ok(rebuild! < 3_000, `${rebuild!.toFixed(0)} ms`);
   });
+});
+
+describe("headers the screening gate reads, about 1.5 MB or 30,000 lines each, within what the parser reads (0.1.4)", () => {
+  for (const shape of Object.keys(SIGNED)) {
+    test(shape, { timeout: 40_000 }, async () => {
+      const took = await within(30_000, "signed", { shape, length: 0 });
+      for (const [reader, ms] of Object.entries(took)) assert.ok(ms < 3_000, `${reader}: ${ms.toFixed(0)} ms on ${shape}`);
+    });
+  }
 });
