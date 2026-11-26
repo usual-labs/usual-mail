@@ -10,7 +10,7 @@ import { afterEach, beforeEach, describe, test } from "node:test";
 import type { ChoiceRequest } from "../src/ai/models.ts";
 import { failure } from "../src/index.ts";
 import type { DeliverInput } from "../src/testing/index.ts";
-import { HOUR, historyFromKnown, makeServer, type TestServer } from "./helpers.ts";
+import { at, HOUR, historyFromKnown, makeServer, type TestServer } from "./helpers.ts";
 
 let t: TestServer;
 beforeEach(async () => {
@@ -116,6 +116,17 @@ describe("a kind that skips Screening", () => {
 
 describe("one-time codes on each provider", () => {
   const CODE = { ...SIGN_IN, subject: "Your code", text: "Your verification code is 482913." } satisfies DeliverInput;
+
+  test("the check reads the subject the model read, the thread's, not the newest message's own", async () => {
+    const { inbox, mailbox } = await inboxWithAi();
+    answer("otp");
+    mailbox.deliver({ ...SIGN_IN, subject: "Your sign-in code", text: "Hello.", threadKey: "code", date: at(-2 * HOUR) });
+    mailbox.deliver({ ...SIGN_IN, subject: "Hello again", text: "482913", threadKey: "code", date: at(-HOUR) });
+    await t.server.syncInbox(t.person, inbox.id);
+    await t.server.whenIdle();
+    const thread = await t.threadBySubject("Your sign-in code");
+    assert.deepEqual([thread.screened, thread.skippedScreening], [false, "code"], "the code word is in the thread's subject");
+  });
 
   test("on Gmail a code whose From domain the checker didn't prove never falls back", async () => {
     const { inbox } = await inboxWithAi();
