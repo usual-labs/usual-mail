@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 import { SCREENING_PASS_CATEGORIES, skippedScreeningLine, type DecidedCategory, type ScreeningPass } from "@usualmail/core";
 import { SHIPPED_SUFFIXES } from "../src/avatars/shipped.ts";
-import { addressedTo, mailboxKey } from "../src/ai/gate-shape.ts";
+import { addressedTo, carriesUsersWords, mailboxKey } from "../src/ai/gate-shape.ts";
 import { askableKinds, gateCheck, type GateContext, type GateMessage } from "../src/ai/gate.ts";
 import { acceptPass, NO_PASS, passRequest } from "../src/ai/pass-prompt.ts";
 import { BODIES, within } from "./linear.ts";
@@ -226,6 +226,48 @@ describe("the shape of mail sent to this person by that organisation alone (ever
     const code = (subject: string, text: string) => passes("code", { ...PASSING.code.message, subject, text });
     assert.deepEqual([code(`${"x".repeat(980)} code 482913`, "Hi."), code(`${"x".repeat(1_000)} code 482913`, "Hi.")], [true, false]);
     assert.deepEqual([code("Hi", `${"x ".repeat(1_990)}code 482913`), code("Hi", `${"x ".repeat(2_000)}code 482913`)], [true, false]);
+  });
+
+  test("a subject quoting a title someone typed is no security alert or account change", () => {
+    // The narrow check of 2026-11-26: a notifier puts the file's, board's or meeting's name in its subject.
+    const alert = (subject: string) => passes("security", mail(subject, "A new sign-in. Was this you?"));
+    assert.equal(alert('Sam shared "Security alert: unusual sign-in detected" with you'), false);
+    assert.equal(alert("“Security alert” from Sam"), false);
+    assert.equal(alert("'New sign-in' on the team's board"), false, "a single quote outside a word");
+    assert.equal(alert("Sam mentioned you: new sign-in, was this you?"), false);
+    assert.equal(alert("You were invited you to: suspicious activity review"), false);
+    assert.equal(alert("Sam commented on Security alert"), false);
+    assert.equal(alert("We’ve noticed a new sign-in"), true, "an apostrophe isn't a quotation mark");
+    assert.equal(alert("New sign-in to your account"), true);
+    const account = (subject: string) => passes("account", mail(subject, "Reset your password here: https://service.example/r"));
+    assert.deepEqual([account("Reset your password"), account('Sam shared "Reset your password"'), account("Sam invited you: password reset")], [true, false, false]);
+  });
+
+  test("a security alert's phrase counts only in the subject's first 1,000 characters, as the model read it", () => {
+    const alert = (subject: string) => passes("security", mail(subject, "A new sign-in. Was this you?"));
+    assert.deepEqual([alert(`${"x".repeat(980)} new sign-in`), alert(`${"x".repeat(1_000)} new sign-in`)], [true, false]);
+  });
+
+  test("every notifier on the deny list, and its subdomains, for every kind but a code", () => {
+    const denied = [
+      "google.com", "microsoft.com", "stripe.com", "venmo.com", "square.com", "squareup.com", "sharepointonline.com",
+      "facebookmail.com", "facebook.com", "instagram.com", "whatsapp.com", "linkedin.com", "x.com", "twitter.com",
+      "discord.com", "discordapp.com", "slack.com", "telegram.org", "reddit.com", "redditmail.com", "quora.com",
+      "medium.com", "meetup.com", "pinterest.com", "tiktok.com", "youtube.com", "snapchat.com", "tumblr.com",
+      "nextdoor.com", "github.com", "gitlab.com",
+      "figma.com", "dropbox.com", "dropboxmail.com", "notion.so", "trello.com", "bitbucket.org", "zoom.us", "webex.com",
+      "box.com", "calendly.com", "docusign.net", "docusign.com", "hellosign.com", "pandadoc.com", "adobesign.com",
+      "echosign.com", "adobe.com", "miro.com", "canva.com", "airtable.com", "asana.com", "monday.com", "clickup.com",
+      "smartsheet.com", "basecamp.com", "loom.com", "wetransfer.com", "eventbrite.com", "typeform.com", "jotform.com",
+      "surveymonkey.com",
+    ];
+    for (const domain of denied) {
+      for (const host of [domain, `mail.${domain}`]) assert.equal(carriesUsersWords(`no-reply@${host}`, host, domain), true, host);
+      assert.equal(passes("security", mail("New sign-in to your account", "A new sign-in. Was this you?", { from: { email: `no-reply@mail.${domain}` }, fromVerified: `mail.${domain}` })), false, domain);
+    }
+    for (const domain of ["paypal.com", "paypal.de", "paypal.co.uk"]) assert.equal(carriesUsersWords(`service@${domain}`, domain, domain), true, domain);
+    assert.equal(carriesUsersWords("no-reply@service.example", "service.example", "service.example"), false, "anyone else");
+    assert.equal(carriesUsersWords("account-security-noreply@accountprotection.microsoft.com", "accountprotection.microsoft.com", "microsoft.com"), false, "the one sender let past");
   });
 
   test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {

@@ -54,6 +54,14 @@ const CARRIER_DOMAINS: readonly string[] = [
   "discord.com", "discordapp.com", "slack.com", "telegram.org", "reddit.com", "redditmail.com", "quora.com",
   "medium.com", "meetup.com", "pinterest.com", "tiktok.com", "youtube.com", "snapchat.com", "tumblr.com",
   "nextdoor.com", "github.com", "gitlab.com",
+  // Collaboration, file-sharing, scheduling and e-signature notifiers: a file, board, meeting or envelope someone named
+  // goes in their subject ("Sam shared 'Security alert: unusual sign-in detected' with you"; the narrow check of
+  // 2026-11-26).
+  "figma.com", "dropbox.com", "dropboxmail.com", "notion.so", "trello.com", "bitbucket.org", "zoom.us", "webex.com",
+  "box.com", "calendly.com", "docusign.net", "docusign.com", "hellosign.com", "pandadoc.com", "adobesign.com",
+  "echosign.com", "adobe.com", "miro.com", "canva.com", "airtable.com", "asana.com", "monday.com", "clickup.com",
+  "smartsheet.com", "basecamp.com", "loom.com", "wetransfer.com", "eventbrite.com", "typeform.com", "jotform.com",
+  "surveymonkey.com",
 ];
 /**
  * The one account-security sender let past those domains: Microsoft's account team, which Microsoft names as the sender

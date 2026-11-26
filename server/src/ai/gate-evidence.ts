@@ -57,6 +57,22 @@ const PAYMENT = phrases([
   "payment", "paid", "charge", "charged", "card", "renewal", "renew", "renews", "renewed", "subscription", "declined",
   "failed", "fraud", "transaction", "refund", "refunded", "billing", "bank", "direct debit", "withdrawal", "transfer",
 ]);
+/**
+ * A quotation mark, as around a title someone typed: any double quote, guillemet or corner bracket, or a single quote
+ * not inside a word (an apostrophe, "We’ve", isn't one).
+ */
+const QUOTED = /["“”„‟«»‹›「」『』]|(?<![\p{L}\p{N}])['‘’‚‛]|['‘’‚‛](?![\p{L}\p{N}])/u;
+/** What a notice of someone else's doing says it carries. */
+const SOMEONE_ELSES = phrases(["shared", "mentioned you", "invited you", "commented"]);
+/**
+ * Whether the subject quotes a title or says someone shared, mentioned, invited or commented: a notifier putting a
+ * user-typed title in its subject, so no security alert or account change however it reads (the narrow check of
+ * 2026-11-26).
+ */
+function quotesTitle(subject: string): boolean {
+  return QUOTED.test(subject) || has(SOMEONE_ELSES, subject);
+}
+
 /** The words a reference follows: an order, booking, ticket or tracking number. */
 const REFERENCE_WORD = phrases([
   "order", "booking", "reservation", "confirmation", "tracking", "reference", "ref", "ticket", "pnr", "locator",
@@ -113,9 +129,10 @@ export function holdsLink(text: string | null, html: string | null): boolean {
 export const EVIDENCE: Record<Exclude<ScreeningPass, "code">, (reading: Reading) => boolean> = {
   sign_in: ({ words, link }) => link && has(SIGN_IN, words),
   email_confirmation: ({ words, link }) => link && has(CONFIRM, words) && has(CONFIRMED, words),
-  // In the subject itself, not only in the text a notifier may quote (the final security review of 2026-11-26).
-  security: ({ subject }) => has(SECURITY, subject),
-  account: ({ words, link }) => (link && has(RESET, words)) || has(ACCOUNT_CHANGE, words),
+  // A security phrase in the subject itself, not only in the text a notifier may quote (the final security review of
+  // 2026-11-26); neither kind when the subject quotes a title someone typed (the narrow check after it).
+  security: ({ subject }) => has(SECURITY, subject) && !quotesTitle(subject),
+  account: ({ words, subject, link }) => !quotesTitle(subject) && ((link && has(RESET, words)) || has(ACCOUNT_CHANGE, words)),
   order: ({ words }) => has(ORDER, words) && (holdsReference(words) || AMOUNT.test(words)),
   booking: ({ words }) => has(BOOKING, words) && (holdsReference(words) || AMOUNT.test(words) || DAY_OR_TIME.test(words)),
   payment: ({ words }) => has(PAYMENT, words) && (AMOUNT.test(words) || CARD.test(words)),
