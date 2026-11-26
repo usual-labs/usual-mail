@@ -70,7 +70,7 @@ const WORK = {
     for (const kind of ["code", ...askableKinds("receipt")] as const) shape.mayPass(kind);
     const question = passRequest("m", { subject: body, from: { name: body, email: "a@b.example" }, listId: body, automated: true, text: body, html: body }, "notification", "id");
     if (question) acceptPass(body, question);
-    for (const evidence of Object.values(EVIDENCE)) evidence({ words: body, link: true });
+    for (const evidence of Object.values(EVIDENCE)) evidence({ words: body, subject: body, link: true });
     holdsLink(body, body);
     holdsCode(body);
     // Codes, then a gap, then the words: no code near any word, so each code met every word before 0.1.3.

@@ -47,6 +47,13 @@ export const TENANT_PLATFORMS: readonly string[] = [
  */
 const CARRIER_DOMAINS: readonly string[] = [
   "google.com", "microsoft.com", "stripe.com", "venmo.com", "square.com", "squareup.com", "sharepointonline.com",
+  // Social, messaging and community notifiers: a post, comment, message or profile quoted in their mail can say
+  // "unusual sign-in … was this you?" under their proof (facebookmail.com's and linkedin.com's passed as security
+  // alerts in the final security review of 2026-11-26). Their own account alerts wait in Screening with them.
+  "facebookmail.com", "facebook.com", "instagram.com", "whatsapp.com", "linkedin.com", "x.com", "twitter.com",
+  "discord.com", "discordapp.com", "slack.com", "telegram.org", "reddit.com", "redditmail.com", "quora.com",
+  "medium.com", "meetup.com", "pinterest.com", "tiktok.com", "youtube.com", "snapchat.com", "tumblr.com",
+  "nextdoor.com", "github.com", "gitlab.com",
 ];
 /**
  * The one account-security sender let past those domains: Microsoft's account team, which Microsoft names as the sender

@@ -115,6 +115,7 @@ export function gateCheck(message: GateMessage, context: GateContext): GateCheck
   let reading: Reading | null = null;
   const read = (): Reading => (reading ??= {
     words: `${message.subject.slice(0, SUBJECT_READ)}\n${modelText(message.text, message.html).slice(0, CATEGORIZE_TEXT_LIMIT)}`,
+    subject: message.subject.slice(0, SUBJECT_READ),
     link: holdsLink(message.text, message.html),
   });
   const checked = trustsChecker(context.inbox.provider);

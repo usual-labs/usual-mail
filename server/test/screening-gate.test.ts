@@ -209,8 +209,17 @@ describe("the shape of mail sent to this person by that organisation alone (ever
     assert.equal(notice("no-reply@groups.google.com", "account", "Your plan changed", "Your plan has changed."), false, "a Google subdomain's");
     assert.equal(notice("no-reply@teams.microsoft.com", "security", "New sign-in", "A new sign-in. Was this you?"), false, "a Microsoft product's");
     assert.equal(notice("no-reply@security.google.com", "security", "Security alert", "A new sign-in. Was this you?"), false, "Google's own alerts wait too");
+    // Social, messaging and community notifiers quote their users' posts, comments and messages (the final review).
+    for (const email of ["notification@facebookmail.com", "messages-noreply@linkedin.com", "info@x.com", "notify@twitter.com", "no-reply@mail.instagram.com", "noreply@discord.com", "feedback@slack.com", "noreply@whatsapp.com", "noreply@telegram.org", "noreply@redditmail.com", "digest-noreply@quora.com", "noreply@medium.com", "info@meetup.com", "notifications@github.com"]) {
+      assert.equal(notice(email, "security", "Unusual sign-in: was this you?", "Sam wrote: we noticed an unusual sign-in. Was this you?"), false, email);
+    }
     // The allow list: Microsoft's account team, as Microsoft names it.
     assert.equal(notice("account-security-noreply@accountprotection.microsoft.com", "security", "Unusual sign-in activity", "We detected unusual sign-in activity. Was this you?"), true, "Microsoft's account team's alerts pass");
+  });
+
+  test("a security alert says so in its subject, not only in the text, which a notifier may quote", () => {
+    assert.equal(passes("security", mail("New sign-in to your account", "We noticed a new sign-in. Was this you?")), true);
+    assert.equal(passes("security", mail("Sam replied to your post", "Sam wrote: we noticed a new sign-in. Was this you?")), false);
   });
 
   test("a code needs only the proof, machine-sent mail, the inbox addressed and the code: not the rest of the shape", () => {

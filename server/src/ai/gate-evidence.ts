@@ -12,7 +12,10 @@ import { ISO_4217_MINOR_UNITS } from "./currencies.ts";
 
 /** A message as the gate reads it: subject and text together, and whether it holds a web link anywhere. */
 export interface Reading {
+  /** The subject and the text, as far as the model read them. */
   words: string;
+  /** The subject alone. */
+  subject: string;
   link: boolean;
 }
 
@@ -110,7 +113,8 @@ export function holdsLink(text: string | null, html: string | null): boolean {
 export const EVIDENCE: Record<Exclude<ScreeningPass, "code">, (reading: Reading) => boolean> = {
   sign_in: ({ words, link }) => link && has(SIGN_IN, words),
   email_confirmation: ({ words, link }) => link && has(CONFIRM, words) && has(CONFIRMED, words),
-  security: ({ words }) => has(SECURITY, words),
+  // In the subject itself, not only in the text a notifier may quote (the final security review of 2026-11-26).
+  security: ({ subject }) => has(SECURITY, subject),
   account: ({ words, link }) => (link && has(RESET, words)) || has(ACCOUNT_CHANGE, words),
   order: ({ words }) => has(ORDER, words) && (holdsReference(words) || AMOUNT.test(words)),
   booking: ({ words }) => has(BOOKING, words) && (holdsReference(words) || AMOUNT.test(words) || DAY_OR_TIME.test(words)),
