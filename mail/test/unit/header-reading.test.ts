@@ -10,7 +10,7 @@ import type { GmailClient } from "../../src/gmail/client.ts";
 import type { Gate } from "../../src/gmail/limits.ts";
 import { fromFullForm } from "../../src/gmail/messages.ts";
 import { rebuildMessage, type GmailPart } from "../../src/gmail/payload.ts";
-import { fromAuthentication, parseAuthenticationResults, type AuthenticationOptions, type HeaderField } from "../../src/message/auth-results.ts";
+import { fromAuthentication, parseAuthenticationResults, sealedResultAgrees, type AuthenticationOptions, type HeaderField } from "../../src/message/auth-results.ts";
 import { parseMessage } from "../../src/message/parse.ts";
 import { headerBlockReadable, signedRecipients } from "../../src/message/signed-recipients.ts";
 
@@ -24,6 +24,7 @@ const bytes = (text: string) => new TextEncoder().encode(text);
 describe("line ends, as bytes", () => {
   /** A forged signature and an added To above `cut`, the real signature and To below it. */
   const attack = (cut: string) => bytes([
+    `ARC-Authentication-Results: i=1; ${RESULT}\r\n`,
     `Authentication-Results: ${RESULT}\r\n`,
     "From: Brand <no-reply@brand.example>\r\n",
     `DKIM-Signature: ${FORGED}\r\n`,
@@ -58,7 +59,7 @@ describe("line ends, as bytes", () => {
   });
 
   it("an all-LF message still reads its signed fields", async () => {
-    const raw = bytes([`Authentication-Results: ${RESULT}`, "From: Brand <no-reply@brand.example>", `DKIM-Signature: ${REAL}`, "To: me@inbox.example", "Subject: Hi", "", "Body"].join("\n"));
+    const raw = bytes([`ARC-Authentication-Results: i=1; ${RESULT}`, `Authentication-Results: ${RESULT}`, "From: Brand <no-reply@brand.example>", `DKIM-Signature: ${REAL}`, "To: me@inbox.example", "Subject: Hi", "", "Body"].join("\n"));
     const parsed = await parseMessage(raw, { ownAddresses: [], authentication: GMAIL });
     assert.deepEqual(parsed.signedRecipients, ["to"]);
   });
@@ -94,7 +95,7 @@ describe("a header the large-message rebuild can't write back", () => {
   const header = (name: string, value: string) => ({ name, value });
   const data = (text: string) => ({ size: Buffer.byteLength(text), data: Buffer.from(text).toString("base64url") });
   const payload = (headers: Array<{ name: string; value: string }>): GmailPart => ({
-    headers: [header("Authentication-Results", RESULT), header("From", "Brand <no-reply@brand.example>"), header("DKIM-Signature", REAL), ...headers, header("Subject", "New sign-in"), header("Content-Type", "text/plain")],
+    headers: [header("ARC-Authentication-Results", `i=1; ${RESULT}`), header("Authentication-Results", RESULT), header("From", "Brand <no-reply@brand.example>"), header("DKIM-Signature", REAL), ...headers, header("Subject", "New sign-in"), header("Content-Type", "text/plain")],
     body: data("Was this you?"),
   });
   const limits = { largeMessageBytes: 1_000_000, gate: { run: <T>(work: () => Promise<T>) => work() } as unknown as Gate };
@@ -140,5 +141,42 @@ describe("Gmail's result with unquoted / and = in a value", () => {
     assert.equal(parseAuthenticationResults("mx.google.com; dmarc=pass header.from=brand.example smtp.mailfrom=a=b@x.example"), null, "an envelope property on DMARC still refused");
     const domain = fromAuthentication([{ key: "Authentication-Results", value: "mx.google.com; dmarc=pass header.from=brand.example=evil.example" }, { key: "From", value: "no-reply@brand.example" }], GMAIL);
     assert.deepEqual(domain, { result: "unverified", reason: "not_aligned" }, "a joined domain is no domain");
+  });
+});
+
+describe("Gmail's sealed copy of its result (the final review of 2026-11-26)", () => {
+  const fields = (...pairs: Array<[string, string]>): HeaderField[] => pairs.map(([key, value]) => ({ key, value }));
+  // company.example publishes no DMARC; the sender forges a signature Gmail can't check (no key: permerror, no header.b).
+  const GMAILS = "mx.google.com; dkim=permerror (no key for signature) header.i=@company.example header.s=s1; spf=pass (google.com: domain of a@company.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=a@company.example";
+  const message = (lines: string[]) => [...lines, "From: Pat <pat@company.example>", "DKIM-Signature: v=1; a=rsa-sha256; d=company.example; s=s1; h=from:to:subject; bh=abc=; b=XyZw9876forged", "To: me@inbox.example", "Subject: Lunch?", "", "Shall we?"].join("\r\n");
+  const folded = " ; dkim=pass header.i=@company.example header.b=XyZw9876";
+
+  it("a sender's folded first line can't add a result: verified before, no signed recipients now", async () => {
+    const raw = message([`ARC-Authentication-Results: i=1; ${GMAILS}`, `Authentication-Results: ${GMAILS}`, folded]);
+    const parsed = await parseMessage(raw, { ownAddresses: [], authentication: GMAIL });
+    assert.deepEqual(parsed.fromCheck, { result: "verified", domain: "company.example" }, "the folded line joins Gmail's result as read");
+    const headers = fields(["ARC-Authentication-Results", `i=1; ${GMAILS}`], ["Authentication-Results", `${GMAILS}\r\n${folded}`], ["DKIM-Signature", "v=1; d=company.example; h=from:to; b=XyZw9876forged"], ["To", "me@inbox.example"]);
+    assert.deepEqual(signedRecipients(headers, "company.example", GMAIL), ["to"], "the forged signature counted, before");
+    assert.equal(sealedResultAgrees(headers, GMAIL), false, "Gmail's copy has no such result");
+    assert.deepEqual(parsed.signedRecipients, []);
+  });
+
+  const agreeing = (...pairs: Array<[string, string]>) => sealedResultAgrees(fields(...pairs, ["From", "a@brand.example"]), GMAIL);
+  it("agrees only with one copy, above the result, by Gmail, holding every result written the same", () => {
+    assert.equal(agreeing(["ARC-Authentication-Results", `i=1; ${RESULT}`], ["Authentication-Results", RESULT]), true);
+    assert.equal(agreeing(["Authentication-Results", RESULT]), false, "missing");
+    assert.equal(agreeing(["ARC-Authentication-Results", `i=1; ${RESULT.replace("dmarc=pass", "dmarc=fail")}`], ["Authentication-Results", RESULT]), false, "disagreeing");
+    assert.equal(agreeing(["ARC-Authentication-Results", "i=1; mx.google.com; dkim=pass header.i=@brand.example header.s=s1 header.b=AbCd1234"], ["Authentication-Results", RESULT]), false, "lacking a result");
+    assert.equal(agreeing(["ARC-Authentication-Results", `i=1; ${RESULT}`], ["ARC-Authentication-Results", `i=1; ${RESULT}`], ["Authentication-Results", RESULT]), false, "repeated");
+    assert.equal(agreeing(["Authentication-Results", RESULT], ["ARC-Authentication-Results", `i=1; ${RESULT}`]), false, "below the result: a sender's own");
+    assert.equal(agreeing(["ARC-Authentication-Results", `i=2; ${RESULT}`], ["Authentication-Results", RESULT]), false, "not Gmail's first");
+    assert.equal(agreeing(["ARC-Authentication-Results", `i=1; mx.other.example; ${RESULT.slice("mx.google.com; ".length)}`], ["Authentication-Results", RESULT]), false, "another checker");
+    assert.equal(agreeing(["ARC-Authentication-Results", "i=1; mx.google.com; dkim=pass (unclosed"], ["Authentication-Results", RESULT]), false, "unreadable");
+  });
+
+  it("and with it missing, a message that would count counts nothing", async () => {
+    const raw = [`Authentication-Results: ${RESULT}`, "From: Brand <no-reply@brand.example>", `DKIM-Signature: ${REAL}`, "To: me@inbox.example", "Subject: Hi", "", "Body"].join("\r\n");
+    const parsed = await parseMessage(raw, { ownAddresses: [], authentication: GMAIL });
+    assert.deepEqual([parsed.fromCheck?.result, parsed.signedRecipients], ["verified", []], "pictures keep the proof; the gate and the let-in rules get nothing");
   });
 });

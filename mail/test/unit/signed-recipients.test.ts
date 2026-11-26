@@ -96,6 +96,7 @@ describe("the final security review's attacks (2026-11-25)", () => {
 
 describe("through the parser", () => {
   const raw = (extra: string[]) => [
+    `ARC-Authentication-Results: i=1; ${RESULT}`,
     `Authentication-Results: ${RESULT}`,
     `DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:subject:date; bh=abc=; b=AbCd1234wxyz`,
     "From: Brand <no-reply@brand.example>",
@@ -125,7 +126,7 @@ describe("through the parser", () => {
 
   it("a padded real signature and a forged one with a Cc added: nothing", async () => {
     const lines = raw(["Cc: me@inbox.example", "To: attacker@elsewhere.example"]).split("\r\n");
-    lines.splice(1, 1, `DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:subject:date; bh=abc=; b=AbCd1234wxyz${" ".repeat(17_000)}rest`,
+    lines.splice(2, 1, `DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:subject:date; bh=abc=; b=AbCd1234wxyz${" ".repeat(17_000)}rest`,
       "DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=from:to:cc:subject:date; bh=abc=; b=AbCd1234forged");
     const parsed = await parseMessage(lines.join("\r\n"), { ownAddresses: [], authentication: GMAIL });
     assert.equal(parsed.fromCheck?.result, "verified");
@@ -225,6 +226,7 @@ describe("the fourth review's attacks, and the check being monotone (2026-11-25)
 
 describe("a header line that is neither a field nor a fold (the fourth review's attack)", () => {
   const lines = (malformed: string | null) => [
+    `ARC-Authentication-Results: i=1; ${RESULT}`,
     `Authentication-Results: ${RESULT}`,
     "From: Brand <no-reply@brand.example>",
     "Cc: me@inbox.example",

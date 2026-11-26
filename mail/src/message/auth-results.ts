@@ -80,6 +80,29 @@ export function topAuthenticationResults(headers: readonly HeaderField[]): Heade
   return headers.find((field) => fieldName(field) === "authentication-results");
 }
 
+/**
+ * Whether the provider's checker's own sealed copy of its result agrees with the topmost Authentication-Results, the one
+ * every proof here is read from (the final security review of 2026-11-26). Gmail writes its result twice: as
+ * `ARC-Authentication-Results: i=1; mx.google.com; …` above `Return-Path`, and as `Authentication-Results` directly
+ * above the sender's own headers. A sender's first header line that starts with a space could join that last one in a
+ * parser that reads Gmail's lines as written, adding a result Gmail never wrote (" ; dkim=pass header.i=@…"); the copy
+ * above `Return-Path` can't be reached so. So the copy must be the message's only ARC-Authentication-Results, above the
+ * topmost Authentication-Results, by the trusted checker, read whole, and hold every result that one holds, written
+ * the same. Anything else, or no copy at all, agrees with nothing: what this guards then doesn't happen.
+ */
+export function sealedResultAgrees(headers: readonly HeaderField[], options: AuthenticationOptions): boolean {
+  const trusted = checkerName(options.checker);
+  const top = headers.findIndex((field) => fieldName(field) === "authentication-results");
+  const sealed = headers.flatMap((field, index) => (fieldName(field) === "arc-authentication-results" ? [index] : []));
+  if (!trusted || top < 0 || sealed.length !== 1 || sealed[0]! > top) return false;
+  const instance = /^[ \t]*i[ \t]*=[ \t]*1[ \t]*;/.exec(headers[sealed[0]!]!.value);
+  const copy = instance ? parseAuthenticationResults(headers[sealed[0]!]!.value.slice(instance[0].length)) : null;
+  const read = parseAuthenticationResults(headers[top]!.value);
+  if (!copy || !read || checkerName(copy.checker) !== trusted || checkerName(read.checker) !== trusted) return false;
+  const written = new Set(copy.results.map((entry) => JSON.stringify(entry)));
+  return read.results.length > 0 && read.results.every((entry) => written.has(JSON.stringify(entry)));
+}
+
 /** Longer values, deeper comments, more results or properties are refused unread: no checker writes them. */
 const LIMITS = { length: 16_384, depth: 16, results: 64, properties: 32 };
 
