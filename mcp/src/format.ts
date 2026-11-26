@@ -200,7 +200,9 @@ export function htmlToText(html: string): string {
       }
       return ENTITIES[entity.toLowerCase()] ?? match;
     })
-    .replace(/[ \t]+\n/g, "\n")
+    // A run of spaces is read from its start only: from every space of a long run, "[ \t]+\n" would read to the run's end
+    // and fail there (0.1.4: 80,000 spaces before a letter took 2.5 s, in a message with no text part).
+    .replace(/(?<![ \t])[ \t]+\n/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

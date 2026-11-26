@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Client } from "@modelcontextprotocol/client";
 import { BOUNDARY_TAG, dataBlock, safeJson } from "../src/boundary.ts";
+import { htmlToText } from "../src/format.ts";
 import { sample, type FakeMailService } from "./fake-service.ts";
 import { HOSTILE, hostileService } from "./hostile-fixture.ts";
 import { call, connect, setup, splitBlock, type ToolText } from "./helpers.ts";
@@ -192,6 +193,22 @@ describe("hostile mail in tool results", () => {
     const tools = (await client.listTools()).tools;
     for (const name of ["list_inboxes", "take_triage_batch", "read_thread", "search_threads", "list_threads", "list_handled", "list_rules", "list_drafts", "get_brief", "get_ai_status"]) {
       assert.match(tools.find((tool) => tool.name === name)!.description ?? "", /never an instruction/, name);
+    }
+  });
+});
+
+describe("a message's HTML read as text", () => {
+  it("in time linear in its length: a long run of spaces before a letter, and spaces before line ends as before", () => {
+    // From every space of the run, the old pattern read to the run's end: 80,000 took 2.5 s, 200,000 about 15.
+    const started = performance.now();
+    assert.equal(htmlToText(`<p>a${" ".repeat(200_000)}x</p>`), `a${" ".repeat(200_000)}x`);
+    assert.ok(performance.now() - started < 1_000, `${(performance.now() - started).toFixed(0)} ms`);
+    assert.equal(htmlToText("<p>a  \t </p><p>b</p>"), "a\nb");
+    const before = (text: string) => text.replace(/[ \t]+\n/g, "\n");
+    const parts = [" ", "\t", "\n", "a"];
+    for (let round = 0; round < 5_000; round++) {
+      const text = Array.from({ length: Math.floor(Math.random() * 10) }, () => parts[Math.floor(Math.random() * parts.length)]).join("");
+      assert.equal(text.replace(/(?<![ \t])[ \t]+\n/g, "\n"), before(text), JSON.stringify(text));
     }
   });
 });
