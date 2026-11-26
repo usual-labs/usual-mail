@@ -10,7 +10,7 @@ import type { GmailClient } from "../../src/gmail/client.ts";
 import type { Gate } from "../../src/gmail/limits.ts";
 import { fromFullForm } from "../../src/gmail/messages.ts";
 import { rebuildMessage, type GmailPart } from "../../src/gmail/payload.ts";
-import { fromAuthentication, parseAuthenticationResults, sealedResultAgrees, type AuthenticationOptions, type HeaderField } from "../../src/message/auth-results.ts";
+import { fromAuthentication, parseAuthenticationResults, sealedResultAgrees, sealedResultDisagrees, type AuthenticationOptions, type HeaderField } from "../../src/message/auth-results.ts";
 import { parseMessage } from "../../src/message/parse.ts";
 import { headerBlockReadable, signedRecipients } from "../../src/message/signed-recipients.ts";
 
@@ -152,14 +152,17 @@ describe("Gmail's sealed copy of its result (the final review of 2026-11-26)", (
   const message = (lines: string[]) => [...lines, "From: Pat <pat@company.example>", "DKIM-Signature: v=1; a=rsa-sha256; d=company.example; s=s1; h=from:to:subject; bh=abc=; b=XyZw9876forged", "To: me@inbox.example", "Subject: Lunch?", "", "Shall we?"].join("\r\n");
   const folded = " ; dkim=pass header.i=@company.example header.b=XyZw9876";
 
-  it("a sender's folded first line can't add a result: verified before, no signed recipients now", async () => {
+  it("a sender's folded first line can't add a result: no proof, not even for pictures, and no signed recipients", async () => {
     const raw = message([`ARC-Authentication-Results: i=1; ${GMAILS}`, `Authentication-Results: ${GMAILS}`, folded]);
     const parsed = await parseMessage(raw, { ownAddresses: [], authentication: GMAIL });
-    assert.deepEqual(parsed.fromCheck, { result: "verified", domain: "company.example" }, "the folded line joins Gmail's result as read");
+    assert.deepEqual(parsed.fromCheck, { result: "unverified" }, "Gmail's copy above disagrees with the result as read");
+    const unsealed = await parseMessage(message([`Authentication-Results: ${GMAILS}`, folded]), { ownAddresses: [], authentication: GMAIL });
+    assert.deepEqual(unsealed.fromCheck, { result: "verified", domain: "company.example" }, "with no copy at all, the proof stands as read");
     const headers = fields(["ARC-Authentication-Results", `i=1; ${GMAILS}`], ["Authentication-Results", `${GMAILS}\r\n${folded}`], ["DKIM-Signature", "v=1; d=company.example; h=from:to; b=XyZw9876forged"], ["To", "me@inbox.example"]);
     assert.deepEqual(signedRecipients(headers, "company.example", GMAIL), ["to"], "the forged signature counted, before");
     assert.equal(sealedResultAgrees(headers, GMAIL), false, "Gmail's copy has no such result");
-    assert.deepEqual(parsed.signedRecipients, []);
+    assert.equal(parsed.signedRecipients, undefined, "none read without a proof");
+    assert.deepEqual(unsealed.signedRecipients, [], "nor without the copy");
   });
 
   const agreeing = (...pairs: Array<[string, string]>) => sealedResultAgrees(fields(...pairs, ["From", "a@brand.example"]), GMAIL);
@@ -173,6 +176,24 @@ describe("Gmail's sealed copy of its result (the final review of 2026-11-26)", (
     assert.equal(agreeing(["ARC-Authentication-Results", `i=2; ${RESULT}`], ["Authentication-Results", RESULT]), false, "not Gmail's first");
     assert.equal(agreeing(["ARC-Authentication-Results", `i=1; mx.other.example; ${RESULT.slice("mx.google.com; ".length)}`], ["Authentication-Results", RESULT]), false, "another checker");
     assert.equal(agreeing(["ARC-Authentication-Results", "i=1; mx.google.com; dkim=pass (unclosed"], ["Authentication-Results", RESULT]), false, "unreadable");
+    assert.equal(agreeing(["ARC-Authentication-Results", `i=1; ${RESULT}`], ["Authentication-Results", RESULT.replace("mx.google.com", "mx.other.example")]), false, "the result read by another checker");
+    assert.equal(agreeing(["ARC-Authentication-Results", "i=1; mx.google.com; none"], ["Authentication-Results", "mx.google.com; none"]), false, "a result holding nothing");
+  });
+
+  it("disagrees, so no proof is read even for pictures, only when Gmail's copy above lacks a result the read one holds", () => {
+    const disagreeing = (...pairs: Array<[string, string]>) => {
+      const headers = fields(...pairs);
+      const top = headers.findIndex((field) => field.key === "Authentication-Results");
+      return sealedResultDisagrees(headers, top, parseAuthenticationResults(headers[top]!.value)!, "mx.google.com");
+    };
+    const withLine = `${RESULT}; dkim=pass header.i=@brand.example header.b=XyZw9876`;
+    assert.equal(disagreeing(["ARC-Authentication-Results", `i=1; ${RESULT}`], ["Authentication-Results", withLine]), true);
+    assert.equal(disagreeing(["ARC-Authentication-Results", `i=1; ${RESULT}`], ["Authentication-Results", RESULT]), false, "agreeing");
+    assert.equal(disagreeing(["Authentication-Results", withLine]), false, "no copy: the proof stands as read");
+    assert.equal(disagreeing(["Authentication-Results", withLine], ["ARC-Authentication-Results", `i=1; ${RESULT}`]), false, "a copy below is a sender's");
+    assert.equal(disagreeing(["ARC-Authentication-Results", `i=2; ${RESULT}`], ["Authentication-Results", withLine]), false, "not Gmail's first");
+    assert.equal(disagreeing(["ARC-Authentication-Results", `i=1; mx.other.example; ${RESULT.slice("mx.google.com; ".length)}`], ["Authentication-Results", withLine]), false, "another checker's");
+    assert.deepEqual(fromAuthentication(fields(["ARC-Authentication-Results", `i=1; ${RESULT}`], ["Authentication-Results", withLine], ["From", "a@brand.example"]), GMAIL), { result: "unverified", reason: "sealed_copy_disagrees" });
   });
 
   it("and with it missing, a message that would count counts nothing", async () => {

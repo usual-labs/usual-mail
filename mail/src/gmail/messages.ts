@@ -197,7 +197,8 @@ interface MetadataGmailMessage {
 
 /**
  * What Gmail's checker proved about each message's From domain, read again in the metadata form with only the
- * Authentication-Results and From headers (20 quota units each, against 60 for the whole message). Gmail gives the
+ * Authentication-Results, ARC-Authentication-Results and From headers (20 quota units each, against 60 for the whole
+ * message), so its sealed copy is read as when the message is parsed (`sealedResultDisagrees`). Gmail gives the
  * headers in the message's order, top first. Refs Gmail no longer has are left out.
  */
 export async function fetchFromChecks(client: GmailClient, refs: readonly string[], authentication: AuthenticationOptions): Promise<Map<string, FromCheck>> {
@@ -205,7 +206,7 @@ export async function fetchFromChecks(client: GmailClient, refs: readonly string
     try {
       const message = await client.request<MetadataGmailMessage>("GET", `/messages/${encodeURIComponent(ref)}`, {
         cost: COST.messagesGet,
-        query: { format: "metadata", metadataHeaders: ["Authentication-Results", "From"] },
+        query: { format: "metadata", metadataHeaders: ["Authentication-Results", "ARC-Authentication-Results", "From"] },
       });
       const headers = (message.payload?.headers ?? [])
         .filter((h): h is { name: string; value: string } => typeof h.name === "string" && typeof h.value === "string")

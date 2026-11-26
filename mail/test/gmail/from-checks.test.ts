@@ -61,7 +61,16 @@ describe("Gmail's word on the From domain", () => {
     assert.deepEqual([...checks], [[pass.id, { result: "verified", domain: "brand.example" }], [none.id, { result: "no_header" }]]);
     const asked = fake.requests.filter((r) => r.path.includes("/messages/") && r.query.get("format") === "metadata");
     assert.equal(asked.length, 3);
-    assert.deepEqual(asked[0]!.query.getAll("metadataHeaders"), ["Authentication-Results", "From"]);
+    assert.deepEqual(asked[0]!.query.getAll("metadataHeaders"), ["Authentication-Results", "ARC-Authentication-Results", "From"]);
+  });
+
+  it("read again, a result Gmail's sealed copy above doesn't hold proves nothing; with no copy it stands", async () => {
+    const { fake, provider } = setup();
+    const gmails = "spf=pass smtp.mailfrom=a@brand.example";
+    const folded = await fake.deliver([`ARC-Authentication-Results: i=1; mx.google.com; ${gmails}`, received("folded", `${gmails}\r\n ; dkim=pass header.i=@brand.example`)].join("\r\n"));
+    const sealed = await fake.deliver([`ARC-Authentication-Results: i=1; mx.google.com; dmarc=pass header.from=brand.example`, received("sealed", "dmarc=pass header.from=brand.example")].join("\r\n"));
+    const checks = await provider.fromChecks!([folded.id, sealed.id]);
+    assert.deepEqual([...checks], [[folded.id, { result: "unverified" }], [sealed.id, { result: "verified", domain: "brand.example" }]]);
   });
 });
 

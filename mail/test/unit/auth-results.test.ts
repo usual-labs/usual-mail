@@ -190,6 +190,8 @@ describe("which header counts", () => {
       "Delivered-To: someone@inbox.example",
       "Received: by 2002:a05:0000:0:0:0:0:0 with SMTP id x; Mon, 16 Nov 2026 10:00:00 -0800 (PST)",
       "ARC-Authentication-Results: i=1; mx.google.com;",
+      "       dkim=pass header.i=@brand.example header.s=s1 header.b=AbCd1234;",
+      "       spf=pass (google.com: domain of bounce@em.brand.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=bounce@em.brand.example;",
       "       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=brand.example",
       "Return-Path: <bounce@em.brand.example>",
       "Received: from mail.brand.example (mail.brand.example. [192.0.2.10])",

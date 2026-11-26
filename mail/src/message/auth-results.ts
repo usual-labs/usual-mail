@@ -51,7 +51,9 @@ export type UnverifiedReason =
   /** The From field isn't one field naming one mailbox at a host name. */
   | "from_unusable"
   /** The topmost header couldn't be read. */
-  | "malformed";
+  | "malformed"
+  /** The checker's sealed copy of its result, above it, lacks a result it holds (`sealedResultDisagrees`). */
+  | "sealed_copy_disagrees";
 
 export interface AuthenticationResult {
   /** The method, lower case and without its version: "dkim", "spf", "dmarc". */
@@ -95,12 +97,35 @@ export function sealedResultAgrees(headers: readonly HeaderField[], options: Aut
   const top = headers.findIndex((field) => fieldName(field) === "authentication-results");
   const sealed = headers.flatMap((field, index) => (fieldName(field) === "arc-authentication-results" ? [index] : []));
   if (!trusted || top < 0 || sealed.length !== 1 || sealed[0]! > top) return false;
-  const instance = /^[ \t]*i[ \t]*=[ \t]*1[ \t]*;/.exec(headers[sealed[0]!]!.value);
-  const copy = instance ? parseAuthenticationResults(headers[sealed[0]!]!.value.slice(instance[0].length)) : null;
+  const copy = sealedCopy(headers[sealed[0]!]!, trusted);
   const read = parseAuthenticationResults(headers[top]!.value);
-  if (!copy || !read || checkerName(copy.checker) !== trusted || checkerName(read.checker) !== trusted) return false;
+  return copy !== null && read !== null && checkerName(read.checker) === trusted && read.results.length > 0 && holdsAll(copy, read);
+}
+
+/**
+ * Whether a sealed copy of the trusted checker's result, above the topmost Authentication-Results (at `top`, read as
+ * `read`), lacks a result that one holds: then a sender's folded first line added it, and no proof is read from it,
+ * for sender pictures either (the narrow check of 2026-11-26). With no such copy, the proof stands as read.
+ */
+export function sealedResultDisagrees(headers: readonly HeaderField[], top: number, read: AuthenticationResults, trusted: string): boolean {
+  return headers.slice(0, top).some((field) => {
+    if (fieldName(field) !== "arc-authentication-results") return false;
+    const copy = sealedCopy(field, trusted);
+    return copy !== null && !holdsAll(copy, read);
+  });
+}
+
+/** A sealed copy's results, when it is the first instance (`i=1`) and the trusted checker's, read whole; else null. */
+function sealedCopy(field: HeaderField, trusted: string): AuthenticationResults | null {
+  const instance = /^[ \t]*i[ \t]*=[ \t]*1[ \t]*;/.exec(field.value);
+  const copy = instance ? parseAuthenticationResults(field.value.slice(instance[0].length)) : null;
+  return copy && checkerName(copy.checker) === trusted ? copy : null;
+}
+
+/** Whether the copy holds every result `read` holds, written the same. */
+function holdsAll(copy: AuthenticationResults, read: AuthenticationResults): boolean {
   const written = new Set(copy.results.map((entry) => JSON.stringify(entry)));
-  return read.results.length > 0 && read.results.every((entry) => written.has(JSON.stringify(entry)));
+  return read.results.every((entry) => written.has(JSON.stringify(entry)));
 }
 
 /** Longer values, deeper comments, more results or properties are refused unread: no checker writes them. */
@@ -116,6 +141,7 @@ export function fromAuthentication(headers: readonly HeaderField[], options: Aut
   if (!trusted || checkerName(parsed.checker) !== trusted) return { result: "other_checker" };
   const ours = headers.filter((field) => fieldName(field) === "authentication-results" && checkerIn(field.value) === trusted);
   if (ours.length > 1) return { result: "repeated" };
+  if (sealedResultDisagrees(headers, headers.indexOf(top), parsed, trusted)) return { result: "unverified", reason: "sealed_copy_disagrees" };
   const fromDomain = singleFromDomain(headers);
   if (!fromDomain) return { result: "unverified", reason: "from_unusable" };
 
