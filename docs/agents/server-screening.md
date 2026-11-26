@@ -8,7 +8,10 @@ fixed: To or Cc only in a field the sender's signature vouches for, a deny list 
 more tenant platforms, the kind's categories kept, and a sweep of every pattern that reads mail), and after the final
 review (2026-11-26, NO-GO on one point: signed recipients only when Gmail's sealed copy of its result agrees, the
 let-in rules only by the sender's own signature, social and messaging notifiers refused, a security alert's phrase in
-its subject, the gate reading the subject the model read). The contract's words are in
+its subject, the gate reading the subject the model read), and after the narrow check of those (GO, with four more:
+the check held on both the thread's subject and the judged message's own, only one sender's mail judged, notifiers
+that put a typed title in their subject refused, the proof itself dropped when Gmail's sealed copy disagrees). The
+contract's words are in
 [contract.md](../contract.md) ("Words": Skipped Screening; "Rules and learning", step 3 and "Letting a sender in") and
 [contract-ai.md](../contract-ai.md) ("A model's answer at the screening gate"); the kinds, their words and their
 categories are core's (`core/src/screening.ts`), and the public mail domains too (`core/src/mail-domains.ts`, moved from
@@ -43,19 +46,26 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   `TENANT_PLATFORMS` entry; (e) `carriesUsersWords`: no address at google.com, microsoft.com (and under them) but
   Microsoft's account team (`ACCOUNT_SECURITY`), nor at paypal.* (by name), venmo.com, square.com, squareup.com,
   stripe.com, sharepointonline.com, nor at a social, messaging or community notifier: facebookmail.com, linkedin.com,
-  x.com, discord.com, slack.com, github.com and the rest of `CARRIER_DOMAINS`) and `EVIDENCE[kind]` (a security alert's
-  phrase in the subject itself). **A code** needs machine-sent mail, (c), `holdsCode` and `home`, or no `home` when the
-  inbox's provider has no checker (IMAP: 0.1.2's behaviour, the coordinator's decision, (c) read on To and Cc as given);
-  a Gmail inbox's missing or failed proof never falls back. `pass(category, chosen)`: `code` when the category is `otp`
-  and the code passes; otherwise the chosen kind when the category is one of its (`SCREENING_PASS_CATEGORIES`) and
-  `mayPass` holds; else null.
+  x.com, discord.com, slack.com, github.com and the rest of `CARRIER_DOMAINS`, and collaboration, file-sharing,
+  scheduling and e-signature ones: figma.com, dropbox.com, notion.so, zoom.us, docusign.net, calendly.com and the like)
+  and `EVIDENCE[kind]` (a security alert's phrase in the subject itself; no security alert or account change when the
+  subject quotes a title, with any double quote, guillemet or corner bracket or a single quote outside a word, or says
+  someone shared, mentioned you, invited you or commented). **A code** needs machine-sent mail, (c), `holdsCode` and
+  `home`, or no `home` when the inbox's provider has no checker (IMAP: 0.1.2's behaviour, the coordinator's decision,
+  (c) read on To and Cc as given); a Gmail inbox's missing or failed proof never falls back. `pass(category, chosen)`:
+  `code` when the category is `otp` and the code passes; otherwise the chosen kind when the category is one of its
+  (`SCREENING_PASS_CATEGORIES`) and `mayPass` holds; else null.
 - **Linear patterns:** every quantifier in gate-evidence.ts is bounded (the reference's lookahead `{0,29}`, a card's
   mask `{2,8}`, a phrase's joiner `[\s-]{0,3}`, numbers `{1,5}` groups or `{1,9}` digits, months `{0,6}`, spaces
   around an `href` `{0,8}`); a reference is matched to its word in one ordered pass. text.ts's own patterns are linear
   too ([server-ai.md](server-ai.md), "What leaves the server"). Measured on 1 MB bodies: each well under 100 ms (before:
   "card " and 80,000 "*" 7.6 s, a link and 40,000 ")" 0.7 s in every categorize request and snippet).
-- **Judged only while held, and only the newest message** (`judging`, `checkAtGate` in `process.ts`, with the
-  subject the model read, the thread's, from the planned request): the gate lets a
+- **Judged only while held, and only the newest message** (`judging`, `checkAtGate` in `process.ts`): the check must
+  hold both with the subject the model read (the thread's, from the planned request, which can be an earlier
+  stranger's) and with the judged message's own, for the same kind (`everyCheck`), and every other incoming message of
+  the thread must be from a sender let in or from the judged message's sender with the same proof (`onlyItsSender`: a
+  stranger's message, earlier or backdated, or one written as that sender without its proof, keeps it screened;
+  IMAP's codes, with no proof on any message, as before). The gate lets a
   thread through only while `gate_pending` is set (a new thread from a stranger while the AI may answer at once, or
   a thread a stranger's mail screened again) and the message the model read is still its newest incoming one. So a
   thread is written back once, never under Screening and out again: mail that arrived while the AI was off, paused or
@@ -111,12 +121,15 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   which no tenant has), Google's and payment services' notifiers (and the provider's own account alerts still passing);
   a code without the rest of the shape; IMAP (a code without proof, nothing else) and Gmail never falling back; whether
   to ask; the question; and the 1 MB bodies in workers (below). After the final review: social and messaging
-  notifiers, a security phrase only in the text, and the read limits of 1,000 and 4,000 characters.
+  notifiers, a security phrase only in the text, and the read limits of 1,000 and 4,000 characters; after the narrow
+  check, titled subjects, the security subject's 1,000-character cut, and a table over the whole deny list.
 - `screening-pass` (16) and `screening-after` (12): as before, with the fixtures signed, through the server: a Cc added,
   To given twice, a document's mention; a joined message that would pass on its own but wasn't asked about; asked
   again to an invoice; the stored and served "a screened thread carries no kind" backups.
 - `screening-senders` (15: also a DMARC pass by SPF alone letting nobody in, and a conversation opened from a search
-  letting nobody in), `screening-pass` also the gate reading the thread's subject, `migration-0022` (both columns),
+  letting nobody in), `screening-pass` also the check needing both subjects and a stranger's earlier message giving
+  the thread its subject, `screening-after` also a stranger joining with an earlier Date and one written as the sender
+  without its proof, `migration-0022` (both columns),
   `e2e-ai-gmail` (the code carries a DKIM-Signature whose b= starts with Gmail's `header.b`, signing To), mail's
   `signed-recipients` (22: each attack the four reviews ran, through the parser too: a Cc added, To or Cc twice, a
   forged signature copying the passing one's first characters, a padded real signature, SPF-only DMARC with a forged

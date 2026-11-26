@@ -932,6 +932,12 @@ crafted mail, can't be run; every change only takes proofs or passes away):
   must be in its subject**.
 - **The gate reads the subject the model read** (the thread's).
 
+**The narrow check of those, 2026-11-26** (GO, with four more before tagging): the check holds on both the thread's
+subject and the judged message's own; only one sender's mail, with one proof, is judged (any other incoming mail from
+senders let in); collaboration, file-sharing, scheduling and e-signature notifiers are refused, and so is a security
+alert or account change whose subject quotes a title; the proof itself, pictures included, is dropped when Gmail's
+sealed copy above its result disagrees (with no copy, it stands).
+
 Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
 mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").
 

@@ -168,8 +168,12 @@ batch's `progress`.
   rule the server passes; any `dmarc=fail` loses; one From mailbox only; two or more headers from Gmail's checker are
   `repeated` and prove nothing; read strictly since the review of 2026-11-19: a quote in a comment, a quoted value with
   `;`, `(` or `)`, or an `smtp.*` property on a DKIM or DMARC result makes the header unreadable). The message's own
-  headers only, never an attached message's. The Gmail provider then also has `fromChecks(refs)`: the same read again from the metadata form
-  (`Authentication-Results` and `From` only, 20 quota units a message) for mail stored before.
+  headers only, never an attached message's. Nothing is proved either when Gmail's sealed copy of its result
+  (`ARC-Authentication-Results: i=1; mx.google.com`) sits above the topmost result and lacks a result that one holds
+  (`sealedResultDisagrees`, `sealed_copy_disagrees`; the narrow check of 2026-11-26: a sender's folded first line
+  added it); with no such copy the proof stands as read. The Gmail provider then also has `fromChecks(refs)`: the
+  same read again from the metadata form (`Authentication-Results`, `ARC-Authentication-Results` and `From` only, 20
+  quota units a message) for mail stored before.
 - `signedRecipients` (2026-11-25, the screening gate's second security review;
   [contract](../contract-ai.md#mail-is-untrusted-input-to-a-model)): only when `fromCheck` is verified. Which of To and
   Cc the sender's own DKIM signature vouches for (`message/signed-recipients.ts`): none when the message gives To or Cc

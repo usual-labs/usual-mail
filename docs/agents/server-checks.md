@@ -3,6 +3,11 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **The narrow check's fixes (2026-11-26, `screening-pass`):** both type checks clean; `npm test` 1,305 tests (1,299
+  pass, 6 skipped, 0 fail); `npm run check:cloudflare` 92 of 92. Each new test failed with its fix undone: the check on
+  the thread's subject only; any sender's mail judged; the same sender without its proof; a deny-list entry taken out
+  (figma.com, surveymonkey.com); a quoted title ignored for a security alert or an account change; every single quote,
+  or none, counted as a quotation mark; the words for someone else's doing; the security subject read whole.
 - **The final review's fixes (2026-11-26, `screening-pass`):** both type checks clean; `npm test` 1,299 tests (1,293
   pass, 6 skipped, 0 fail); `npm run check:cloudflare` 92 of 92 (the colleague now signed, and one proved without a
   signature screened). Each new test failed with its fix or guard undone: the sealed copy's position, count, every

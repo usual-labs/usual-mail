@@ -29,7 +29,9 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   one holds, written the same (`sealedResultAgrees`; it stops a sender's folded first line adding a result to Gmail's
   own). **Assumed:** that Gmail adds that copy to all inbound mail, with the same results it writes below; no real
   header was read (the Mac server keeps parsed fields only). If Gmail leaves it out, or writes it differently, those
-  passes and let-ins simply don't happen and the mail waits in Screening as before. Mail an ARC sealer passed on before
+  passes and let-ins simply don't happen and the mail waits in Screening as before. The proof itself, which sender
+  pictures use, is dropped only when such a copy is there and disagrees (the narrow check of 2026-11-26). Mail an ARC
+  sealer passed on before
   Gmail (a forwarding service, a list) carries two copies and gets nothing, nor does Gmail-to-Gmail mail if Gmail
   seals none there. Sender pictures don't need the copy. A real mailbox's raw headers would settle it.
 - **Mail that skips Screening: what the server's check doesn't stop** (server, 2026-11-25, by design; open as limits,
@@ -42,31 +44,36 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   their subdomains but Microsoft's account team, and every address at paypal.*, venmo.com, square.com, squareup.com,
   stripe.com and sharepointonline.com, and, since the final review, social, messaging and community notifiers
   (facebookmail.com, linkedin.com, x.com, discord.com, slack.com, reddit.com, github.com and the rest of
-  `CARRIER_DOMAINS`; their real alerts wait in Screening, the accepted cost); tenant subdomains of help desks and tools.
-  A security alert also needs its phrase in the subject: one whose subject says none ("Your account was used to sign
-  in") waits. Google's own account alerts wait too: a genuine, signed one from its accounts sender can carry an app name
-  an attacker typed (Kaspersky's DKIM replay through Google OAuth), and no Google page names that sender. **Verified:**
-  Microsoft's account team's sender, `account-security-noreply@accountprotection.microsoft.com`
-  (https://support.microsoft.com/en-us/help/13967, by the final security review). **Assumed:** that Google's and
-  Microsoft's other products' notices come from those two domains (Microsoft's Teams also sends from addresses under the
-  `.microsoft` top-level domain, which isn't listed), and how other platforms' notices are headed. No real header
-  samples were read: the tests build them. A platform not on the lists that writes a user's words in mail addressed to
-  the person, with no List-Id and no Reply-To elsewhere, still passes when the model agrees (another file share or
-  calendar, a marketplace's message, a code-hosting site's notice without a List-Id). (3) **Replays:** a copy sent on by
-  Bcc, or with a To or Cc added on top, doesn't pass (the field naming the inbox must be given once and signed by the
-  sender's aligned DKIM signature; checked against real parsing, with made-up signatures). The check is monotone
-  (`mail/src/message/signed-recipients.ts` argues it, a test adds every hostile field alone and in pairs at every
-  place): every signature of the From address's organisation bounds what counts, so none can be made not to count. Not
-  every replay: a sender who signs a field naming someone else is beyond it, and the check relies on Gmail's own result
-  being the topmost Authentication-Results. Mail authenticated by SPF alone (no DKIM) never passes, also with a forged
-  signature copying another domain's. (4) **Once through, a thread is judged again** when anyone not let in writes into
-  it, but mail from someone let in into it changes nothing. (5) **The evidence words are English only** ("sign in",
-  "order", "booking"): a German "Bestellung" or a French "connexion" waits in Screening. (6) **Mail sent to an alias or
-  a forwarding address** never skips Screening, codes included: To or Cc must name the inbox's own address (a `+tag` and
-  Gmail's dots aside). (7) **Invoices never skip it,** also a renewal the AI calls an invoice. (8) **Mail that arrived
-  while the AI was off, paused or failing stays in Screening** when the AI categorizes it later, codes included. (9)
-  **The question's quality is untried:** no real model has answered it; the fake answers by words. (10) On IMAP only
-  codes pass, as before 2026-11-25; a server without the Public Suffix List lets nothing through on Gmail.
+  `CARRIER_DOMAINS`; their real alerts wait in Screening, the accepted cost); tenant subdomains of help desks and tools;
+  since the narrow check, collaboration, file-sharing, scheduling and e-signature notifiers too (figma.com, dropbox.com,
+  notion.so, zoom.us, docusign.net and the rest). A security alert also needs its phrase in the subject: one whose
+  subject says none ("Your account was used to sign in") waits, and so does a security alert or account change whose
+  subject quotes something (`New sign-in to your "Work" account`) or says shared, mentioned you, invited you or
+  commented. A thread holding mail from more than one sender who isn't let in, or from its sender without the same proof
+  (a bank writing from two addresses in one thread), never skips Screening. Google's own account alerts wait too: a
+  genuine, signed one from its accounts sender can carry an app name an attacker typed (Kaspersky's DKIM replay through
+  Google OAuth), and no Google page names that sender. **Verified:** Microsoft's account team's sender,
+  `account-security-noreply@accountprotection.microsoft.com` (https://support.microsoft.com/en-us/help/13967, by the
+  final security review). **Assumed:** that Google's and Microsoft's other products' notices come from those two domains
+  (Microsoft's Teams also sends from addresses under the `.microsoft` top-level domain, which isn't listed), and how
+  other platforms' notices are headed. No real header samples were read: the tests build them. A platform not on the
+  lists that writes a user's words in mail addressed to the person, with no List-Id and no Reply-To elsewhere, still
+  passes when the model agrees (another file share or calendar, a marketplace's message, a code-hosting site's notice
+  without a List-Id). (3) **Replays:** a copy sent on by Bcc, or with a To or Cc added on top, doesn't pass (the field
+  naming the inbox must be given once and signed by the sender's aligned DKIM signature; checked against real parsing,
+  with made-up signatures). The check is monotone (`mail/src/message/signed-recipients.ts` argues it, a test adds every
+  hostile field alone and in pairs at every place): every signature of the From address's organisation bounds what
+  counts, so none can be made not to count. Not every replay: a sender who signs a field naming someone else is beyond
+  it, and the check relies on Gmail's own result being the topmost Authentication-Results. Mail authenticated by SPF
+  alone (no DKIM) never passes, also with a forged signature copying another domain's. (4) **Once through, a thread is
+  judged again** when anyone not let in writes into it, but mail from someone let in into it changes nothing. (5) **The
+  evidence words are English only** ("sign in", "order", "booking"): a German "Bestellung" or a French "connexion" waits
+  in Screening. (6) **Mail sent to an alias or a forwarding address** never skips Screening, codes included: To or Cc
+  must name the inbox's own address (a `+tag` and Gmail's dots aside). (7) **Invoices never skip it,** also a renewal
+  the AI calls an invoice. (8) **Mail that arrived while the AI was off, paused or failing stays in Screening** when the
+  AI categorizes it later, codes included. (9) **The question's quality is untried:** no real model has answered it; the
+  fake answers by words. (10) On IMAP only codes pass, as before 2026-11-25; a server without the Public Suffix List
+  lets nothing through on Gmail.
 - **A summary request can still carry an unusual address** (server, older than 2026-11-25; open). `withoutAddresses`
   (`server/src/ai/addresses.ts`) takes out addresses of letters, digits, marks and `._%+'=-` before an at sign ("@" or
   "＠") and a domain of two or more labels of any length, dotted by ".", "。", "．" or "｡". Not taken out, or not
@@ -741,6 +748,12 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
   without `header.b`) it also counted as the sender's own for the gate. Now signed recipients need Gmail's sealed copy
   to agree, and both let-in rules need signed recipients (an aligned DKIM pass; an SPF-aligned DMARC pass no longer
   lets anyone in). The probe is a test in `mail/test/unit/header-reading.test.ts`: signed recipients before, none now.
+  After the narrow check, the proof itself (sender pictures too) is dropped when Gmail's copy above disagrees.
+- **The gate could be led by a thread's other mail** (server, found 2026-11-26 by the narrow check of the final
+  review's fixes; fixed before release). Reading the thread's subject let an unproved stranger's earlier "Security
+  alert: …" subject carry a proved sender's later message out of Screening; and a stranger joining a passed thread
+  with an earlier Date had the gate judge the old proved message again and let the thread out with the stranger's mail
+  in it. Now the check holds on both subjects, and only one sender's mail, with one proof, is judged.
 - **Reading a message could take minutes under the server's lock** (server and mail, found 2026-11-25 by security
   reviews of the screening work and of the first 0.1.3 build; fixed in 0.1.3, `hotfix-0.1.3`). A message is read
   under `ctx.lock`, and one that fails or stalls isn't stored, so it is read again on every sync and after a restart:

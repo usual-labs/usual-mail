@@ -39,7 +39,10 @@ for the message's From:
    or, when that header has no DMARC result at all (Gmail writes one only when the domain publishes a DMARC record),
    `dkim=pass` with a signing domain whose registrable domain is the From domain's (DMARC's relaxed alignment). Any
    `dmarc=fail` loses. The From field must name exactly one mailbox. A header lower down, or another checker's on top,
-   proves nothing, and neither does one inside an attached message. **When two or more headers name the provider's own
+   proves nothing, and neither does one inside an attached message. Since 2026-11-26 neither does a result Gmail's
+   sealed copy of it lacks: when an `ARC-Authentication-Results: i=1` by the provider's checker sits above the topmost
+   result and lacks a result that one holds, a sender's folded first line added it, and nothing is proved (with no such
+   copy, the result stands as read). **When two or more headers name the provider's own
    checker** (mail forwarded through Gmail twice, or brought in some other way), nothing is proved (`fromCheck`
    `repeated`). The header is read strictly, since Gmail writes parts the sender chooses into it (the envelope sender in
    its SPF comment and `smtp.mailfrom`): **a quote anywhere inside a comment, a quoted value holding `;`, `(` or `)`, or
@@ -90,11 +93,11 @@ for the message's From:
   the last look is more than 30 days old**: never on a timer of its own. A refresh that fails keeps the picture. A
   domain no mail has wanted for 180 days is forgotten, its picture with it.
 - **Mail stored before the server asked** (or while it carried no list) has no `fromCheck`. At every start, in the
-  background, the server asks Gmail again (`fromChecks`: its metadata form with only `Authentication-Results` and
-  `From`, 20 quota units a message) for each thread that isn't done, trashed or gone and had mail in the last 90 days:
-  its sender's oldest and newest message. One log line counts the outcomes, with no address or domain: proved, Gmail's
-  own result on top proving nothing, another checker's on top, no result at all, no longer there. What has an answer is
-  never asked again.
+  background, the server asks Gmail again (`fromChecks`: its metadata form with only `Authentication-Results`,
+  `ARC-Authentication-Results` and `From`, 20 quota units a message) for each thread that isn't done, trashed or gone
+  and had mail in the last 90 days: its sender's oldest and newest message. One log line counts the outcomes, with no
+  address or domain: proved, Gmail's own result on top proving nothing, another checker's on top, no result at all, no
+  longer there. What has an answer is never asked again.
 
 ## What it reveals, and what it does not protect
 
