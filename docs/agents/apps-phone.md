@@ -85,7 +85,7 @@ points since 2026-11-25, below).
   (on a 402-point screen even "Appearance" does). Snooze and more are the system's menus (`PhoneBarMenu`; the
   owner's words of 2026-11-25, "this menu does not look native", of the popovers they had been): snooze's times; why
   the mail is here as the menu's title (for a mail that skipped Screening, its line under the category's, `WhyWords.title`,
-  over a section of its own with Let in and Block sender in red), Move to feed, "Move to paper trail" a submenu (as an invoice, as a receipt),
+  over a section of its own with Let in and Block sender in red when it has a sender), Move to feed, "Move to paper trail" a submenu (as an invoice, as a receipt),
   Forward and Label greyed, and Remove in red, apart. The Mac keeps its popovers. Seen in the simulator; a long
   reason as the title wraps whole (four lines for an agent's). Its times are worked out every minute and on coming
   back to the front (`TimelineView`), as are the swipe's when its dialog opens, so a phone locked over 18:00 offers no
@@ -110,10 +110,14 @@ points since 2026-11-25, below).
 - **Pulling a list down checks for new mail** (owner's words of 2026-11-26, "Add pull down to reload on iphone"):
   Home, Screening, Feed, Notifications, Receipts, the Inbox page, To reply, Pinned and Snoozed (`checksForMail` in
   `Pages`, a `refreshable`; not a mail, search or Settings). It asks the server to sync the profile's inbox, or every
-  inbox where no profile is active, then fetches everything again (`MailStore.checkForMail`); a paused inbox isn't
-  asked. The spinner shows until that refresh is done; what the syncs find comes afterwards as events, as new mail
-  always does. The Mac has no pull. Tested in the Kit (which inboxes are asked, the refresh after); not tried on a
-  phone yet.
+  inbox where no profile is active, and fetches everything again meanwhile (`MailStore.checkForMail`); a paused inbox
+  isn't asked. The spinner shows until that refresh is done, or ends at once when a refresh was already running
+  (which then runs again for the pull); what the syncs find comes afterwards as events, as new mail always does. The
+  refresh is a task of its own, so leaving the list mid-pull doesn't cancel it. A pull that couldn't reach the server
+  says why in a capsule at the top of the list for five seconds (spoken to VoiceOver too), since the store's problems
+  aren't shown in the window; a sync refused (paused meanwhile, an error) says nothing, as the refresh brings the
+  inbox's state. The Mac has no pull. Tested in the Kit (the inboxes asked, a refusal, offline, leaving mid-pull);
+  not tried on a phone yet.
 - **Screening's let in and block** (and more from a sender) are a 20-point icon on a 40-point circle, always shown,
   where the Mac has a 16-point icon whose circle shows under the pointer (owner's words of 2026-11-25, "the reject and
   accept buttons should be bigger").

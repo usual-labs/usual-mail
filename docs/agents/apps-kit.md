@@ -191,8 +191,9 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
     they were), the newest Handled page with silent records, the newest page of what needs a look (`attentionOnly`),
     every proposal, drafts, the latest brief and each inbox's rules.
   - **`checkForMail(inboxId:)`** (the iPhone's pull down): `syncInbox` for that inbox, or every inbox, paused ones
-    left out, all at once and their failures unsaid, then a refresh. The syncs are only queued; what they find comes
-    as events.
+    left out, all at once and beside a refresh in a task of its own (not after them: they are only queued, and what
+    they find comes as events). Returns, and puts in `problem`, why the server couldn't be reached when the refresh
+    or a sync went offline; a refused sync says nothing.
   - **Counts and the AI** (`counts`, `aiStatus`, `aiSettings`): from the refresh and their events, the higher version
     kept, also on disk. Badges and Home's New count come from `counts`, so they don't move with an action until
     `counts.changed` arrives. `updateAiSettings(_:)` (the key is taken out of any error words) and `testAi()`.

@@ -107,18 +107,16 @@ struct MailStoreInboxTests {
         #expect(rule.enabled && rule.version == 2)
     }
 
-    @Test func checkingForMailAsksEachInboxNotPausedToSyncThenFetchesAgain() async throws {
+    @Test func checkingForMailAsksEachInboxNotPausedToSyncAndFetchesAgain() async throws {
         let server = SampleServer()
         let store = try await loadedStore(server)
         #expect(await store.updateInbox("inb_personal", InboxPatch(paused: true)))
         let before = server.requests.count
-        await store.checkForMail()
+        #expect(await store.checkForMail() == nil)
         let asked = server.requests.dropFirst(before).map { "\($0.httpMethod!) \($0.pathAndQuery)" }
         let syncs = Set(asked.filter { $0.hasSuffix("/sync") })
         #expect(syncs == ["POST /v1/inboxes/inb_northwind/sync", "POST /v1/inboxes/inb_harbor/sync"])
-        // The refresh comes after the syncs were asked.
-        let lastSync = try #require(asked.lastIndex { $0.hasSuffix("/sync") })
-        #expect(asked[(lastSync + 1)...].contains("GET /v1/inboxes"))
+        #expect(asked.contains("GET /v1/inboxes"))
         #expect(store.problem == nil)
     }
 
@@ -129,6 +127,56 @@ struct MailStoreInboxTests {
         await store.checkForMail(inboxId: "inb_harbor")
         let syncs = server.requests.dropFirst(before).map(\.pathAndQuery).filter { $0.hasSuffix("/sync") }
         #expect(syncs == ["/v1/inboxes/inb_harbor/sync"])
+    }
+
+    @Test func aSyncRefusedStillFetchesAndSaysNothing() async throws {
+        let server = SampleServer()
+        let store = try await loadedStore(server)
+        // Harbor paused on the server, not yet in this device's copy: its sync answers `conflict`.
+        server.state.withLock { state in
+            let index = state.data.inboxes.firstIndex { $0.id == "inb_harbor" }!
+            state.data.inboxes[index].status = .paused
+            state.data.inboxes[index].version += 1
+        }
+        server.failOnce("POST /v1/inboxes/inb_northwind/sync", with: .error("internal", "Something broke", status: 500))
+        #expect(await store.checkForMail() == nil)
+        #expect(store.problem == nil)
+        // The refresh brought the pause.
+        #expect(store.lists.inbox(id: "inb_harbor")?.status == .paused)
+    }
+
+    @Test func aPullThatCantReachTheServerSaysSo() async throws {
+        let store = MailStore(
+            client: APIClient(
+                server: testServer, token: "t",
+                transport: StubTransport { _ in throw URLError(.notConnectedToInternet) }),
+            local: try await LocalStore.sample(), clock: { SampleData.bundled.now })
+        await store.loadFromDisk()
+        let words = "Can't reach your server. This device is offline."
+        #expect(await store.checkForMail() == words)
+        #expect(store.problem?.message == words)
+        #expect(store.connection == .offline(words))
+    }
+
+    @Test func leavingTheListMidPullLetsTheRefreshFinish() async throws {
+        let server = SampleServer()
+        let store = try await loadedStore(server)
+        server.state.withLock { state in
+            let index = state.data.inboxes.firstIndex { $0.id == "inb_harbor" }!
+            state.data.inboxes[index].name = "Harbor Pine"
+            state.data.inboxes[index].version += 1
+        }
+        let gate = server.holdAnswer("GET /v1/counts")
+        let pull = Task { await store.checkForMail() }
+        try await waitUntil("the refresh asked for the counts") {
+            server.requests.contains { $0.pathAndQuery == "/v1/counts" }
+        }
+        pull.cancel()
+        await gate.open()
+        await pull.value
+        // The refresh went on to its end and read the lists again, though the pull was cancelled.
+        try await waitUntil("the refresh finished") { !store.isRefreshing }
+        #expect(store.lists.inbox(id: "inb_harbor")?.name == "Harbor Pine")
     }
 
     @Test func theDashboardPageForAnInbox() async throws {

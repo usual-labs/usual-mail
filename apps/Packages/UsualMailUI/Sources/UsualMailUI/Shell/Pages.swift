@@ -178,12 +178,42 @@ extension View {
 }
 
 #if os(iOS)
+    /// The pull, and after one that couldn't reach the server, why, in a capsule at the top of the list for a few
+    /// seconds (and spoken to VoiceOver), so a pull never ends without a word: the store's problems aren't shown in
+    /// the window (apps.md, "Not done").
     private struct ChecksForMail: ViewModifier {
         let inboxId: String?
         @Environment(MailStore.self) private var store
+        @State private var unreached: String?
 
         func body(content: Content) -> some View {
-            content.refreshable { await store.checkForMail(inboxId: inboxId) }
+            content
+                .refreshable {
+                    let words = await store.checkForMail(inboxId: inboxId)
+                    if let words { AccessibilityNotification.Announcement(words).post() }
+                    withAnimation(Motion.move) { unreached = words }
+                }
+                .overlay(alignment: .top) {
+                    if let unreached {
+                        Text(verbatim: unreached)
+                            .font(Theme.sans(12))
+                            .foregroundStyle(Theme.ink)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 9)
+                            .glassEffect(.regular.tint(.white.opacity(0.6)), in: Capsule())
+                            .padding(.horizontal, 16)
+                            .padding(.top, 12)
+                            .onTapGesture { withAnimation(Motion.move) { self.unreached = nil } }
+                            .transition(.blurReveal)
+                    }
+                }
+                .task(id: unreached) {
+                    guard unreached != nil else { return }
+                    // A newer pull's words cancel this wait; they aren't taken away by it.
+                    guard (try? await Task.sleep(for: .seconds(5))) != nil else { return }
+                    withAnimation(Motion.move) { unreached = nil }
+                }
         }
     }
 #endif

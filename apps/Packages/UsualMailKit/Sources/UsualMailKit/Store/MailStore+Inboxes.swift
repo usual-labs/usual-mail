@@ -60,19 +60,56 @@ extension MailStore {
     }
 
     /// Checking for new mail, as pulling a list down does on the iPhone: asks the server to sync `inboxId`, or every
-    /// inbox when nil, from the mailbox now, then fetches everything again (`refresh`). A paused inbox isn't asked (the
-    /// server reads nothing from its mailbox and would answer `conflict`). The syncs are only queued, so what they find
-    /// comes as events afterwards; a sync that can't be asked is no problem of its own, since the refresh says when the
-    /// server can't be reached or this device is signed out.
-    public func checkForMail(inboxId: String? = nil) async {
+    /// inbox when nil, from the mailbox now, and fetches everything again (`refresh`) meanwhile, not after: the syncs
+    /// only queue the work, and what they find comes as events. A paused inbox isn't asked (the server reads nothing
+    /// from its mailbox). The refresh runs in a task of its own, so leaving the list mid-pull, which cancels the pull,
+    /// doesn't cancel a refresh another caller's has joined (`refresh` runs once for overlapping calls; one already
+    /// running when the pull starts makes the pull end at once, and runs again for it).
+    ///
+    /// Returns why the server couldn't be reached, when it couldn't (the refresh or a sync went offline), and says so
+    /// in `problem` too, so a pull never ends without a word; nil otherwise. A sync the server refused (a `conflict` for
+    /// an inbox paused meanwhile, an error) is said nowhere: the refresh brings the inbox's state.
+    @discardableResult
+    public func checkForMail(inboxId: String? = nil) async -> String? {
         let asked = lists.inboxes.filter { ($0.id == inboxId || inboxId == nil) && $0.status != .paused }.map(\.id)
-        let client = client
-        await withTaskGroup(of: Void.self) { group in
-            for id in asked {
-                group.addTask { try? await client.syncInbox(id: id) }
-            }
+        async let offline = Self.askToSync(asked, client: client)
+        await Task { await refresh() }.value
+        let reason: String
+        if case .offline(let words) = connection {
+            // Leaving the scope cancels the syncs still waiting on an unreachable server.
+            reason = words
+        } else if let words = await offline {
+            reason = words
+        } else {
+            return nil
         }
-        await refresh()
+        problem = Problem(message: reason)
+        return reason
+    }
+
+    /// Asks the server to sync each inbox, all at once; the words of the first that couldn't reach it, if any.
+    private nonisolated static func askToSync(_ ids: [String], client: APIClient) async -> String? {
+        await withTaskGroup(of: String?.self) { group in
+            for id in ids {
+                group.addTask {
+                    do {
+                        try await client.syncInbox(id: id)
+                        return nil
+                    } catch let error as APIError where error.isOffline {
+                        return error.message
+                    } catch {
+                        return nil
+                    }
+                }
+            }
+            for await words in group {
+                if let words {
+                    group.cancelAll()
+                    return words
+                }
+            }
+            return nil
+        }
     }
 
     /// Gives an inbox new credentials, in place: its mail, rules and history stay. Person only. They replace the
