@@ -66,6 +66,11 @@ public struct MailThread: Codable, Hashable, Sendable, Identifiable, Versioned {
     /// a blocked sender. Its appearing, changing or going raises the thread's version, and so does a change to one of
     /// its messages' pictures. Encoded only when present.
     public var avatar: SenderPicture?
+    /// Why a thread whose sender wasn't let in is out of Screening: the kind of mail the server's AI named and the
+    /// server's own check confirmed (docs/contract.md, "Skipped Screening"). Its sender isn't let in by it. Nil while
+    /// the thread is screened, for every other way out of Screening, and from a server before 0.1.4. Encoded only
+    /// when present.
+    public var skippedScreening: ScreeningPass?
 
     public init(
         id: String, inboxId: String, subject: String, snippet: String = "", participants: [Address] = [],
@@ -74,7 +79,8 @@ public struct MailThread: Codable, Hashable, Sendable, Identifiable, Versioned {
         sender: String? = nil, screened: Bool = false,
         done: Bool = false, stack: Stack? = nil, comeBackAt: Date? = nil, comeBackIfNoReply: Bool? = nil,
         trashed: Bool = false, version: Int = 1, need: Need? = nil, reason: String? = nil, summary: String? = nil,
-        payment: Payment? = nil, event: NotificationEvent? = nil, avatar: SenderPicture? = nil
+        payment: Payment? = nil, event: NotificationEvent? = nil, avatar: SenderPicture? = nil,
+        skippedScreening: ScreeningPass? = nil
     ) {
         self.id = id
         self.inboxId = inboxId
@@ -102,6 +108,7 @@ public struct MailThread: Codable, Hashable, Sendable, Identifiable, Versioned {
         self.payment = payment
         self.event = event
         self.avatar = avatar
+        self.skippedScreening = skippedScreening
     }
 
     /// True while the thread waits to come back at `now`.

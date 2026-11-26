@@ -414,11 +414,12 @@ elements before htmlparser2 reads it (`mail/src/message/html-depth.ts`); address
 by `server/src/ai/addresses.ts`; and a subject sent to the AI is cut to 1,000 characters. A few patterns are linear
 only because their callers hand them short strings ([known-issues.md](known-issues.md), "Linear only where they run",
 and "Reading a message could take minutes" under Fixed; [mail.md](mail.md), [server-ai.md](server-ai.md)).
-0.1.4 (on `screening-pass`, rebased onto 0.1.3 on 2026-11-26, not tagged or pushed yet) bumps the same places and the
+0.1.4 (2026-11-26, released as `v0.1.4`, `da64183` on `main`; the owner's Cloudflare server runs it) bumps the same places and the
 README's status line, for mail from strangers that skips Screening (a code, a sign-in link, a security alert, an order
 and the like, with the provider's checker and the server's own check behind the model's answer) and senders let in
 without the AI (another inbox on the server, a colleague at a company domain); migration 0022
-([server-screening.md](server-screening.md)).
+([server-screening.md](server-screening.md)). The apps show `Thread.skippedScreening` in the mail's "why it's here"
+since after the release ([apps.md](apps.md)).
 
 ## Layout
 

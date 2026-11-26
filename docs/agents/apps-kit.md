@@ -58,6 +58,9 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
     absent is nil); `MailThread.event` (`Models/NotificationEvent.swift`, 2026-11-19): status, about, when {date,
     time, endTime}, `group` (opaque, only compared), the mail's local reading, written only when present; re-sorting a thread clears it; only on processed receipt and invoice threads; kept in the
     copy's thread JSON (no schema change); re-sorting a thread clears it at once in the app.
+  - `MailThread.skippedScreening` (`ScreeningPass`, an open enum of core's kinds: code, sign-in, email confirmation,
+    security, account, order, booking, payment): why a thread whose sender isn't let in is out of Screening; nil
+    from a server before 0.1.4, written only when present (`ScreeningPassTests`).
   - Sender pictures (2026-11-19, `docs/contract-avatars.md`; `Models/SenderPicture.swift`, `Storage/SenderPictures.swift`):
     `MailThread.avatar`/`Message.avatar` (`SenderPicture`: picture, `fit` fill or inset with unknown as inset, size;
     written only when present). Only a picture of exactly `/v1/avatars/<32 lowercase hex>` has an `id`; anything else

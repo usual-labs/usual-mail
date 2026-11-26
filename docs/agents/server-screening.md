@@ -128,7 +128,9 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   again to an invoice; the stored and served "a screened thread carries no kind" backups.
 - `screening-senders` (15: also a DMARC pass by SPF alone letting nobody in, and a conversation opened from a search
   letting nobody in), `screening-pass` also the check needing both subjects and a stranger's earlier message giving
-  the thread its subject, `screening-after` also a stranger joining with an earlier Date and one written as the sender
+  the thread its subject, and (after the release, the verifier's M2) the same proved sender's thread whose first
+  subject ("Your statement is ready") names no alert while its newest ("New sign-in to your account") does: it stays
+  screened, and the test fails with the thread-subject half of `checkAtGate` taken out, `screening-after` also a stranger joining with an earlier Date and one written as the sender
   without its proof, `migration-0022` (both columns),
   `e2e-ai-gmail` (the code carries a DKIM-Signature whose b= starts with Gmail's `header.b`, signing To), mail's
   `signed-recipients` (22: each attack the four reviews ran, through the parser too: a Cc added, To or Cc twice, a

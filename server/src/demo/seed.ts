@@ -173,6 +173,7 @@ export async function seedSample(host: Host, demo: Demo, sample: SampleData, shi
       screened: thread.screened,
       screenedByMailbox: false,
       gatePending: false,
+      skippedScreening: thread.skippedScreening ?? null,
       summary: thread.summary ?? null,
       payment: thread.payment ?? null,
       // An event's date is a calendar date: it moves by the whole days the sample's times move, so "today" stays today.

@@ -1,7 +1,8 @@
 import SwiftUI
 import UsualMailKit
 
-/// The mail's menu (`…`): why it is here, then moving it to the feed or the paper trail, forward, label and remove,
+/// The mail's menu (`…`): why it is here (with, for a mail that skipped Screening, its line and the sender's let in and
+/// block, docs/contract.md "Skipped Screening"), then moving it to the feed or the paper trail, forward, label and remove,
 /// each with its icon.
 struct MoreMenu: View {
     let mail: MailThread
@@ -17,6 +18,17 @@ struct MoreMenu: View {
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
                 .fixedSize(horizontal: false, vertical: true)
+            if let skipped = WhyWords.skipped(mail) {
+                // Out of Screening without its sender let in: the line, and the sender's choices Screening offers.
+                Text(verbatim: skipped)
+                    .font(Theme.sans(10))
+                    .foregroundStyle(Theme.time)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 6)
+                    .fixedSize(horizontal: false, vertical: true)
+                MenuRow(icon: .letIn, title: "Let in") { choose(.allowSender) }
+                MenuRow(icon: .block, title: "Block sender") { choose(.blockSender) }
+            }
             Divider().padding(.vertical, 2)
             if mail.category != .newsletter {
                 MenuRow(icon: .reads, title: "Move to feed") { choose(.categorize(.newsletter)) }
@@ -67,7 +79,8 @@ struct SnoozeMenu: View {
 #if os(iOS)
     /// On the iPhone, snooze's and more's choices as the system's menu, in its type, icons and dividers (the owner's
     /// words of 2026-11-25: "this menu does not look native"): snooze's times; or why the mail is here as the menu's
-    /// title, then moving it to the feed, the paper trail as a submenu (as an invoice, as a receipt), forward and label
+    /// title (with, for a mail that skipped Screening, its line and the sender's let in and block, docs/contract.md),
+    /// then moving it to the feed, the paper trail as a submenu (as an invoice, as a receipt), forward and label
     /// (not yet), and remove, in red, apart. The Mac keeps its popovers (`SnoozeMenu`, `MoreMenu`).
     struct PhoneBarMenu: View {
         let action: BarAction
@@ -82,29 +95,42 @@ struct SnoozeMenu: View {
                     item(choice.title, icon: .snoozed) { choose(choice.input) }
                 }
             } else {
-                Section(WhyWords.line(for: mail, rules: store.lists.rules(inbox: mail.inboxId))) {
-                    if mail.category != .newsletter {
-                        item("Move to feed", icon: .reads) { choose(.categorize(.newsletter)) }
+                let title = WhyWords.title(for: mail, rules: store.lists.rules(inbox: mail.inboxId))
+                if WhyWords.skipped(mail) != nil {
+                    // Out of Screening without its sender let in: the sender's choices Screening offers, under why.
+                    Section(title) {
+                        item("Let in", icon: .letIn) { choose(.allowSender) }
+                        item("Block sender", icon: .block, destructive: true) { choose(.blockSender) }
                     }
-                    Menu {
-                        if mail.category != .invoice {
-                            Button("As an invoice") { choose(.categorize(.invoice)) }
-                        }
-                        if mail.category != .receipt {
-                            Button("As a receipt") { choose(.categorize(.receipt)) }
-                        }
-                    } label: {
-                        Text("Move to paper trail")
-                        Icon.receipts.menuImage
-                    }
-                    // Forwarding comes with writing mail; labels aren't in the server's contract yet.
-                    item("Forward", icon: .forward) {}.disabled(true)
-                    item("Label", icon: .label) {}.disabled(true)
+                    Section { moves }
+                } else {
+                    Section(title) { moves }
                 }
                 Section {
                     item("Remove", icon: .remove, destructive: true) { choose(.trash) }
                 }
             }
+        }
+
+        /// Moving it to the feed or the paper trail; forward and label, not yet.
+        @ViewBuilder private var moves: some View {
+            if mail.category != .newsletter {
+                item("Move to feed", icon: .reads) { choose(.categorize(.newsletter)) }
+            }
+            Menu {
+                if mail.category != .invoice {
+                    Button("As an invoice") { choose(.categorize(.invoice)) }
+                }
+                if mail.category != .receipt {
+                    Button("As a receipt") { choose(.categorize(.receipt)) }
+                }
+            } label: {
+                Text("Move to paper trail")
+                Icon.receipts.menuImage
+            }
+            // Forwarding comes with writing mail; labels aren't in the server's contract yet.
+            item("Forward", icon: .forward) {}.disabled(true)
+            item("Label", icon: .label) {}.disabled(true)
         }
 
         private func item(

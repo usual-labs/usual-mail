@@ -75,4 +75,29 @@ struct ExplanationTests {
         let byRule = try thread("thr_4")
         #expect(WhyWords.line(for: byRule).hasPrefix("Newsletter, by a rule"))
     }
+
+    /// A mail out of Screening without its sender let in says so under the category's line, in core's words for each
+    /// kind (`skippedScreeningLine`, docs/contract.md "Skipped Screening").
+    @Test func whySkippedScreening() throws {
+        let code = try #require(sample.threads.first { $0.id == "thr_15" })
+        #expect(WhyWords.skipped(code) == "Skipped Screening: a one-time code")
+        #expect(WhyWords.title(for: code) == "One-time code, sorted by the AI\nSkipped Screening: a one-time code")
+        var mail = code
+        let words: [(ScreeningPass, String)] = [
+            (.code, "a one-time code"), (.signIn, "a sign-in link"), (.emailConfirmation, "an email confirmation"),
+            (.security, "a security alert"), (.account, "a password reset or account change"),
+            (.order, "a receipt or order update"), (.booking, "a booking"), (.payment, "a payment alert"),
+        ]
+        #expect(words.map(\.0) == ScreeningPass.known)
+        for (pass, what) in words {
+            mail.skippedScreening = pass
+            #expect(WhyWords.skipped(mail) == "Skipped Screening: \(what)")
+        }
+        // A kind a newer server adds still says it skipped; a mail that didn't says nothing more.
+        mail.skippedScreening = .unknown("ticket")
+        #expect(WhyWords.skipped(mail) == "Skipped Screening")
+        let other = try #require(sample.threads.first { $0.id == "thr_6" })
+        #expect(WhyWords.skipped(other) == nil)
+        #expect(WhyWords.title(for: other) == WhyWords.line(for: other))
+    }
 }

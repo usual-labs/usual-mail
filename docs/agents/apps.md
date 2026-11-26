@@ -130,7 +130,9 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   (Pinned), that action's button pops in on its own. Snooze and more open glass popovers
   (`Shell/BarMenus.swift`) whose rows each carry an icon (the system menus showed none): snooze offers later today
   18:00, tomorrow 08:00, Saturday 09:00, next Monday 08:00 and tomorrow if nobody has answered (`SnoozeChoice`); more
-  starts with "why it's here", then "Move to feed" (`categorize` newsletter), "Move to paper trail", which opens to
+  starts with "why it's here" (for a mail that skipped Screening, `Thread.skippedScreening`, a second line in core's
+  words, "Skipped Screening: a one-time code" (`WhyWords.skipped`), and "Let in" and "Block sender" for its sender, as
+  a screened mail offers: docs/contract.md, "Skipped Screening"; the sample's thr_15 has it), then "Move to feed" (`categorize` newsletter), "Move to paper trail", which opens to
   "As an invoice" and "As a receipt", "Forward" and "Label" (both disabled: forwarding comes with writing mail, and
   the contract has no labels), and "Remove" (`trash`). Each action takes the mail out of Home, so the card goes back to Home, and an undo strip
   (`UndoStrip`) at the card's foot says what happened ("Archived.", "Moved to the feed.") with Undo for six seconds;

@@ -147,6 +147,32 @@ public enum Need: OpenEnum {
     }
 }
 
+/// A kind of mail from a sender who isn't let in that may skip Screening (`ScreeningPass` in `core/src/screening.ts`),
+/// in the owner's order: a one-time code, a sign-in link, an email confirmation, a security alert, a password reset or
+/// account change, a receipt or order update, a booking, a payment alert.
+public enum ScreeningPass: OpenEnum {
+    case code, signIn, emailConfirmation, security, account, order, booking, payment
+    case unknown(String)
+
+    public static let known: [ScreeningPass] = [
+        .code, .signIn, .emailConfirmation, .security, .account, .order, .booking, .payment,
+    ]
+
+    public var rawValue: String {
+        switch self {
+        case .code: "code"
+        case .signIn: "sign_in"
+        case .emailConfirmation: "email_confirmation"
+        case .security: "security"
+        case .account: "account"
+        case .order: "order"
+        case .booking: "booking"
+        case .payment: "payment"
+        case .unknown(let raw): raw
+        }
+    }
+}
+
 public enum DraftState: OpenEnum {
     case draft, sending, sent, failed
     case unknown(String)

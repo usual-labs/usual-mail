@@ -125,6 +125,38 @@ enum WhyWords {
     }
 }
 
+extension WhyWords {
+    /// "Skipped Screening: a sign-in link": why a thread from a sender who isn't let in is out of Screening, in core's
+    /// words (`skippedScreeningLine`), under the category's line; nil for a thread that didn't skip it. A kind this app
+    /// doesn't know yet says only "Skipped Screening".
+    static func skipped(_ thread: MailThread) -> String? {
+        guard let pass = thread.skippedScreening else { return nil }
+        guard let what = words(pass) else { return "Skipped Screening" }
+        return "Skipped Screening: \(what)"
+    }
+
+    /// What each kind is, as core's `SCREENING_PASS_WORDS` says it.
+    static func words(_ pass: ScreeningPass) -> String? {
+        switch pass {
+        case .code: "a one-time code"
+        case .signIn: "a sign-in link"
+        case .emailConfirmation: "an email confirmation"
+        case .security: "a security alert"
+        case .account: "a password reset or account change"
+        case .order: "a receipt or order update"
+        case .booking: "a booking"
+        case .payment: "a payment alert"
+        default: nil
+        }
+    }
+
+    /// The iPhone's More menu's title: the category's line, and under it the skipped line when there is one.
+    static func title(for thread: MailThread, rules: [Rule] = []) -> String {
+        let line = line(for: thread, rules: rules)
+        return skipped(thread).map { "\(line)\n\($0)" } ?? line
+    }
+}
+
 extension String {
     fileprivate var nilIfEmpty: String? { isEmpty ? nil : self }
 }

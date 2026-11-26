@@ -84,7 +84,8 @@ points since 2026-11-25, below).
   remove the back button"); Settings is left from the switcher's menu. Its chosen tab is lit and named when it fits
   (on a 402-point screen even "Appearance" does). Snooze and more are the system's menus (`PhoneBarMenu`; the
   owner's words of 2026-11-25, "this menu does not look native", of the popovers they had been): snooze's times; why
-  the mail is here as the menu's title, Move to feed, "Move to paper trail" a submenu (as an invoice, as a receipt),
+  the mail is here as the menu's title (for a mail that skipped Screening, its line under the category's, `WhyWords.title`,
+  over a section of its own with Let in and Block sender in red), Move to feed, "Move to paper trail" a submenu (as an invoice, as a receipt),
   Forward and Label greyed, and Remove in red, apart. The Mac keeps its popovers. Seen in the simulator; a long
   reason as the title wraps whole (four lines for an agent's). Its times are worked out every minute and on coming
   back to the front (`TimelineView`), as are the swipe's when its dialog opens, so a phone locked over 18:00 offers no

@@ -140,6 +140,18 @@ describe("one-time codes on each provider", () => {
     assert.deepEqual([thread.screened, thread.skippedScreening], [true, undefined]);
   });
 
+  test("the same proved sender's thread keeps its first subject: a security alert joining it must say so there too", async () => {
+    // The release verifier's case (M2): with only the newest message's subject checked, this would skip Screening.
+    const { inbox, mailbox } = await inboxWithAi();
+    answer("notification", "security");
+    mailbox.deliver({ ...ALERT, subject: "Your statement is ready", text: "Your November statement is ready to view.", threadKey: "statement", date: at(-2 * HOUR) });
+    mailbox.deliver({ ...ALERT, threadKey: "statement", date: at(-HOUR) });
+    await t.server.syncInbox(t.person, inbox.id);
+    await t.server.whenIdle();
+    const thread = await t.threadBySubject("Your statement is ready");
+    assert.deepEqual([thread.screened, thread.skippedScreening], [true, undefined], "the thread's subject, which the model read, names no alert");
+  });
+
   test("on Gmail a code whose From domain the checker didn't prove never falls back", async () => {
     const { inbox } = await inboxWithAi();
     answer("otp");
