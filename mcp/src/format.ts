@@ -186,13 +186,55 @@ export function draftItem(draft: Draft) {
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
 
+/**
+ * The HTML without its style, script, head and title blocks, as `/<(style|script|head|title)\b[\s\S]*?<\/\1\s*>/gi`
+ * takes them out, each up to its nearest closing tag, in linear time: once no closing tag of a name follows an opening
+ * one, none follows a later one either (the final security review of 2026-11-26; the server's sanitized HTML closes
+ * every block it keeps, so the pattern was slow only on HTML the server never sends).
+ */
+function withoutBlocks(html: string): string {
+  const open = /<(style|script|head|title)\b/gi;
+  const unclosed = new Set<string>();
+  let out = "";
+  let kept = 0;
+  for (let match = open.exec(html); match; match = open.exec(html)) {
+    const name = match[1]!.toLowerCase();
+    if (unclosed.has(name)) continue;
+    const close = new RegExp(`</${name}\\s*>`, "gi");
+    close.lastIndex = open.lastIndex;
+    const found = close.exec(html);
+    if (!found) {
+      unclosed.add(name);
+      continue;
+    }
+    out += html.slice(kept, match.index);
+    kept = found.index + found[0].length;
+    open.lastIndex = kept;
+  }
+  return out + html.slice(kept);
+}
+
+/**
+ * The text without its tags, as `/<[^>]*>/g` takes them out, in linear time: once no ">" follows a "<", none follows a
+ * later one either.
+ */
+function withoutTags(text: string): string {
+  let out = "";
+  let kept = 0;
+  for (let at = text.indexOf("<"); at >= 0; at = text.indexOf("<", kept)) {
+    const end = text.indexOf(">", at + 1);
+    if (end < 0) break;
+    out += text.slice(kept, at);
+    kept = end + 1;
+  }
+  return out + text.slice(kept);
+}
+
 /** Plain text from sanitized HTML: drops tags, keeps paragraph breaks, decodes common entities. */
 export function htmlToText(html: string): string {
-  return html
-    .replace(/<(style|script|head|title)\b[\s\S]*?<\/\1\s*>/gi, "")
+  return withoutTags(withoutBlocks(html)
     .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|div|li|tr|h[1-6]|blockquote)\s*>/gi, "\n")
-    .replace(/<[^>]*>/g, "")
+    .replace(/<\/(p|div|li|tr|h[1-6]|blockquote)\s*>/gi, "\n"))
     .replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) => {
       if (entity[0] === "#") {
         const code = entity[1] === "x" || entity[1] === "X" ? parseInt(entity.slice(2), 16) : parseInt(entity.slice(1), 10);

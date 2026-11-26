@@ -204,6 +204,21 @@ describe("a message's HTML read as text", () => {
     assert.equal(htmlToText(`<p>a${" ".repeat(200_000)}x</p>`), `a${" ".repeat(200_000)}x`);
     assert.ok(performance.now() - started < 1_000, `${(performance.now() - started).toFixed(0)} ms`);
     assert.equal(htmlToText("<p>a  \t </p><p>b</p>"), "a\nb");
+    for (const html of ["<".repeat(200_000), "<style ".repeat(50_000), `<title>${"<".repeat(100_000)}`]) {
+      const begun = performance.now();
+      htmlToText(html);
+      assert.ok(performance.now() - begun < 1_000, `${(performance.now() - begun).toFixed(0)} ms`);
+    }
+    // The whole reading as it was before 0.1.4, on random tag soup: the same text.
+    const old = (html: string) => html.replace(/<(style|script|head|title)\b[\s\S]*?<\/\1\s*>/gi, "").replace(/<br\s*\/?>/gi, "\n")
+      .replace(/<\/(p|div|li|tr|h[1-6]|blockquote)\s*>/gi, "\n").replace(/<[^>]*>/g, "").replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, entity: string) =>
+        entity[0] === "#" ? match : ({ amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " } as Record<string, string>)[entity.toLowerCase()] ?? match)
+      .replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+    const soup = ["<style>", "</style>", "</STYLE >", "<styles>", "<script>", "</script>", "<Title>", "</title>", "<head>", "</head>", "<", ">", "a", " ", "<b>", "</b>", "<br>", "</p>", "&amp;", "\n"];
+    for (let round = 0; round < 5_000; round++) {
+      const html = Array.from({ length: Math.floor(Math.random() * 12) }, () => soup[Math.floor(Math.random() * soup.length)]).join("");
+      assert.equal(htmlToText(html), old(html), JSON.stringify(html));
+    }
     const before = (text: string) => text.replace(/[ \t]+\n/g, "\n");
     const parts = [" ", "\t", "\n", "a"];
     for (let round = 0; round < 5_000; round++) {
