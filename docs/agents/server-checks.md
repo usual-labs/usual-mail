@@ -3,6 +3,10 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **The screening branch rebased onto 0.1.3, as 0.1.4 (2026-11-26, `screening-pass`):** both type checks clean;
+  `npm test` 1,294 tests (1,288 pass, 6 skipped, 0 fail); `npm run check:cloudflare` 92 of 92. Every one of 0.1.3's
+  speed bodies runs through the gate's work too (its shape on 1 MB addresses and List-Id, and its question; slowest
+  275 ms). `npm run check` wasn't run.
 - **0.1.3's comment forms, after its second review (2026-11-26, `hotfix-0.1.3`):** both type checks clean; `npm test`
   1,189 tests (1,183 pass, 6 skipped, 0 fail); `npm run check:cloudflare` 91 of 91. New in `ai-text`: "<!-->",
   "<!--->" and "--!>" ending a comment where htmlparser2 does (the text after them was hidden up to the next "-->");

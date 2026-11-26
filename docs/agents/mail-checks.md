@@ -3,6 +3,10 @@
 What each pass ran and saw, newest first, split out of [mail.md](mail.md). Commands and the Docker notes are in
 mail.md, "Run and check".
 
+- **The screening branch rebased onto 0.1.3, as 0.1.4 (2026-11-26, `screening-pass`):** mail `npm test`: tsc clean;
+  694 tests, 642 passed, 29 skipped, 23 failed, every failure in "IMAP on Dovecot", as before. New in `linear.test.ts`:
+  eight header shapes the screening gate reads (about 1.5 MB or 30,000 lines each), through `parseMessage` with Gmail's
+  checker and each reader alone; slowest a To of 1.5 MB of addresses, 101 ms. 0.1.3's own tests run unchanged.
 - **0.1.3's freeze fix, after its review (2026-11-26, `hotfix-0.1.3`):** mail `npm test`: tsc clean; 653 tests, 601
   passed, 29 skipped, 23 failed, every failure in "IMAP on Dovecot", as before. New: `test/unit/linear.test.ts` (25,
   each in a worker stopped at its limit, readers timed apart and each held under 3 s: 17 HTML shapes at the 2,000,000
