@@ -82,6 +82,16 @@ describe("in linear time (0.1.3)", () => {
     assert.equal(snippetText("Hi <b class=\"a<b\">there</b>", null), "Hi there", "a tag left in a text part");
   });
 
+  test("a comment ends where htmlparser2 and browsers end it: \"<!-->\" and \"<!--->\" whole, or at \"-->\" or \"--!>\"", () => {
+    // The review of 0.1.3's second build: looking for "-->" only past "<!--" hid what followed "<!-->" up to the next one.
+    const footer = "<p>Thanks</p><!-- footer --><p>End</p>";
+    assert.equal(modelText(null, `<p>Before</p><!--><p>Your code is 123456</p>${footer}`), "Before\nYour code is 123456\nThanks\nEnd");
+    assert.equal(modelText(null, `<p>Before</p><!---><p>Your code is 123456</p>${footer}`), "Before\nYour code is 123456\nThanks\nEnd");
+    assert.equal(modelText(null, `<p>Before</p><!-- note --!><p>Your code is 123456</p>${footer}`), "Before\nYour code is 123456\nThanks\nEnd");
+    assert.equal(snippetText(null, "<p>Before</p><!----><p>Shown</p><!-- a -- >still hidden --><p>Too</p>"), "Before Shown Too");
+    assert.equal(snippetText(null, "<p>Before</p><!-- never closed <p>After</p>"), "Before After", "one never closed stays, as before");
+  });
+
   test("the screening gate's check reads tags as before 0.1.3: each from its \"<\" to the nearest \">\"", () => {
     const html = '<p title="a<b">Kept text</p><img alt="I <3 you"><!-- <b>hidden</b> --><p>after</p>';
     assert.equal(plainText(null, html), "Kept text\n hidden --> after");

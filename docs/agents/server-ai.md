@@ -349,11 +349,15 @@ built under `ctx.lock`, so no pattern reading mail may scan back and forth. Addr
 labels of any length dotted by ".", "。", "．" or "｡", letters, digits and marks; its local part back from it, the whole
 run when at most 256 long, else its last 64. `cutWithoutAddresses` cuts the text to its budget first, with room for
 one address, back to where none is split. A subject goes to every job cut to `SUBJECT_LIMIT` (1,000). Tags in what
-a model reads (`readableHtml`) start where HTML starts one ("<" then a letter, "/", "!" or "?") and run to their nearest
-">", comments from "<!--" to "-->", each found by a forward scan: a lone "<" in text stays, and a "<" inside an
-attribute leaves no piece of the tag; the gate's `plainText` reads tags as before 0.1.3, each from any "<" to the
-nearest ">". A model's amount answer loses its leading and trailing separators by a scan from each end
-(`parseAmount`). Tests: `ai-linear` (25 bodies of 1 MB, each in a worker stopped at 10 s, `test/linear.ts`),
+a model reads (`readableHtml`) start where HTML starts one ("<" or "</", then a letter, "!" or "?") and run to their
+nearest ">", and comments end where htmlparser2 ends them ("<!-->" and "<!--->" are whole, any other runs to its
+nearest "-->" or "--!>"; one never closed stays), each found by a forward scan: a lone "<" in text stays, and a "<"
+inside an attribute leaves no piece of the tag; the gate's `plainText` reads tags as before 0.1.3, each from any "<" to
+the nearest ">". On stored HTML, sanitized so that a "<" in text or an attribute is written `&lt;` and comments are
+gone, snippets and model text read as 0.1.2's (38,794 comparisons), so `SNIPPET_PASS` isn't run again: only a message
+with no HTML part whose text part is HTML source keeps a snippet 0.1.2 made, until its thread changes. A model's
+amount answer loses its leading and trailing separators by a scan from each end (`parseAmount`). Tests: `ai-linear`
+(27 bodies of 1 MB, each in a worker stopped at 10 s, `test/linear.ts`),
 `ai-addresses` and `ai-text`.
 
 - **A search asked in a sentence** (2026-11-20, `search/ask-words.ts`, server-search.md): the sentence alone, as

@@ -46,6 +46,8 @@ export const BODIES: Record<string, string> = {
   "combining marks before an at sign": `${"e\u0301".repeat(MB / 2)}@x`,
   "one domain label of a megabyte": `a@${"b".repeat(MB)}`,
   "an amount with separators between its digits": `€1${". ".repeat(MB / 2)}1`,
+  "comments closed by \"-->\" only": "<!--a-->".repeat(MB / 8),
+  "comments closed by \"--!>\" only": "<!--a--!>".repeat(MB / 9),
 };
 
 /** What reads a message under the server's lock: the one-time code check, the requests and snippets, the answers. */

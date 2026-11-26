@@ -682,13 +682,15 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
   the time grows faster than the length), and each reader of mail HTML on crafted shapes at 1 MB, 2 MB and 6 MB.
   What changed in output: nothing for HTML within the bounds (the 12,407 comparisons in [mail.md](mail.md)); deeper
   HTML loses the tags past 256 open elements, not their content; HTML past 2,000,000 characters is cut there; in what
-  a model reads and in snippets a tag starts where HTML starts one and runs to its nearest ">", comments are read as
-  comments, so a lone "<" in text no longer swallows the text up to the next tag and a "<" inside an attribute leaves
-  no piece of one ([server-ai.md](server-ai.md), "In linear time"); the screening gate's `plainText` reads tags as
-  before. Tests: the server's `ai-linear` (25 bodies of 1 MB through the requests and snippets, a model's answers,
-  names, List-Ids and pictures, and the code check) and mail's `linear.test.ts` (17 HTML shapes at the cap, 5 of
-  them at 1 MB too, each reader timed apart; message ids of 1 MB of ">"; the rebuild), each in a worker stopped at
-  its limit; `html-depth.test.ts`; each fix's test failing with that fix undone, but the tracker removal's (its old
+  a model reads and in snippets a tag starts where HTML starts one and runs to its nearest ">", comments end where
+  htmlparser2 ends them ("<!-->", "<!--->", "-->", "--!>"), so a lone "<" in text no longer swallows the text up to
+  the next tag and a "<" inside an attribute leaves no piece of one ([server-ai.md](server-ai.md), "In linear time");
+  the screening gate's `plainText` reads tags as before. Stored snippets aren't made again: on stored HTML, which is
+  sanitized, they read as before; only a message with no HTML part whose text part is HTML source keeps 0.1.2's until
+  its thread changes. Tests: the server's `ai-linear` (27 bodies of 1 MB through the requests and snippets, a model's
+  answers, names, List-Ids and pictures, and the code check) and mail's `linear.test.ts` (17 HTML shapes at the cap,
+  5 of them at 1 MB too, each reader timed apart; message ids of 1 MB of ">"; the rebuild), each in a worker stopped
+  at its limit; `html-depth.test.ts`; each fix's test failing with that fix undone, but the tracker removal's (its old
   cost stays under the tests' 3 s). Still open: the patterns below in "Linear only where they run", and the address
   leaks in [server-ai.md](server-ai.md) (a quoted local part, an address literal, the part before a second @).
 - **The owner password's re-review follow-ups** (server, 2026-11-24, `owner-claim-fix`; each with a test that fails on

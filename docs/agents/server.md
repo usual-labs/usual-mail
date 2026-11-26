@@ -455,7 +455,9 @@ server, and its status.
   so every thread can be recomputed; one whose message has neither stays empty. No provider read, no AI request. It
   shares `server_state.payment_rules_applied` with the payment rules' pass (`ai/passes.ts`: `PAYMENT_RULES`, then
   `SNIPPET_PASS`; a store whose marker is a later pass has had the earlier ones, `hadRulePass`). No migration.
-  Tests: `snippets` (15).
+  Tests: `snippets` (15). 0.1.3 changed how a tag and a comment are read but doesn't run it again: stored HTML is
+  sanitized, and reads as before ([server-ai.md](server-ai.md), "In linear time"). A new id for it would go last in
+  `passes.ts`'s order, with the start running it after the moment pass, or a store at an earlier marker would skip that.
 - **A blocked sender writing into someone else's thread** changes nothing a person sees (`shownIn` in
   `src/service/store.ts`): `refreshThread` works out the subject, snippet (`snippetText` in `ai/text.ts`, from the
   newest shown message; contract.md, "Words"), participants, `lastMessageAt`, count,

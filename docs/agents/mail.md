@@ -201,8 +201,9 @@ batch's `progress`.
   `htmlToText` call, cuts the HTML to `MAX_PARSED_HTML` (2,000,000 characters, never inside a character written as
   two) and reads it once with htmlparser2's own parser, dropping each opening tag that would make more than
   `MAX_HTML_DEPTH` (256) elements open: its content and every closing tag stay, and `<!>` stands in for it so the text
-  on either side can't join into a tag. Void and raw-text elements (script, style, title, textarea, xmp, iframe,
-  noembed, noframes, plaintext) are never dropped. Ordinary mail comes back unchanged: 12,407 comparisons with 0.1.2's
+  on either side can't join into a tag. Void elements are never dropped, nor, outside SVG and MathML (where these
+  names aren't raw text), raw-text elements (script, style, title, textarea, xmp, iframe, noembed, noframes,
+  plaintext). Ordinary mail comes back unchanged: 12,407 comparisons with 0.1.2's
   readers (the fixtures, the hostile inputs, crafted mail with 30 nested tables and 120 levels of quoted replies, and
   3,000 random tag soups, each through the sanitizer, the text, both picture passes and `parseMessage`) gave the same
   output. What follows the cut is read by no parser: neither the stored HTML nor text made from it has it.

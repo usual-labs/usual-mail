@@ -3,6 +3,12 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **0.1.3's comment forms, after its second review (2026-11-26, `hotfix-0.1.3`):** both type checks clean; `npm test`
+  1,189 tests (1,183 pass, 6 skipped, 0 fail); `npm run check:cloudflare` 91 of 91. New in `ai-text`: "<!-->",
+  "<!--->" and "--!>" ending a comment where htmlparser2 does (the text after them was hidden up to the next "-->");
+  `ai-linear`'s 26th and 27th bodies (comments closed by "-->" only, by "--!>" only). Each failed with its part undone
+  (the old search; no "--!>"; both closes looked for again at every comment, which took over 10 s). The reader matched
+  htmlparser2's comment ends on 200,000 random strings, and 0.1.2's snippets and model text on 38,794 sanitized ones.
 - **0.1.3's freeze fix, after its review (2026-11-26, `hotfix-0.1.3`):** both type checks clean; `npm test` 1,182
   tests (1,176 pass, 6 skipped, 0 fail); `npm run check:cloudflare` 91 of 91. New: the reviewer's tag fragments in
   `ai-text` (a "<" inside an attribute or a comment, a lone "<" in text, the gate's `plainText` as before), and

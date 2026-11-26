@@ -144,17 +144,29 @@ function withoutTags(text: string, opens: (text: string, at: number) => boolean 
 }
 
 /**
- * The HTML with each comment, "<!--" to its "-->", read as a space; one never closed stays. In linear time: once no
- * "-->" follows a "<!--", none follows a later one either.
+ * The HTML with each comment read as a space, ended where htmlparser2 and browsers end it: "<!-->" and "<!--->" are
+ * whole comments, and any other runs to its nearest "-->" or "--!>"; one never closed stays. In linear time: each
+ * close is looked for again only once the last one found is behind, from there on, and once one isn't found, never.
  */
 function withoutComments(html: string): string {
   let out = "";
   let kept = 0;
+  // The nearest "-->" and "--!>" at or after where the last look began; -1 once there is none.
+  let plain = -2;
+  let bang = -2;
   for (let open = html.indexOf("<!--"); open >= 0; open = html.indexOf("<!--", kept)) {
-    const close = html.indexOf("-->", open + 4);
-    if (close < 0) break;
+    const body = open + 4;
+    let end: number;
+    if (html[body] === ">") end = body + 1;
+    else if (html.startsWith("->", body)) end = body + 2;
+    else {
+      if (plain !== -1 && plain < body) plain = html.indexOf("-->", body);
+      if (bang !== -1 && bang < body) bang = html.indexOf("--!>", body);
+      if (plain < 0 && bang < 0) break;
+      end = plain >= 0 && (bang < 0 || plain < bang) ? plain + 3 : bang + 4;
+    }
     out += `${html.slice(kept, open)} `;
-    kept = close + 3;
+    kept = end;
   }
   return out + html.slice(kept);
 }
