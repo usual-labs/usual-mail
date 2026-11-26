@@ -33,6 +33,11 @@ export function serverAddresses(ctx: Ctx): () => Promise<Set<string>> {
  */
 export async function provedOwnSender(ctx: Ctx, inbox: InboxRow, message: ProviderMessage, addresses: () => Promise<Set<string>>): Promise<boolean> {
   if (message.outgoing || !trustsChecker(inbox.provider) || message.fromCheck?.result !== "verified") return false;
+  // And by a DKIM signature of the From's organisation that passed, never a DMARC pass aligned by SPF alone (SPF on
+  // shared infrastructure can be spoofed: BreakSPF, NDSS 2024): the sender's signature vouches for a recipient field,
+  // which mail reads only on Gmail's word that such a signature passed and its sealed copy of that word agrees (the
+  // final security review of 2026-11-26).
+  if (!message.signedRecipients?.length) return false;
   const email = message.from.email.toLowerCase();
   const domain = domainOf(email);
   // The checker proved exactly the From address's own domain.

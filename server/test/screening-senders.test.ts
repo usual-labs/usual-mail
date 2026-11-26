@@ -17,9 +17,11 @@ beforeEach(async () => {
 afterEach(() => t.close());
 
 const proved = (domain: string) => ({ result: "verified", domain }) as const;
+/** Proved, and by the sender's own signature, which vouches for To: what both rules need. */
+const signedBy = (domain: string) => ({ fromCheck: proved(domain), signedRecipients: ["to" as const] });
 
 /** A colleague's note at the work inbox's own domain, proved. */
-const COLLEAGUE = { from: { name: "Ann Lee", email: "ann@work.example" }, subject: "Lunch on Friday?", text: "Shall we?", fromCheck: proved("work.example") } satisfies DeliverInput;
+const COLLEAGUE = { from: { name: "Ann Lee", email: "ann@work.example" }, subject: "Lunch on Friday?", text: "Shall we?", ...signedBy("work.example") } satisfies DeliverInput;
 
 async function twoInboxes() {
   const work = await t.connect({ address: "me@work.example", mailbox: { kind: "gmail" } });
@@ -32,7 +34,7 @@ describe("another inbox on this server", () => {
     const { work } = await twoInboxes();
     const unproved = await t.receive(work.inbox, { from: { email: "me@home.example" }, subject: "Before the proof", text: "Hi." });
     assert.equal(unproved.screened, true, "no proof yet: screened");
-    const note = await t.receive(work.inbox, { from: { name: "Me", email: "me@home.example" }, subject: "Note to self", text: "Hi.", fromCheck: proved("home.example") });
+    const note = await t.receive(work.inbox, { from: { name: "Me", email: "me@home.example" }, subject: "Note to self", text: "Hi.", ...signedBy("home.example") });
     assert.deepEqual([note.screened, note.skippedScreening], [false, undefined]);
     assert.equal((await t.server.thread(t.person, unproved.id)).thread.screened, false, "every way in lifts their other threads");
     const later = await t.receive(work.inbox, { from: { email: "me@home.example" }, subject: "Later, unproved", text: "Hi." });
@@ -47,14 +49,14 @@ describe("another inbox on this server", () => {
       ["Another domain", proved("relay.example")],
       ["No word", undefined],
     ] as const) {
-      const thread = await t.receive(work.inbox, { from: { email: "me@home.example" }, subject, text: "Hi.", ...(fromCheck && { fromCheck }) });
+      const thread = await t.receive(work.inbox, { from: { email: "me@home.example" }, subject, text: "Hi.", signedRecipients: ["to"], ...(fromCheck && { fromCheck }) });
       assert.equal(thread.screened, true, subject);
     }
   });
 
   test("the inbox's own address is never let in by its own mail, proved or not", async () => {
     const { work } = await twoInboxes();
-    const own = await t.receive(work.inbox, { from: { email: "me@work.example" }, subject: "From myself?", text: "Hi.", fromCheck: proved("work.example") });
+    const own = await t.receive(work.inbox, { from: { email: "me@work.example" }, subject: "From myself?", text: "Hi.", ...signedBy("work.example") });
     assert.equal(own.screened, true);
   });
 });
@@ -72,15 +74,15 @@ describe("a colleague at the inbox's own domain", () => {
     const { work } = await twoInboxes();
     const spoofed = await t.receive(work.inbox, { ...COLLEAGUE, subject: "Spoofed", fromCheck: { result: "unverified" } });
     assert.equal(spoofed.screened, true);
-    const sub = await t.receive(work.inbox, { from: { email: "bo@eu.work.example" }, subject: "Subdomain", text: "Hi.", fromCheck: proved("eu.work.example") });
+    const sub = await t.receive(work.inbox, { from: { email: "bo@eu.work.example" }, subject: "Subdomain", text: "Hi.", ...signedBy("eu.work.example") });
     assert.equal(sub.screened, true, "only the inbox's own domain itself");
-    const elsewhere = await t.receive(work.inbox, { from: { email: "kim@home.example" }, subject: "Another inbox's domain", text: "Hi.", fromCheck: proved("home.example") });
+    const elsewhere = await t.receive(work.inbox, { from: { email: "kim@home.example" }, subject: "Another inbox's domain", text: "Hi.", ...signedBy("home.example") });
     assert.equal(elsewhere.screened, true, "only this inbox's domain, and only another inbox's exact address");
   });
 
   test("never at a public mail domain", async () => {
     const { inbox } = await t.connect({ address: "me@yahoo.example", mailbox: { kind: "gmail" } });
-    const thread = await t.receive(inbox, { from: { email: "pat@yahoo.example" }, subject: "Hello from a webmail", text: "Hi.", fromCheck: proved("yahoo.example") });
+    const thread = await t.receive(inbox, { from: { email: "pat@yahoo.example" }, subject: "Hello from a webmail", text: "Hi.", ...signedBy("yahoo.example") });
     assert.equal(thread.screened, true);
   });
 
@@ -105,7 +107,7 @@ describe("a colleague at the inbox's own domain", () => {
     const { work } = await twoInboxes();
     const relayed = await t.receive(work.inbox, {
       from: { name: "Stranger via Info", email: "info@work.example" }, subject: "Question via the website", text: "Hello, I have a question.",
-      listId: "info.work.example", fromCheck: proved("work.example"),
+      listId: "info.work.example", ...signedBy("work.example"),
     });
     assert.equal(relayed.screened, true);
     const next = await t.receive(work.inbox, { from: { email: "info@work.example" }, subject: "Another post", text: "Hi." });
@@ -114,8 +116,19 @@ describe("a colleague at the inbox's own domain", () => {
 
   test("a tool's machine-sent mail as the company isn't a colleague", async () => {
     const { work } = await twoInboxes();
-    const tool = await t.receive(work.inbox, { from: { email: "no-reply@work.example" }, subject: "Ticket 4821 updated", text: "A customer replied.", automated: true, fromCheck: proved("work.example") });
+    const tool = await t.receive(work.inbox, { from: { email: "no-reply@work.example" }, subject: "Ticket 4821 updated", text: "A customer replied.", automated: true, ...signedBy("work.example") });
     assert.equal(tool.screened, true);
+  });
+});
+
+describe("a proof without the sender's signature (the final security review of 2026-11-26)", () => {
+  test("a DMARC pass aligned by SPF alone lets nobody in: neither another inbox nor a colleague", async () => {
+    const { work } = await twoInboxes();
+    const own = await t.receive(work.inbox, { from: { email: "me@home.example" }, subject: "From home, SPF only", text: "Hi.", fromCheck: proved("home.example") });
+    const colleague = await t.receive(work.inbox, { ...COLLEAGUE, subject: "Lunch, SPF only", signedRecipients: [] });
+    assert.deepEqual([own.screened, colleague.screened], [true, true]);
+    const next = await t.receive(work.inbox, { from: COLLEAGUE.from, subject: "Notes", text: "Attached." });
+    assert.equal(next.screened, true, "not let in by it");
   });
 });
 
@@ -124,7 +137,7 @@ describe("an inbox whose provider has no checker (IMAP)", () => {
     const { inbox } = await t.connect({ address: "me@work.example" });
     await t.connect({ address: "me@home.example" });
     const colleague = await t.receive(inbox, COLLEAGUE);
-    const own = await t.receive(inbox, { from: { email: "me@home.example" }, subject: "From home", text: "Hi.", fromCheck: proved("home.example") });
+    const own = await t.receive(inbox, { from: { email: "me@home.example" }, subject: "From home", text: "Hi.", ...signedBy("home.example") });
     assert.deepEqual([colleague.screened, own.screened], [true, true]);
   });
 });
