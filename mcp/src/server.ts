@@ -14,7 +14,7 @@ import { registerThreadTools } from "./tools/threads.ts";
 import { registerTriageTools } from "./tools/triage.ts";
 import { registerViews } from "./ui/views.ts";
 
-export const SERVER_INFO = { name: "usual-mail", title: "Usual Mail", version: "0.1.3" } as const;
+export const SERVER_INFO = { name: "usual-mail", title: "Usual Mail", version: "0.1.4" } as const;
 
 /**
  * Every tool an agent may use. Nothing that needs a person is registered at all (sending, approving and

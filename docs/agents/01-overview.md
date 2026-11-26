@@ -403,17 +403,22 @@ The iPhone tweaks and the owner's password (2026-11-24) were rebased onto `main`
 owner's request. The stop fixes after them (2026-11-24) say 0.1.1 wherever `1881044` wrote the version (every
 `package.json` and lockfile, `server/src/version.ts`, `cli/src/version.ts`, `mcp/src/server.ts`,
 `mcp/src/ui/view-script.ts`, and the deploy guide's tag example); notes about the first release still say 0.1.0.
-0.1.2 (2026-11-25, on `ios-ui-tweaks`, not tagged or pushed yet) bumps the same places and the README's status line,
+0.1.2 (2026-11-25, released as `v0.1.2`) bumps the same places and the README's status line,
 for the apps' warning on an inbox that stopped syncing and the server's side of it (`Inbox.statusReason`, a grace for
 failures that may pass, a watch on syncs that never finish; [server.md](server.md)).
-0.1.3 (2026-11-25 and 26, on `hotfix-0.1.3`, not tagged or pushed yet) bumps the same places and the README's status
-line, for crafted mail that froze the server while it was read. The server's readers of a message's text and of a
+0.1.3 (2026-11-26, released as `v0.1.3` from `hotfix-0.1.3`, `93eabdd` on `main`) bumps the same places and the
+README's status line, for crafted mail that froze the server while it was read. The server's readers of a message's text and of a
 model's answers, mail's readers of message ids and of a forwarded message's transfer encoding, and the picture pass's
 size and tracker reading run in time linear in what they read; HTML is cut to 2,000,000 characters and 256 open
 elements before htmlparser2 reads it (`mail/src/message/html-depth.ts`); addresses are taken out of summary requests
 by `server/src/ai/addresses.ts`; and a subject sent to the AI is cut to 1,000 characters. A few patterns are linear
 only because their callers hand them short strings ([known-issues.md](known-issues.md), "Linear only where they run",
 and "Reading a message could take minutes" under Fixed; [mail.md](mail.md), [server-ai.md](server-ai.md)).
+0.1.4 (on `screening-pass`, rebased onto 0.1.3 on 2026-11-26, not tagged or pushed yet) bumps the same places and the
+README's status line, for mail from strangers that skips Screening (a code, a sign-in link, a security alert, an order
+and the like, with the provider's checker and the server's own check behind the model's answer) and senders let in
+without the AI (another inbox on the server, a colleague at a company domain); migration 0022
+([server-screening.md](server-screening.md)).
 
 ## Layout
 

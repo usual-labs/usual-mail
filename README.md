@@ -2,7 +2,7 @@
 
 One app for all your inboxes, each sorted the way that inbox needs, on a server you run yourself.
 
-**Status: early.** 0.1.3 is the latest release (0.1.0 was the first); much of it hasn't been tried outside this project's own tests.
+**Status: early.** 0.1.4 is the latest release (0.1.0 was the first); much of it hasn't been tried outside this project's own tests.
 
 ## Deploy your own
 

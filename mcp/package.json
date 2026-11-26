@@ -1,6 +1,6 @@
 {
   "name": "@usualmail/mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "license": "AGPL-3.0-only",
   "description": "Usual Mail's connector for agents and chat apps: MCP over HTTP, with interface pieces for MCP Apps hosts.",
