@@ -187,6 +187,9 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
     the stacks and waiting), the counts, the AI status and, for a person, the AI settings (a refusal leaves them as
     they were), the newest Handled page with silent records, the newest page of what needs a look (`attentionOnly`),
     every proposal, drafts, the latest brief and each inbox's rules.
+  - **`checkForMail(inboxId:)`** (the iPhone's pull down): `syncInbox` for that inbox, or every inbox, paused ones
+    left out, all at once and their failures unsaid, then a refresh. The syncs are only queued; what they find comes
+    as events.
   - **Counts and the AI** (`counts`, `aiStatus`, `aiSettings`): from the refresh and their events, the higher version
     kept, also on disk. Badges and Home's New count come from `counts`, so they don't move with an action until
     `counts.changed` arrives. `updateAiSettings(_:)` (the key is taken out of any error words) and `testAi()`.

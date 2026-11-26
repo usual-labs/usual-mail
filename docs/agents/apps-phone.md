@@ -106,6 +106,13 @@ points since 2026-11-25, below).
   actions, named as the menu names them ("Mark as read"), one when both ways do the same. Seen in the simulator on the sample: both ways
   moved the row and showed their words, and letting go of snooze opened its times; the sample takes no action (its
   menu's "Mark as read" doesn't either), so what they do there is the menu's, not seen.
+- **Pulling a list down checks for new mail** (owner's words of 2026-11-26, "Add pull down to reload on iphone"):
+  Home, Screening, Feed, Notifications, Receipts, the Inbox page, To reply, Pinned and Snoozed (`checksForMail` in
+  `Pages`, a `refreshable`; not a mail, search or Settings). It asks the server to sync the profile's inbox, or every
+  inbox where no profile is active, then fetches everything again (`MailStore.checkForMail`); a paused inbox isn't
+  asked. The spinner shows until that refresh is done; what the syncs find comes afterwards as events, as new mail
+  always does. The Mac has no pull. Tested in the Kit (which inboxes are asked, the refresh after); not tried on a
+  phone yet.
 - **Screening's let in and block** (and more from a sender) are a 20-point icon on a 40-point circle, always shown,
   where the Mac has a 16-point icon whose circle shows under the pointer (owner's words of 2026-11-25, "the reject and
   accept buttons should be bigger").

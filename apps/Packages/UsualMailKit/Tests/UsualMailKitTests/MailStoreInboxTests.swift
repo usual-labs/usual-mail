@@ -107,6 +107,30 @@ struct MailStoreInboxTests {
         #expect(rule.enabled && rule.version == 2)
     }
 
+    @Test func checkingForMailAsksEachInboxNotPausedToSyncThenFetchesAgain() async throws {
+        let server = SampleServer()
+        let store = try await loadedStore(server)
+        #expect(await store.updateInbox("inb_personal", InboxPatch(paused: true)))
+        let before = server.requests.count
+        await store.checkForMail()
+        let asked = server.requests.dropFirst(before).map { "\($0.httpMethod!) \($0.pathAndQuery)" }
+        let syncs = Set(asked.filter { $0.hasSuffix("/sync") })
+        #expect(syncs == ["POST /v1/inboxes/inb_northwind/sync", "POST /v1/inboxes/inb_harbor/sync"])
+        // The refresh comes after the syncs were asked.
+        let lastSync = try #require(asked.lastIndex { $0.hasSuffix("/sync") })
+        #expect(asked[(lastSync + 1)...].contains("GET /v1/inboxes"))
+        #expect(store.problem == nil)
+    }
+
+    @Test func checkingOneInboxAsksOnlyIt() async throws {
+        let server = SampleServer()
+        let store = try await loadedStore(server)
+        let before = server.requests.count
+        await store.checkForMail(inboxId: "inb_harbor")
+        let syncs = server.requests.dropFirst(before).map(\.pathAndQuery).filter { $0.hasSuffix("/sync") }
+        #expect(syncs == ["/v1/inboxes/inb_harbor/sync"])
+    }
+
     @Test func theDashboardPageForAnInbox() async throws {
         let store = try await makeStore(SampleServer())
         #expect(

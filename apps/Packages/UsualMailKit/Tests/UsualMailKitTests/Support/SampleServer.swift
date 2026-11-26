@@ -10,7 +10,7 @@ import Synchronization
 /// who decided, and its undo makes the person the decider; `allow_sender` lets in every screened thread of the sender
 /// in that inbox; Handled holds rules', agents' and the AI's records, carries trashed threads and leaves silent records
 /// out unless asked (and with `attentionOnly` gives what needs a look); a sent draft without a note isn't kept; a
-/// paused inbox answers `conflict` to sending and to files; new credentials make an inbox `connecting`; a wrong
+/// paused inbox answers `conflict` to sending, files and syncs; new credentials make an inbox `connecting`; a wrong
 /// pairing code is `unauthorized`; the sample's sender pictures are drawn PNGs (`SampleServer+Avatars`). The counts and the AI's status are the state's own (tests change them); a settings
 /// patch is kept, and its key never comes back. Tests can make one route fail once, hold every answer back until a
 /// gate opens, hand out a teach prompt, make sending fail or carry a note, or make the provider refuse new
@@ -166,6 +166,11 @@ final class SampleServer: HTTPTransport {
             return .json(Device(id: "dev_test", name: "Test Mac", kind: .person, createdAt: data.now))
         } else if route("GET v1/inboxes") != nil {
             return .json(data.inboxes)
+        } else if let id = route("POST v1/inboxes/:id/sync")?.first {
+            if paused(id) {
+                return .error("conflict", "This inbox is paused, so it doesn't sync. Resume it first.", status: 409)
+            }
+            return data.inboxes.contains { $0.id == id } ? .noContent : .error("not_found", "No inbox", status: 404)
         } else if let id = route("GET v1/inboxes/:id/rules")?.first {
             return .json(data.rules.filter { $0.inboxId == id })
         } else if let id = route("PATCH v1/inboxes/:id")?.first {

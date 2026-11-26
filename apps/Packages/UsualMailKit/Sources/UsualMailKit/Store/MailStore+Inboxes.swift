@@ -59,6 +59,22 @@ extension MailStore {
         return true
     }
 
+    /// Checking for new mail, as pulling a list down does on the iPhone: asks the server to sync `inboxId`, or every
+    /// inbox when nil, from the mailbox now, then fetches everything again (`refresh`). A paused inbox isn't asked (the
+    /// server reads nothing from its mailbox and would answer `conflict`). The syncs are only queued, so what they find
+    /// comes as events afterwards; a sync that can't be asked is no problem of its own, since the refresh says when the
+    /// server can't be reached or this device is signed out.
+    public func checkForMail(inboxId: String? = nil) async {
+        let asked = lists.inboxes.filter { ($0.id == inboxId || inboxId == nil) && $0.status != .paused }.map(\.id)
+        let client = client
+        await withTaskGroup(of: Void.self) { group in
+            for id in asked {
+                group.addTask { try? await client.syncInbox(id: id) }
+            }
+        }
+        await refresh()
+    }
+
     /// Gives an inbox new credentials, in place: its mail, rules and history stay. Person only. They replace the
     /// stored ones whole, so they carry what the form showed from `Inbox.connection` as well as the secrets. The server
     /// checks them with the provider before it keeps them, and nothing changes if the provider refuses. The answer is

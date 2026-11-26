@@ -74,6 +74,7 @@ struct Pages: View {
             } else {
                 HomeView(inboxId: inboxId, open: read)
                     .environment(\.keptScroll, kept)
+                    .checksForMail(inboxId)
                     .transition(.handOver)
             }
         case .screening:
@@ -87,6 +88,7 @@ struct Pages: View {
                     read(id)
                 }
                 .environment(\.keptScroll, kept)
+                .checksForMail(inboxId)
                 .transition(.handOver)
             }
         case .tab(.reads):
@@ -96,6 +98,7 @@ struct Pages: View {
             } else {
                 FeedView(inboxId: inboxId, posts: feed, open: read)
                     .environment(\.keptScroll, kept)
+                    .checksForMail(inboxId)
                     .transition(.handOver)
             }
         case .tab(.notifications):
@@ -105,6 +108,7 @@ struct Pages: View {
             } else {
                 NotificationsView(inboxId: inboxId, expanded: $expandedGroups, open: read)
                     .environment(\.keptScroll, kept)
+                    .checksForMail(inboxId)
                     .transition(.handOver)
             }
         case .tab(let tab):
@@ -115,6 +119,7 @@ struct Pages: View {
             } else {
                 CategoryListView(tab: tab, inboxId: inboxId, open: read)
                     .environment(\.keptScroll, kept)
+                    .checksForMail(inboxId)
                     .id(tab)
                     .transition(.handOver)
             }
@@ -124,6 +129,7 @@ struct Pages: View {
                     .transition(.handOver)
             } else {
                 InboxView(inboxId: inboxId, top: kept.places.top(kept.key), open: read)
+                    .checksForMail(inboxId)
                     .transition(.handOver)
             }
         case .toReply, .pinned, .snoozed:
@@ -133,6 +139,7 @@ struct Pages: View {
             } else {
                 RailListView(place: nav.place, inboxId: inboxId, open: read)
                     .environment(\.keptScroll, kept)
+                    .checksForMail(inboxId)
                     .id(nav.place)
                     .transition(.handOver)
             }
@@ -156,3 +163,27 @@ struct Pages: View {
         }
     }
 }
+
+extension View {
+    /// On the iPhone, a list that checks for new mail when pulled down (`MailStore.checkForMail`): the inbox of the
+    /// profile showing, or every inbox, synced from its mailbox and everything fetched again, the spinner showing
+    /// until the server has answered. Nothing on the Mac, whose lists aren't pulled.
+    @ViewBuilder func checksForMail(_ inboxId: String?) -> some View {
+        #if os(iOS)
+            modifier(ChecksForMail(inboxId: inboxId))
+        #else
+            self
+        #endif
+    }
+}
+
+#if os(iOS)
+    private struct ChecksForMail: ViewModifier {
+        let inboxId: String?
+        @Environment(MailStore.self) private var store
+
+        func body(content: Content) -> some View {
+            content.refreshable { await store.checkForMail(inboxId: inboxId) }
+        }
+    }
+#endif
