@@ -920,6 +920,18 @@ not to count, then a forged one decided):
 - **Addresses:** combining marks, full-width at signs and ideographic dots, and domains of any length are taken out;
   a cut never leaves the start of joined addresses, and counts its window in UTF-16 units.
 
+**The final review, 2026-11-26** (NO-GO on one point; closed defensively, since the reviewer's Gmail test, sending
+crafted mail, can't be run; every change only takes proofs or passes away):
+
+- **Gmail's sealed copy of its result must agree** before signed recipients are read: its only
+  `ARC-Authentication-Results: i=1; mx.google.com`, above the topmost `Authentication-Results`, holding every result,
+  written the same. A sender's folded first line can't reach it. If Gmail doesn't add it, nothing passes (the safe
+  side, recorded in known-issues). Sender pictures don't need it.
+- **The let-in rules need the sender's own signature** (signed recipients not empty), never an SPF-aligned DMARC pass.
+- **Social, messaging and community notifiers are refused** for every kind but a code, and **a security alert's phrase
+  must be in its subject**.
+- **The gate reads the subject the model read** (the thread's).
+
 Status: built on the branch `screening-pass`, not pushed; type checks and tests only, never against a real model or
 mailbox. The apps' display is the coordinator's to hand on (contract.md, "Skipped Screening").
 

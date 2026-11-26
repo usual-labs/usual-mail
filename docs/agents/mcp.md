@@ -142,9 +142,11 @@ Registered in this order, the same for every agent token. Nothing that needs a p
   `list_threads` and the view's rows; `get_ai_status` shows no `detail` at all), `list_drafts`,
   `list_handled` with silent records, and the results of `suggest_rule` from a hostile thread, `update_rule`,
   `delete_rule` and `delete_draft`: one block, nothing hostile outside it.
-- A message with no text part is read from its HTML by `htmlToText` (`format.ts`), whose patterns run in linear time:
-  since 0.1.4 a run of spaces before a line end is read from its start only (80,000 spaces before a letter took 2.5 s;
-  `hostile.test.ts`). It reads the server's sanitized HTML, where every "<" opens a tag that closes.
+- A message with no text part is read from its HTML by `htmlToText` (`format.ts`), in linear time since 0.1.4: a run
+  of spaces before a line end is read from its start only (80,000 spaces before a letter took 2.5 s), and the style,
+  script, head and title blocks and the tags are taken out by forward scans that give the patterns' own text
+  (`hostile.test.ts`, 5,000 random tag soups compared). It reads the server's sanitized HTML, where those patterns were
+  already fast.
 
 ### Interface pieces (MCP Apps)
 

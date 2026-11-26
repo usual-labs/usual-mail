@@ -488,7 +488,10 @@ answered `needs_person`, also for an inbox it may read.
   (core's `isPublicMailDomain` and `isSharedPlatform`): mail that looks machine-sent or carries a List-Id isn't a
   colleague's (a group relaying an outsider's post as "X via info@company", a help desk or marketing tool sending as
   the company). Both only when the mailbox provider's checker proved the From domain (`ProviderMessage.fromCheck`, as
-  for [sender pictures](contract-avatars.md); only Gmail's is trusted, so neither applies to an IMAP inbox), for new
+  for [sender pictures](contract-avatars.md); only Gmail's is trusted, so neither applies to an IMAP inbox) and, since
+  2026-11-26, by the sender's own DKIM signature, which vouches for a recipient field
+  (`ProviderMessage.signedRecipients`, read only when Gmail's sealed copy of its result agrees:
+  [contract-ai.md](contract-ai.md)); a DMARC pass aligned by SPF alone lets nobody in. For new
   mail the provider didn't file under Screening, never for the first sync's history, and with the AI on, off or
   failing alike. **Every way of letting a sender in also unscreens their other threads,**
   those the mailbox filed under Screening included, except the first sync's history, which lets its senders in

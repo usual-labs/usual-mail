@@ -552,35 +552,38 @@ conservative on purpose, so what it misses waits in Screening rather than a stra
   proves nothing; **and**
 - **the message looks machine-sent** by the provider's test (`ProviderMessage.automated`: bulk, auto-submitted, a list
   header or no-reply); **and**
-- **it has the shape of mail sent to this person by that organisation alone** (the gate's security review of
-  2026-11-25: the proof says which domain sent the mail, not who wrote it; a platform carries anyone's words under its
-  own domain, a comment on a shared document, a mention, a money request, a help desk's free trial, and a brand's real
-  alert can be sent on to others with its signature intact): (a) no List-Id; (b) every Reply-To at the From's
-  registrable domain; (c) To or Cc names the inbox's own address, a `+tag` ignored and dots at gmail.com (and
-  googlemail.com), and on Gmail only in a field the sender's own DKIM signature vouches for
-  (`ProviderMessage.signedRecipients`: the field is given once, Gmail's checker passed a signature of the From
-  address's organisation, and every DKIM signature in the message whose `d=` is in that organisation, matched to a
-  result or not, names the field in its `h=`; one of them must match a passing result. A message giving To or Cc
-  twice, with any signature that can't be read, lacks `d=`, `h=` or `b=`, has a `d=` with no organisation or matches
-  a result that didn't pass, or with a header block that doesn't read the same to every parser (a line that is
-  neither a field nor a fold, a stray CR or mixed line ends, no blank line within 2 MiB), or a top-level header Gmail's
-  large-message rebuild left out, has none. The check is
-  monotone: anything added to the headers or altered in them only takes fields away). This stops a copy sent on by
-  Bcc and a replay with a
-  To or Cc added on top (the second security review: a real signed alert to the attacker, with `Cc: victim` added,
-  passed before); it doesn't stop every replay: a sender who signs a field naming someone else is beyond it, and mail
-  signed with no DKIM at all (DMARC by SPF alone) never passes; (d) not from a platform whose customers send from
-  their own subdomain of it (`TENANT_PLATFORMS` in `gate-shape.ts`: zendesk.com, freshdesk.com, atlassian.net,
-  helpscoutapp.com, service-now.com, intercom-mail.com, my.salesforce.com, gitbook.io, notion.site and the like);
-  (e) not from a notifier whose mail carries its users' words: google.com and microsoft.com whole (each product
-  there sends its own notices: a document's comments, a file shared, a calendar event, a form's answers, a team's
-  chat; Google's own account alerts too, since a genuine one can carry an app name an attacker typed), but for
+- **it has the shape of mail sent to this person by that organisation alone** (the gate's security review of 2026-11-25:
+  the proof says which domain sent the mail, not who wrote it; a platform carries anyone's words under its own domain, a
+  comment on a shared document, a mention, a money request, a help desk's free trial, and a brand's real alert can be
+  sent on to others with its signature intact): (a) no List-Id; (b) every Reply-To at the From's registrable domain; (c)
+  To or Cc names the inbox's own address, a `+tag` ignored and dots at gmail.com (and googlemail.com), and on Gmail only
+  in a field the sender's own DKIM signature vouches for (`ProviderMessage.signedRecipients`: the field is given once,
+  Gmail's checker passed a signature of the From address's organisation, Gmail's sealed copy of its result
+  (`ARC-Authentication-Results: i=1; mx.google.com`, the message's only one, above the topmost `Authentication-Results`,
+  which a sender's folded first line could otherwise add to) holds every result that one holds, written the same, and
+  every DKIM signature in the message whose `d=` is in that organisation, matched to a result or not, names the field in
+  its `h=`; one of them must match a passing result. A message giving To or Cc twice, with any signature that can't be
+  read, lacks `d=`, `h=` or `b=`, has a `d=` with no organisation or matches a result that didn't pass, or with a header
+  block that doesn't read the same to every parser (a line that is neither a field nor a fold, a stray CR or mixed line
+  ends, no blank line within 2 MiB), or a top-level header Gmail's large-message rebuild left out, has none. The check
+  is monotone: anything added to the headers or altered in them only takes fields away). This stops a copy sent on by
+  Bcc and a replay with a To or Cc added on top (the second security review: a real signed alert to the attacker, with
+  `Cc: victim` added, passed before); it doesn't stop every replay: a sender who signs a field naming someone else is
+  beyond it, and mail signed with no DKIM at all (DMARC by SPF alone) never passes; (d) not from a platform whose
+  customers send from their own subdomain of it (`TENANT_PLATFORMS` in `gate-shape.ts`: zendesk.com, freshdesk.com,
+  atlassian.net, helpscoutapp.com, service-now.com, intercom-mail.com, my.salesforce.com, gitbook.io, notion.site and
+  the like); (e) not from a notifier whose mail carries its users' words: google.com and microsoft.com whole (each
+  product there sends its own notices: a document's comments, a file shared, a calendar event, a form's answers, a
+  team's chat; Google's own account alerts too, since a genuine one can carry an app name an attacker typed), but for
   Microsoft's account team (`account-security-noreply@accountprotection.microsoft.com`, as Microsoft names it), and
-  payment services' requests and receipts
-  (paypal.*, venmo.com, square.com, squareup.com, stripe.com; sharepointonline.com too); where a request can't be
-  told from a security alert at the same address, the address is refused, and a real alert waits in Screening;
-  **and**
-- **it shows the kind's evidence**, read in its subject (at most 1,000 characters) and its text as the model read it
+  payment services' requests and receipts (paypal.*, venmo.com, square.com, squareup.com, stripe.com;
+  sharepointonline.com too), and social, messaging and community notifiers that quote their users' posts and messages
+  (facebookmail.com, facebook.com, instagram.com, whatsapp.com, linkedin.com, x.com, twitter.com, discord.com,
+  slack.com, telegram.org, reddit.com, quora.com, medium.com, meetup.com, pinterest.com, tiktok.com, youtube.com,
+  github.com, gitlab.com and the like); where a request can't be told from a security alert at the same address, the
+  address is refused, and a real alert waits in Screening; **and**
+- **it shows the kind's evidence**, read in its subject (the thread's, as the model read it; at most 1,000
+  characters) and its text as the model read it
   (above: made from its HTML when needed, links cut to their site, at most 4,000 characters), words whole and in any
   case, a phrase's words joined by up to three spaces or hyphens or nothing ("sign in", "sign-in", "signin"); a link
   counts in the stored text or among the HTML's own links:
@@ -595,7 +598,8 @@ conservative on purpose, so what it misses waits in Screening rather than a stra
     "activate", "validate" and their nouns) and one for what ("email", "address", "account", "sign up",
     "registration", "subscription");
   - **a security alert** (`security`): a security phrase ("new sign-in", "new device", "was this you", "suspicious",
-    "unusual activity", "password changed", "two-factor", "recovery codes", "passkey" and the like);
+    "unusual activity", "password changed", "two-factor", "recovery codes", "passkey" and the like) in the subject
+    itself, not only in the text, which a notifier may quote;
   - **a password reset or account change** (`account`): a link with a reset phrase ("reset your password", "password
     reset"), or an account change ("email address changed", "plan changed", "account deleted", "data export",
     "download your data" and the like);

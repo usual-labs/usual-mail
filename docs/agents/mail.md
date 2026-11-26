@@ -170,29 +170,35 @@ batch's `progress`.
   `;`, `(` or `)`, or an `smtp.*` property on a DKIM or DMARC result makes the header unreadable). The message's own
   headers only, never an attached message's. The Gmail provider then also has `fromChecks(refs)`: the same read again from the metadata form
   (`Authentication-Results` and `From` only, 20 quota units a message) for mail stored before.
-- `signedRecipients` (2026-11-25, the screening gate's second security review; [contract](../contract-ai.md#mail-is-untrusted-input-to-a-model)):
-  only when `fromCheck` is verified. Which of To and Cc the sender's own DKIM signature vouches for
-  (`message/signed-recipients.ts`): none when the message gives To or Cc twice (postal-mime merges a second field
-  into the first, so an added one would otherwise read as the sender's); else, when Gmail's trusted result passed a
-  signature of the From address's organisation, each field given once that the `h=` of **every** signature whose `d=`
-  (in ASCII by `asciiDomain`, a trailing dot dropped) is in that organisation names, matched to a result or not; at
-  least one of them must match a passing result (`header.d`, or `header.i`'s domain or a parent of it, plus `header.b`
-  when given). Monotone, argued at the top of the file: the real signature is always among those intersected, so
-  nothing added or altered can make it not count. Nothing at all when any signature can't be read (a tag twice, over
-  16 KB), lacks `d=`, `h=` or `b=`, has a `d=` that isn't a host name or has no organisation, or matches a result that
-  didn't pass; or when the header block doesn't read the same to every parser (`headerBlockReadable`: a line that is
-  neither a field nor a fold, where postal-mime stops reading fields; a stray CR, or CRLF and LF mixed, up to and
-  including the blank line, since postal-mime ends a line at a lone LF; no blank line within 2 MiB; read on the raw
-  bytes line by line, stopping at the first failure); or when the large-message rebuild left a top-level header out
-  (`Rebuilt.headersDropped`, passed as `ParseContext.headersIncomplete`: `gmail/payload.ts` writes back only names
-  without spaces, so a real `To :` or `DKIM-Signature :` would be dropped and an added `To:` count; on Cloudflare
-  every message over 2 MiB goes this way). Tag names are kept case-sensitive (RFC 6376); header names are compared
-  trimmed through one lookup shared with `auth-results.ts` (`fieldName`, `topAuthenticationResults`), so `To :`,
-  `From :` and `Authentication-Results :` count. At most 16 signatures. Tests: `test/unit/signed-recipients.test.ts`
-  (22: each attack the four reviews ran, through the parser too, and a monotone property over about 1,400 messages)
-  and `test/unit/header-reading.test.ts` (11, on raw bytes: a lone LF, a stray CR, mixed ends, an all-LF message, the
-  2 MiB limit and the early stop, sixteen signatures and a seventeenth, a header the rebuild drops through
-  `fromFullForm`, and Gmail's result with unquoted "/" and "=").
+- `signedRecipients` (2026-11-25, the screening gate's second security review;
+  [contract](../contract-ai.md#mail-is-untrusted-input-to-a-model)): only when `fromCheck` is verified. Which of To and
+  Cc the sender's own DKIM signature vouches for (`message/signed-recipients.ts`): none when the message gives To or Cc
+  twice (postal-mime merges a second field into the first, so an added one would otherwise read as the sender's); else,
+  when Gmail's trusted result passed a signature of the From address's organisation, each field given once that the `h=`
+  of **every** signature whose `d=` (in ASCII by `asciiDomain`, a trailing dot dropped) is in that organisation names,
+  matched to a result or not; at least one of them must match a passing result (`header.d`, or `header.i`'s domain or a
+  parent of it, plus `header.b` when given). Monotone, argued at the top of the file: the real signature is always among
+  those intersected, so nothing added or altered can make it not count. Read only when Gmail's sealed copy of its result
+  agrees (`sealedResultAgrees` in `auth-results.ts`, the final review of 2026-11-26): the message's only
+  `ARC-Authentication-Results`, above the topmost `Authentication-Results`, `i=1` and by `mx.google.com`, read whole,
+  holding every result the topmost one holds, written the same. Gmail adds its result directly above the sender's
+  headers, so a sender's first line starting with a space joins it as postal-mime reads it (" ; dkim=pass header.i=@…"
+  made a From domain with no DMARC proved, and a forged signature Gmail couldn't check count); the copy above
+  `Return-Path` is out of reach. `fromCheck`, which sender pictures use, doesn't need it. Nothing at all when any
+  signature can't be read (a tag twice, over 16 KB), lacks `d=`, `h=` or `b=`, has a `d=` that isn't a host name or has
+  no organisation, or matches a result that didn't pass; or when the header block doesn't read the same to every parser
+  (`headerBlockReadable`: a line that is neither a field nor a fold, where postal-mime stops reading fields; a stray CR,
+  or CRLF and LF mixed, up to and including the blank line, since postal-mime ends a line at a lone LF; no blank line
+  within 2 MiB; read on the raw bytes line by line, stopping at the first failure); or when the large-message rebuild
+  left a top-level header out (`Rebuilt.headersDropped`, passed as `ParseContext.headersIncomplete`: `gmail/payload.ts`
+  writes back only names without spaces, so a real `To :` or `DKIM-Signature :` would be dropped and an added `To:`
+  count; on Cloudflare every message over 2 MiB goes this way). Tag names are kept case-sensitive (RFC 6376); header
+  names are compared trimmed through one lookup shared with `auth-results.ts` (`fieldName`, `topAuthenticationResults`),
+  so `To :`, `From :` and `Authentication-Results :` count. At most 16 signatures. Tests:
+  `test/unit/signed-recipients.test.ts` (22: each attack the four reviews ran, through the parser too, and a monotone
+  property over about 1,400 messages) and `test/unit/header-reading.test.ts` (11, on raw bytes: a lone LF, a stray CR,
+  mixed ends, an all-LF message, the 2 MiB limit and the early stop, sixteen signatures and a seventeenth, a header the
+  rebuild drops through `fromFullForm`, and Gmail's result with unquoted "/" and "=").
 - `Authentication-Results` values (`parseAuthenticationResults`, 2026-11-25): an unquoted value runs on through "/"
   and "=" written right against it (base64's "/" in `header.b`, an SRS or BATV address's "=" in `smtp.mailfrom`), and
   may start with "/" but never "="; only tokens with no space or comment between join, so a value can't reach the next

@@ -5,7 +5,10 @@ Built 2026-11-25 on the branch `screening-pass`, from the owner's decision of th
 shape of the mail, linear patterns, judging only while held and only the newest message, a stranger joining a thread
 that skipped Screening, the colleague a person, IMAP's codes as before), and again after a second review (NO-GO,
 fixed: To or Cc only in a field the sender's signature vouches for, a deny list of notifiers that carry users' words,
-more tenant platforms, the kind's categories kept, and a sweep of every pattern that reads mail). The contract's words are in
+more tenant platforms, the kind's categories kept, and a sweep of every pattern that reads mail), and after the final
+review (2026-11-26, NO-GO on one point: signed recipients only when Gmail's sealed copy of its result agrees, the
+let-in rules only by the sender's own signature, social and messaging notifiers refused, a security alert's phrase in
+its subject, the gate reading the subject the model read). The contract's words are in
 [contract.md](../contract.md) ("Words": Skipped Screening; "Rules and learning", step 3 and "Letting a sender in") and
 [contract-ai.md](../contract-ai.md) ("A model's answer at the screening gate"); the kinds, their words and their
 categories are core's (`core/src/screening.ts`), and the public mail domains too (`core/src/mail-domains.ts`, moved from
@@ -27,29 +30,32 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
 
 ## The screening gate
 
-- **The server's own check** (`gateCheck`, pure, one per message): it reads the message at most once, and only as far
-  as the model read it: the subject's first 1,000 characters and `modelText(...)` cut to 4,000 (links cut to their
-  site), plus `holdsLink` on the stored text and HTML. `home` is `avatarDomain` (the checker proved the From address's
-  own domain, it has a registrable domain, no public mail domain or shared platform), only when `trustsChecker` (the
-  inbox's provider is Gmail) and the server carries the Public Suffix List. **Every kind but a code** needs `home`,
-  `messages.automated`, `soleSender` (gate-shape.ts: (a) no List-Id; (b) every Reply-To's registrable domain is
-  `home`; (c) `addressedTo`: To or Cc's `mailboxKey` is the inbox's, a `+tag` dropped and dots at gmail.com and
-  googlemail.com, on Gmail only in a field `messages.signed_recipients` holds (the mail part's `signedRecipients`:
-  given once, named in the `h=` of every aligned DKIM signature Gmail's checker passed; null for mail stored before,
-  so it never passes); (d) the proved domain isn't under a `TENANT_PLATFORMS` entry; (e) `carriesUsersWords`: no
-  address at google.com, microsoft.com (and under them) but Microsoft's account team (`ACCOUNT_SECURITY`), nor at
-  paypal.* (by name), venmo.com, square.com, squareup.com, stripe.com or sharepointonline.com) and `EVIDENCE[kind]`. **A code**
-  needs machine-sent mail, (c), `holdsCode` and `home`, or no `home` when the inbox's provider has no checker (IMAP:
-  0.1.2's behaviour, the coordinator's decision, (c) read on To and Cc as given); a Gmail inbox's missing or failed
-  proof never falls back.
-  `pass(category, chosen)`: `code` when the category is `otp` and the code passes; otherwise the chosen kind when the
-  category is one of its (`SCREENING_PASS_CATEGORIES`) and `mayPass` holds; else null.
+- **The server's own check** (`gateCheck`, pure, one per message): it reads the message at most once, and only as far as
+  the model read it: the subject's first 1,000 characters and `modelText(...)` cut to 4,000 (links cut to their site),
+  plus `holdsLink` on the stored text and HTML. `home` is `avatarDomain` (the checker proved the From address's own
+  domain, it has a registrable domain, no public mail domain or shared platform), only when `trustsChecker` (the inbox's
+  provider is Gmail) and the server carries the Public Suffix List. **Every kind but a code** needs `home`,
+  `messages.automated`, `soleSender` (gate-shape.ts: (a) no List-Id; (b) every Reply-To's registrable domain is `home`;
+  (c) `addressedTo`: To or Cc's `mailboxKey` is the inbox's, a `+tag` dropped and dots at gmail.com and googlemail.com,
+  on Gmail only in a field `messages.signed_recipients` holds (the mail part's `signedRecipients`: given once, named in
+  the `h=` of every aligned DKIM signature Gmail's checker passed, read only when Gmail's sealed copy of its result
+  agrees, [mail.md](mail.md); null for mail stored before, so it never passes); (d) the proved domain isn't under a
+  `TENANT_PLATFORMS` entry; (e) `carriesUsersWords`: no address at google.com, microsoft.com (and under them) but
+  Microsoft's account team (`ACCOUNT_SECURITY`), nor at paypal.* (by name), venmo.com, square.com, squareup.com,
+  stripe.com, sharepointonline.com, nor at a social, messaging or community notifier: facebookmail.com, linkedin.com,
+  x.com, discord.com, slack.com, github.com and the rest of `CARRIER_DOMAINS`) and `EVIDENCE[kind]` (a security alert's
+  phrase in the subject itself). **A code** needs machine-sent mail, (c), `holdsCode` and `home`, or no `home` when the
+  inbox's provider has no checker (IMAP: 0.1.2's behaviour, the coordinator's decision, (c) read on To and Cc as given);
+  a Gmail inbox's missing or failed proof never falls back. `pass(category, chosen)`: `code` when the category is `otp`
+  and the code passes; otherwise the chosen kind when the category is one of its (`SCREENING_PASS_CATEGORIES`) and
+  `mayPass` holds; else null.
 - **Linear patterns:** every quantifier in gate-evidence.ts is bounded (the reference's lookahead `{0,29}`, a card's
   mask `{2,8}`, a phrase's joiner `[\s-]{0,3}`, numbers `{1,5}` groups or `{1,9}` digits, months `{0,6}`, spaces
   around an `href` `{0,8}`); a reference is matched to its word in one ordered pass. text.ts's own patterns are linear
   too ([server-ai.md](server-ai.md), "What leaves the server"). Measured on 1 MB bodies: each well under 100 ms (before:
   "card " and 80,000 "*" 7.6 s, a link and 40,000 ")" 0.7 s in every categorize request and snippet).
-- **Judged only while held, and only the newest message** (`judging`, `checkAtGate` in `process.ts`): the gate lets a
+- **Judged only while held, and only the newest message** (`judging`, `checkAtGate` in `process.ts`, with the
+  subject the model read, the thread's, from the planned request): the gate lets a
   thread through only while `gate_pending` is set (a new thread from a stranger while the AI may answer at once, or
   a thread a stranger's mail screened again) and the message the model read is still its newest incoming one. So a
   thread is written back once, never under Screening and out again: mail that arrived while the AI was off, paused or
@@ -85,7 +91,10 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   from a search of the mailbox), before the thread is sorted, so its new thread reaches step 4 (let in) and never
   the gate. Mail the provider filed under Screening is left alone (the person's filter stands).
 - **`provedOwnSender`:** the inbox's provider is Gmail (`trustsChecker`); not the mailbox's own mail; `fromCheck` is
-  `verified` for exactly the From address's domain; not the inbox's own address; then either the address is another
+  `verified` for exactly the From address's domain; `signedRecipients` isn't empty (the sender's own DKIM signature,
+  of the From's organisation and passed, vouches for a field, and Gmail's sealed copy of its result agrees: a DMARC
+  pass aligned by SPF alone isn't enough, since SPF on shared infrastructure can be spoofed, BreakSPF, NDSS 2024);
+  not the inbox's own address; then either the address is another
   inbox's on this server (`serverAddresses`, read once per batch), or it is a person at exactly the inbox's own domain:
   not `automated`, no List-Id (a group relaying "X via info@company", a help desk or marketing tool sending as the
   company), the registrable domain no public mail domain and the domain no shared platform's.
@@ -101,22 +110,27 @@ server/migrations/0022_skipped_screening.sql   messages.signed_recipients, threa
   and Gmail's dots (with names Gmail wouldn't allow), tenants on each listed platform (the reserved label `ab--cd`,
   which no tenant has), Google's and payment services' notifiers (and the provider's own account alerts still passing);
   a code without the rest of the shape; IMAP (a code without proof, nothing else) and Gmail never falling back; whether
-  to ask; the question; and the 1 MB bodies in workers (below).
+  to ask; the question; and the 1 MB bodies in workers (below). After the final review: social and messaging
+  notifiers, a security phrase only in the text, and the read limits of 1,000 and 4,000 characters.
 - `screening-pass` (16) and `screening-after` (12): as before, with the fixtures signed, through the server: a Cc added,
   To given twice, a document's mention; a joined message that would pass on its own but wasn't asked about; asked
   again to an invoice; the stored and served "a screened thread carries no kind" backups.
-- `screening-senders` (13), `migration-0022` (both columns), `e2e-ai-gmail` (the code carries a DKIM-Signature whose b=
-  starts with Gmail's `header.b`, signing To), mail's `signed-recipients` (22: each attack the four reviews ran,
-  through the parser too: a Cc added, To or Cc twice, a forged signature copying the passing one's first characters, a
-  padded real signature, SPF-only DMARC with a forged brand signature, a signature lacking `d=`, `h=` or `b=` or
-  writing `D=`, `To :`, a real signature whose `i=` names a subdomain, a Unicode or dotted `d=`, a `d=` that can't be
-  placed, a signature matching a failed result, every malformed header line; an unmatched signature of the
-  organisation still bounding the answer; and a monotone property: about 1,400 messages, each hostile field alone and
-  in pairs at every place below Gmail's result, never adding a field). `ai-addresses` (12): names with marks,
-  full-width at signs and dots, long domains, joined addresses and two-unit characters at a cut. Mail's
-  `header-reading` (11, on raw bytes, the fifth review): a lone LF read as a blank line, a stray CR, mixed line ends,
-  the 2 MiB limit and the early stop, sixteen signatures and a seventeenth, a top-level header the large-message
-  rebuild drops (through `fromFullForm`), and Gmail's result with unquoted "/" and "=".
+- `screening-senders` (15: also a DMARC pass by SPF alone letting nobody in, and a conversation opened from a search
+  letting nobody in), `screening-pass` also the gate reading the thread's subject, `migration-0022` (both columns),
+  `e2e-ai-gmail` (the code carries a DKIM-Signature whose b= starts with Gmail's `header.b`, signing To), mail's
+  `signed-recipients` (22: each attack the four reviews ran, through the parser too: a Cc added, To or Cc twice, a
+  forged signature copying the passing one's first characters, a padded real signature, SPF-only DMARC with a forged
+  brand signature, a signature lacking `d=`, `h=` or `b=` or writing `D=`, `To :`, a real signature whose `i=` names a
+  subdomain, a Unicode or dotted `d=`, a `d=` that can't be placed, a signature matching a failed result, every
+  malformed header line; an unmatched signature of the organisation still bounding the answer; and a monotone property:
+  about 1,400 messages, each hostile field alone and in pairs at every place below Gmail's result, never adding a
+  field). `ai-addresses` (12): names with marks, full-width at signs and dots, long domains, joined addresses and
+  two-unit characters at a cut. Mail's `header-reading` (11, on raw bytes, the fifth review): a lone LF read as a blank
+  line, a stray CR, mixed line ends, the 2 MiB limit and the early stop, sixteen signatures and a seventeenth, a
+  top-level header the large-message rebuild drops (through `fromFullForm`), and Gmail's result with unquoted "/" and
+  "="; since the final review, a colon with no name, and Gmail's sealed copy: the reviewer's folded first line (signed
+  recipients before, none now), the copy missing, disagreeing, lacking a result, repeated, below the result, not `i=1`,
+  by another checker or unreadable.
 - **Speed** (`test/linear.ts`): 0.1.3's 27 bodies of 1 MB, each run in a worker thread that is terminated at 10
   seconds, since a slow pattern blocks the event loop and node:test's own timeout can't fire: the gate's check of each
   kind on the text, and on From, To, Cc, Reply-To and List-Id of the body's length, its evidence, `holdsLink`,

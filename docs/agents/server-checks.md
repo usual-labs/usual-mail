@@ -3,6 +3,11 @@
 What each pass ran and saw on this Mac (Node 22.23.2), newest first, split out of [server.md](server.md). Commands are
 in server.md, "Run and check".
 
+- **The final review's fixes (2026-11-26, `screening-pass`):** both type checks clean; `npm test` 1,299 tests (1,293
+  pass, 6 skipped, 0 fail); `npm run check:cloudflare` 92 of 92 (the colleague now signed, and one proved without a
+  signature screened). Each new test failed with its fix or guard undone: the sealed copy's position, count, every
+  result, `i=1`, checker and the parser's use of it; the let-in rules' signature; facebookmail.com; the subject for a
+  security alert; the gate's subject; the read limits; the empty name; history's skip.
 - **The screening branch rebased onto 0.1.3, as 0.1.4 (2026-11-26, `screening-pass`):** both type checks clean;
   `npm test` 1,294 tests (1,288 pass, 6 skipped, 0 fail); `npm run check:cloudflare` 92 of 92. Every one of 0.1.3's
   speed bodies runs through the gate's work too (its shape on 1 MB addresses and List-Id, and its question; slowest

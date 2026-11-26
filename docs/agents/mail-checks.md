@@ -3,6 +3,10 @@
 What each pass ran and saw, newest first, split out of [mail.md](mail.md). Commands and the Docker notes are in
 mail.md, "Run and check".
 
+- **The final review's fixes (2026-11-26, `screening-pass`):** mail `npm test`: tsc clean; 697 tests, 645 passed, 29
+  skipped, 23 failed, every failure in "IMAP on Dovecot", as before. New in `header-reading`: Gmail's sealed copy
+  (the reviewer's folded first line, the copy missing, disagreeing, lacking a result, repeated, below the result, not
+  `i=1`, by another checker, unreadable) and a colon with no name; the parser-level tests carry the sealed copy.
 - **The screening branch rebased onto 0.1.3, as 0.1.4 (2026-11-26, `screening-pass`):** mail `npm test`: tsc clean;
   694 tests, 642 passed, 29 skipped, 23 failed, every failure in "IMAP on Dovecot", as before. New in `linear.test.ts`:
   eight header shapes the screening gate reads (about 1.5 MB or 30,000 lines each), through `parseMessage` with Gmail's
