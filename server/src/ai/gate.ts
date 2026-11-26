@@ -85,6 +85,21 @@ export interface GateContext {
   inbox: { address: string; provider: ProviderKind };
 }
 
+/**
+ * A check that holds only where every one of `checks` holds, for the same kind: the gate's on the message as the model
+ * read it and as it was written (the narrow check of 2026-11-26).
+ */
+export function everyCheck(checks: readonly GateCheck[]): GateCheck {
+  return {
+    mayPass: (kind) => checks.every((check) => check.mayPass(kind)),
+    worthAsking: (category) => checks.every((check) => check.worthAsking(category)),
+    pass: (category, chosen) => {
+      const kinds = checks.map((check) => check.pass(category, chosen));
+      return kinds.every((kind) => kind !== null && kind === kinds[0]) ? kinds[0]! : null;
+    },
+  };
+}
+
 /** Whether the server trusts this provider's own checker to prove a From domain: Gmail's (`mx.google.com`). */
 export function trustsChecker(provider: ProviderKind): boolean {
   return provider === "gmail";

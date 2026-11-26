@@ -12,7 +12,7 @@ import type { ChoiceRequest } from "../src/ai/models.ts";
 import { toThread } from "../src/service/rows.ts";
 import { stateColumns, type ThreadState } from "../src/service/state.ts";
 import type { DeliverInput, MemoryMailbox } from "../src/testing/index.ts";
-import { historyFromKnown, KNOWN, makeServer, type TestServer } from "./helpers.ts";
+import { at, DAY, historyFromKnown, KNOWN, makeServer, type TestServer } from "./helpers.ts";
 
 let t: TestServer;
 beforeEach(async () => {
@@ -116,6 +116,27 @@ describe("mail joining a thread that skipped Screening", () => {
     answer("conversation");
     const next = await t.receive(inbox, { from: { email: "help@fernway-support.example" }, subject: "About your order", text: "Please call us." });
     assert.equal(next.screened, true, "the third party isn't let in by writing into it");
+  });
+
+  test("a stranger joining it with an earlier Date screens it again, and the older proved message doesn't lift it", async () => {
+    // The narrow check of 2026-11-26: the gate judges the newest message by Date, here the shop's own, not the stranger's.
+    const { inbox, thread } = await skippedOrder();
+    answer("receipt", "order");
+    const joined = await t.receive(inbox, {
+      from: { email: "x@elsewhere.example" }, subject: SHIPPED.subject, threadKey: SHIPPED.threadKey, automated: true,
+      text: "Order #112-3456789 is held. Pay the fee: https://elsewhere.example/p", date: at(-30 * DAY),
+    });
+    assert.equal(joined.id, thread.id);
+    assert.deepEqual([joined.screened, joined.skippedScreening], [true, undefined], "the shop's older code isn't judged again for it");
+  });
+
+  test("one written as its sender without the sender's proof, with an earlier Date, doesn't ride the proved message", async () => {
+    const { inbox, thread } = await skippedOrder();
+    answer("receipt", "order");
+    const spoofed = { ...SHIPPED, fromCheck: { result: "unverified" } as const, signedRecipients: [] as Array<"to" | "cc">, date: at(-30 * DAY) };
+    const joined = await t.receive(inbox, { ...spoofed, text: "Order #112-3456789 is held. Pay the fee: https://elsewhere.example/p" });
+    assert.equal(joined.id, thread.id);
+    assert.deepEqual([joined.screened, joined.skippedScreening], [true, undefined]);
   });
 
   test("someone let in writing into it changes nothing about it, and lets nobody else in", async () => {

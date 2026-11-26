@@ -11,8 +11,8 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { messages, threads, type InboxRow, type MessageRow, type ThreadRow } from "../db/index.ts";
 import { perform } from "../service/actions.ts";
 import type { Ctx } from "../service/context.ts";
-import { blockedSenders, emitThread, getInbox, getThread, saveThreadState, skippedWhileUnknown, threadState } from "../service/store.ts";
-import { gateCheck, type GateCheck } from "./gate.ts";
+import { blockedSenders, emitThread, getInbox, getThread, saveThreadState, senderStatus, skippedWhileUnknown, threadState } from "../service/store.ts";
+import { everyCheck, gateCheck, type GateCheck } from "./gate.ts";
 import { acceptPass, passRequest } from "./pass-prompt.ts";
 import { AiServiceError, type AiAnswer, type AiModels, type AiObjectAnswer, type ChoiceRequest, type ObjectRequest, type TextRequest } from "./models.ts";
 import { checkEvent, combineEvent, type EventChange } from "./event.ts";
@@ -231,14 +231,31 @@ function judging(thread: ThreadRow): boolean {
 
 /**
  * The server's own check on the message the model read, when it may let the thread skip Screening: the gate is judging
- * the thread, and that message is still its newest incoming one (mail that joined meanwhile isn't judged by it). It
- * reads the subject the model read (the thread's, `subjectToSend`), not that message's own (the final security review
- * of 2026-11-26).
+ * the thread, that message is still its newest incoming one (mail that joined meanwhile isn't judged by it), and the
+ * thread's other incoming mail is from senders let in or from that message's own sender with the same proof
+ * (`onlyItsSender`). It must hold both with the subject the model read (the thread's, `subjectToSend`) and with the
+ * message's own (the narrow check of 2026-11-26: the thread's subject can be an earlier stranger's).
  */
-function checkAtGate(ctx: Ctx, found: { thread: ThreadRow; inbox: InboxRow; mail: MessageRow[] }, planned: PlannedCategory): GateCheck | null {
+async function checkAtGate(ctx: Ctx, found: { thread: ThreadRow; inbox: InboxRow; mail: MessageRow[] }, planned: PlannedCategory): Promise<GateCheck | null> {
   const read = found.mail.at(-1);
-  if (!judging(found.thread) || read?.id !== planned.newestId) return null;
-  return gateCheck({ ...read, subject: planned.input.subject }, { suffixes: ctx.avatars?.suffixes ?? null, inbox: found.inbox });
+  if (!judging(found.thread) || read?.id !== planned.newestId || !await onlyItsSender(ctx, found.inbox.id, found.mail, read)) return null;
+  const context = { suffixes: ctx.avatars?.suffixes ?? null, inbox: found.inbox };
+  return everyCheck([gateCheck({ ...read, subject: planned.input.subject }, context), gateCheck(read, context)]);
+}
+
+/**
+ * Whether every incoming message of the thread is from a sender let in, or from the judged message's own sender with
+ * the same proof as it (none on IMAP, which has no checker). A stranger's message, earlier or backdated, or one
+ * written as that sender without its proof, leaves the thread where it is: the gate judges one sender's mail, and the
+ * thread would otherwise come out of Screening with the stranger's message in it (the narrow check of 2026-11-26).
+ */
+async function onlyItsSender(ctx: Ctx, inboxId: string, mail: readonly MessageRow[], judged: MessageRow): Promise<boolean> {
+  const sender = judged.from.email.toLowerCase();
+  for (const message of mail) {
+    const from = message.from.email.toLowerCase();
+    if (from === sender ? message.fromVerified !== judged.fromVerified : await senderStatus(ctx, inboxId, from) !== "known") return false;
+  }
+  return true;
 }
 
 /** Whether a category may be the thread's: any, unless it skipped Screening while its sender isn't let in. */
@@ -256,7 +273,7 @@ async function planPass(ctx: Ctx, threadId: string, planned: PlannedCategory, an
   const accepted = acceptCategory(answer, planned.onlyConversation);
   const found = await loaded(ctx, threadId);
   if (!accepted || !found || !wantsCategoryNow(found.thread)) return null;
-  if (!checkAtGate(ctx, found, planned)?.worthAsking(accepted)) return null;
+  if (!(await checkAtGate(ctx, found, planned))?.worthAsking(accepted)) return null;
   return passRequest(planned.model, planned.input, accepted, boundaryId(ctx.host.random.bytes(9)));
 }
 
@@ -271,7 +288,7 @@ async function applyCategory(ctx: Ctx, threadId: string, planned: PlannedCategor
     // A model's answer alone never lifts the screening gate: the server's own check must hold for the message it read,
     // for the kind the model named (or for a code, the AI's `otp`). Otherwise it stays screened, in this category.
     const chosen = asked ? acceptPass(asked.value, asked.request) : null;
-    const pass = checkAtGate(ctx, found, planned)?.pass(accepted, chosen) ?? null;
+    const pass = (await checkAtGate(ctx, found, planned))?.pass(accepted, chosen) ?? null;
     await perform(ctx, {
       inbox: found.inbox,
       thread: found.thread,

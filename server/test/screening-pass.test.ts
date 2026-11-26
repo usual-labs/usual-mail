@@ -117,7 +117,7 @@ describe("a kind that skips Screening", () => {
 describe("one-time codes on each provider", () => {
   const CODE = { ...SIGN_IN, subject: "Your code", text: "Your verification code is 482913." } satisfies DeliverInput;
 
-  test("the check reads the subject the model read, the thread's, not the newest message's own", async () => {
+  test("the check must hold with the thread's subject, which the model read, and with the newest message's own", async () => {
     const { inbox, mailbox } = await inboxWithAi();
     answer("otp");
     mailbox.deliver({ ...SIGN_IN, subject: "Your sign-in code", text: "Hello.", threadKey: "code", date: at(-2 * HOUR) });
@@ -125,7 +125,19 @@ describe("one-time codes on each provider", () => {
     await t.server.syncInbox(t.person, inbox.id);
     await t.server.whenIdle();
     const thread = await t.threadBySubject("Your sign-in code");
-    assert.deepEqual([thread.screened, thread.skippedScreening], [false, "code"], "the code word is in the thread's subject");
+    assert.deepEqual([thread.screened, thread.skippedScreening], [true, undefined], "the newest message's own subject names no code");
+  });
+
+  test("a stranger's earlier message gives the thread its subject: a proved sender's mail joining it doesn't skip", async () => {
+    // The narrow check of 2026-11-26: the thread's subject is the first message's, here an unproved stranger's.
+    const { inbox, mailbox } = await inboxWithAi();
+    answer("notification", "security");
+    mailbox.deliver({ from: { email: "x@elsewhere.example" }, subject: "Security alert: unusual sign-in, was this you?", text: "Check it here: https://elsewhere.example/a", automated: true, threadKey: "bank", date: at(-2 * HOUR) });
+    mailbox.deliver({ ...ALERT, subject: "Your statement is ready", text: "A new sign-in to your statements. Was this you? https://lumen-bank.example/s", threadKey: "bank", date: at(-HOUR) });
+    await t.server.syncInbox(t.person, inbox.id);
+    await t.server.whenIdle();
+    const thread = await t.threadBySubject("Security alert: unusual sign-in, was this you?");
+    assert.deepEqual([thread.screened, thread.skippedScreening], [true, undefined]);
   });
 
   test("on Gmail a code whose From domain the checker didn't prove never falls back", async () => {
