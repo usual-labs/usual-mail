@@ -44,10 +44,17 @@ Opening `public/index.html` directly shows no fonts or pictures: the pages use r
 npx wrangler@4 deploy
 ```
 
-From this folder, with Wrangler signed in to the Cloudflare account that holds the `usual.dev` zone. It uploads
-`public/` and attaches `mail.usual.dev` as a custom domain; Cloudflare makes its DNS record and certificate. There are
-no environment variables, secrets or build output. To roll back, `npx wrangler@4 rollback`, or pick an earlier
-version under Workers › usual-mail-site › Deployments.
+From this folder, with Wrangler signed in to the Cloudflare account that holds the `usual.dev` zone. `wrangler.jsonc`
+pins no account, so when your login sees several accounts Wrangler asks which one to use, or stops when it can't ask.
+Set `CLOUDFLARE_ACCOUNT_ID` to the account that holds the zone first:
+
+```sh
+CLOUDFLARE_ACCOUNT_ID=<the account's id> npx wrangler@4 deploy
+```
+
+It uploads `public/` and attaches `mail.usual.dev` as a custom domain; Cloudflare makes its DNS record and
+certificate. There are no other environment variables, and no secrets or build output. To roll back,
+`npx wrangler@4 rollback`, or pick an earlier version under Workers › usual-mail-site › Deployments.
 
 ## Design
 

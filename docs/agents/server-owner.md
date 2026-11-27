@@ -95,7 +95,7 @@ The review (2026-11-24, a separate agent, against `09675db` on Node and in worke
 
 ## After the re-review
 
-A second review (2026-11-24, against `37f0a93`) gave the fix a go, with follow-ups, fixed on `owner-claim-fix`:
+A second review (2026-11-24, against `28f07a3`) gave the fix a go, with follow-ups, fixed on `owner-claim-fix`:
 
 1. **Medium: the ceiling of a hundred still locked everyone out.** Ten IPv4 addresses or ten IPv6 /64s sending ten
    wrong passwords each blocked the owner's password, the owner's code and recovery codes for ten minutes, renewably.

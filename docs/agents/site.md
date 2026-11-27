@@ -10,6 +10,8 @@ hold the files, preview, deploy, design and copy rules.
 
 - **A Cloudflare Worker with static assets** (`site/wrangler.jsonc`: `usual-mail-site`, compatibility date
   2026-11-01, assets `./public`, custom domain `mail.usual.dev`), the same shape as the workspace's `usual.dev` site.
+  It pins no Cloudflare account: when the deployer's Wrangler login sees several, `CLOUDFLARE_ACCOUNT_ID` picks the
+  one that holds `usual.dev` (the folder's README, "Deploy").
   No JavaScript at all: `public/_headers` sends a CSP with `script-src 'none'` and only the site's own sources, plus
   `nosniff`, a referrer policy, a permissions policy and HSTS; fonts are cached for a year, pictures for a week.
 - **The landing page** (`public/index.html`): the Mac app's look. The wallpaper as two layers (sky, and the hills

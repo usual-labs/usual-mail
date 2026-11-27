@@ -1,5 +1,7 @@
 {
   "name": "usual-mail-site",
+  // No account is pinned here. When your Wrangler login sees several accounts, set CLOUDFLARE_ACCOUNT_ID to the
+  // account that holds the site's domain before `wrangler deploy`.
   "compatibility_date": "2026-11-01",
   "assets": { "directory": "./public" },
   "routes": [{ "pattern": "mail.usual.dev", "custom_domain": true }]

@@ -22,9 +22,10 @@ covers the files, preview, deployment, design and copy. The project's note is
   relative (`/assets/`, `/fonts/`, `/img/`, and `url('/fonts/` in `base.css`), add a style that turns animations and
   transitions off, and run `qlmanage -t -s 1400 -o <dir> index.html` (WebKit, about 1,000 px wide, the system's
   appearance). For a phone or a desktop size, render a scratch page holding the page in an `iframe` of that size.
-- Deploying changes a public site: only when the maintainer asks. The first deploy of a new Worker can upload and
-  then fail with "This Worker does not exist on your account" (10007) while attaching the domain; running the same
-  deploy again finishes it. After `npx wrangler@4 deploy`, check
+- Deploying changes a public site: only when the maintainer asks. `wrangler.jsonc` pins no account; when the Wrangler
+  login sees several, set `CLOUDFLARE_ACCOUNT_ID` to the account that holds `usual.dev`. Keep account ids out of the
+  repository. The first deploy of a new Worker can upload and then fail with "This Worker does not exist on your
+  account" (10007) while attaching the domain; running the same deploy again finishes it. After `npx wrangler@4 deploy`, check
   `https://mail.usual.dev/`, `/privacy/`, `/terms/`, the assets and the headers with curl. A Mac that looked the name up
   before its record existed can cache the miss; use `curl --resolve mail.usual.dev:443:<ip>` with an address from
   `dig @<the zone's Cloudflare nameserver> mail.usual.dev`.

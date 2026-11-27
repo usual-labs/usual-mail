@@ -411,7 +411,7 @@ owner's request. The stop fixes after them (2026-11-24) say 0.1.1 wherever `1881
 0.1.2 (2026-11-25, released as `v0.1.2`) bumps the same places and the README's status line,
 for the apps' warning on an inbox that stopped syncing and the server's side of it (`Inbox.statusReason`, a grace for
 failures that may pass, a watch on syncs that never finish; [server.md](server.md)).
-0.1.3 (2026-11-26, released as `v0.1.3` from `hotfix-0.1.3`, `93eabdd` on `main`) bumps the same places and the
+0.1.3 (2026-11-26, released as `v0.1.3` from `hotfix-0.1.3`, `2bf7595` on `main`) bumps the same places and the
 README's status line, for crafted mail that froze the server while it was read. The server's readers of a message's text and of a
 model's answers, mail's readers of message ids and of a forwarded message's transfer encoding, and the picture pass's
 size and tracker reading run in time linear in what they read; HTML is cut to 2,000,000 characters and 256 open
@@ -419,15 +419,16 @@ elements before htmlparser2 reads it (`mail/src/message/html-depth.ts`); address
 by `server/src/ai/addresses.ts`; and a subject sent to the AI is cut to 1,000 characters. A few patterns are linear
 only because their callers hand them short strings ([known-issues.md](known-issues.md), "Linear only where they run",
 and "Reading a message could take minutes" under Fixed; [mail.md](mail.md), [server-ai.md](server-ai.md)).
-0.1.4 (2026-11-26, released as `v0.1.4`, `da64183` on `main`; the owner's Cloudflare server runs it) bumps the same places and the
+0.1.4 (2026-11-26, released as `v0.1.4`, `502ceed` on `main`; the owner's Cloudflare server runs it) bumps the same places and the
 README's status line, for mail from strangers that skips Screening (a code, a sign-in link, a security alert, an order
 and the like, with the provider's checker and the server's own check behind the model's answer) and senders let in
 without the AI (another inbox on the server, a colleague at a company domain); migration 0022
 ([server-screening.md](server-screening.md)). The apps show `Thread.skippedScreening` in the mail's "why it's here"
 since after the release ([apps.md](apps.md)).
-0.1.5 (2026-11-27, released as `v0.1.5`, `65cd5b3` on `main`; its image `sha256:428466f1…0087` for amd64 and arm64,
-tagged `0.1.5`, `0.1` and `latest`, its provenance verified with `gh attestation verify`) bumps the same places and the
-README's status line, for unsubscribing from a
+0.1.5 (2026-11-27, released as `v0.1.5`, `51ae4cd` on `main`; its image `sha256:428466f1…0087` for amd64 and arm64,
+tagged `0.1.5`, `0.1` and `latest`, its provenance verified with `gh attestation verify`; the attestations of
+0.1.1–0.1.5 name each commit by its hash from before the history was rewritten on 2026-11-27) bumps the same
+places and the README's status line, for unsubscribing from a
 sender ([unsubscribing](../contract.md#unsubscribing), [server-unsubscribe.md](server-unsubscribe.md)): the route,
 its queue, the browser agent's key in the AI's settings (Browser Use, only with the person's own key), mail's reading
 of which unsubscribe headers the sender's signature vouches for, and migration 0023; reviewed for security twice before
