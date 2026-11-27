@@ -425,7 +425,9 @@ and the like, with the provider's checker and the server's own check behind the 
 without the AI (another inbox on the server, a colleague at a company domain); migration 0022
 ([server-screening.md](server-screening.md)). The apps show `Thread.skippedScreening` in the mail's "why it's here"
 since after the release ([apps.md](apps.md)).
-0.1.5 (2026-11-27, released as `v0.1.5`) bumps the same places and the README's status line, for unsubscribing from a
+0.1.5 (2026-11-27, released as `v0.1.5`, `65cd5b3` on `main`; its image `sha256:428466f1…0087` for amd64 and arm64,
+tagged `0.1.5`, `0.1` and `latest`, its provenance verified with `gh attestation verify`) bumps the same places and the
+README's status line, for unsubscribing from a
 sender ([unsubscribing](../contract.md#unsubscribing), [server-unsubscribe.md](server-unsubscribe.md)): the route,
 its queue, the browser agent's key in the AI's settings (Browser Use, only with the person's own key), mail's reading
 of which unsubscribe headers the sender's signature vouches for, and migration 0023; reviewed for security twice before

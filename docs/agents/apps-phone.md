@@ -299,6 +299,10 @@ Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; d
 - **The iPhone's bundles** go out the same way: at the app's root, sealed as files, still Apple Development in the
   exported `.ipa` (seen 2026-11-25). App Store Connect accepts that for iOS (build 202611201656 is valid), so the
   script leaves them alone.
+- **The builds with 0.1.5** (2026-11-27, at the owner's "build the application and create a new test flight version
+  for both Mac and iPhone"), from `65cd5b3` (`v0.1.5`), each after its `--check`: iPhone 202611271637 and Mac
+  202611271641, both valid in App Store Connect and in internal testing. Their version is still 0.1.0, as every build's
+  has been. They unsubscribe against a server at 0.1.5 or newer, and only block against an older one.
 
 ## How to check
 
