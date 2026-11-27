@@ -70,6 +70,11 @@ the guided Google set-up of 2026-11-21):**
 
 ## Implemented today
 
+- **Unsubscribing from a sender** (2026-11-27, the owner's request and plan; [unsubscribing](../contract.md#unsubscribing),
+  [server-unsubscribe.md](server-unsubscribe.md)): `POST /v1/threads/:id/unsubscribe` asks the sender to stop, in the
+  background, the cheapest way their mail offers: its one-click link, an email to its unsubscribe address, or its page,
+  opened by Browser Use when the person set a key in Settings' AI tab, else handed to the person. The Feed's left swipe
+  unsubscribes and blocks the sender (apps). Tested with fake hosts and a fake Browser Use only.
 - **How far a first sync has got** (2026-11-23, the owner's decision; [sync](../contract-sync.md#sync), "How far a
   first sync has got"; [decisions](decisions.md)): `Inbox.firstSync` (`fetched` of `total` messages), counted by the
   provider from its cursor on every first-sync batch (`SyncBatch.progress`: Gmail and IMAP) and, for Gmail, after each
@@ -420,6 +425,13 @@ and the like, with the provider's checker and the server's own check behind the 
 without the AI (another inbox on the server, a colleague at a company domain); migration 0022
 ([server-screening.md](server-screening.md)). The apps show `Thread.skippedScreening` in the mail's "why it's here"
 since after the release ([apps.md](apps.md)).
+0.1.5 (2026-11-27, released as `v0.1.5`) bumps the same places and the README's status line, for unsubscribing from a
+sender ([unsubscribing](../contract.md#unsubscribing), [server-unsubscribe.md](server-unsubscribe.md)): the route,
+its queue, the browser agent's key in the AI's settings (Browser Use, only with the person's own key), mail's reading
+of which unsubscribe headers the sender's signature vouches for, and migration 0023; reviewed for security twice before
+it shipped (known-issues.md, Fixed). The iPhone app's builds that came with it unsubscribe from the Feed, swipe on
+Notifications and the Feed, dot the tabs with unseen mail and go back from a mail with a swipe from the left edge
+([apps-phone.md](apps-phone.md)).
 
 ## Layout
 
