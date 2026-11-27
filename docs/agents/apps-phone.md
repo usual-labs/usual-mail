@@ -96,8 +96,9 @@ points since 2026-11-25, below).
   row comes back (`GoogleSignInFlow.resume`; the review of 2026-11-25).
 - **Home's swipes** (owner's words of 2026-11-25): a row swiped left marks it seen (read: it moves from New to Seen),
   or a seen one unseen; swiped right, it snoozes, asking when with the menu's times. Each way is a setting in
-  Settings' Appearance tab, "Swiping a mail" (`SwipeAction`, `SwipeSettings`: seen or unseen, snooze, reply later,
-  pin, archive or nothing), kept on the iPhone (`UserDefaults`). The row follows the finger (`SwipeRow`; a UIKit pan
+  Settings' Appearance tab, "Swiping on Home" (`SwipeList`, `SwipeAction`, `SwipeSettings`: seen or unseen, snooze,
+  reply later, pin, archive, unsubscribe, block sender or nothing), kept on the iPhone (`UserDefaults`, Home's keys as they were
+  before the other lists came). The row follows the finger (`SwipeRow`; a UIKit pan
   that starts only for a sideways move, so the list scrolls as before and a tap opens), then resists past 132
   points, never going past 200 (`SwipeDrag`); behind it, a rounded box at the row's edge as wide as the room the row
   leaves, with the action's icon and words at that edge, the icons' navy on a faint grey until 88 points, then white on
@@ -107,6 +108,58 @@ points since 2026-11-25, below).
   actions, named as the menu names them ("Mark as read"), one when both ways do the same. Seen in the simulator on the sample: both ways
   moved the row and showed their words, and letting go of snooze opened its times; the sample takes no action (its
   menu's "Mark as read" doesn't either), so what they do there is the menu's, not seen.
+- **Notifications' and the Feed's swipes** (owner's words of 2026-11-27: on Notifications "on one of them do the
+  archive. So remove that notification from that list and then archive the email. And the other I don't know, choose
+  something yourself, but they need to be changeable into the settings"; on the Feed, archive and unsubscribe): the
+  same swipe as Home's, with its own two settings per list ("Swiping on Notifications", "Swiping on Feed"; the same
+  choices). Notifications: left seen or unseen (as Home's left and as the row's tick), right archive (done: the row
+  leaves the tab and the mail is archived in its mailbox). A group's row does it to every thread it stands for (seen
+  marks its unread ones read, or all unread again once none is); an older row shown under its group, to its own. The
+  Feed: right archive; left **unsubscribe** (since 2026-11-27, the owner's request: swiping a post "should unsubscribe
+  from it, so I won't ever get that any feed from those or email from those"; docs/contract.md, "Unsubscribing"). It
+  asks first in the system's dialog (`SwipeQuestion`: "Unsubscribe from Coffee Roasters Monthly?", then every effect
+  named, since the security review of 2026-11-27: their mail archived now and later, and asking them to stop with their
+  one-click link, an email sent from this inbox's address, or Browser Use opening their page when a key is set; "Undo
+  only unblocks them; the request still goes."; a red Unsubscribe), then `MailStore.unsubscribe(threadID:)`: the row
+  menu's Block sender, the strip saying "Blocked, and asking them to stop. Undo only unblocks." with Undo, then
+  `POST /v1/threads/:id/unsubscribe`, which the server answers at once and carries on in the background (one-click,
+  an email, the person's browser agent, or the page left to the person; how it goes shows under the sender in
+  Settings' Blocked tab, apps.md). **On a server older than 0.1.5** (its version, asked on connecting, `GET /v1/info`;
+  `MailStore.serverUnsubscribes`) the way set to unsubscribe blocks instead, asking as blocking, and the strip says
+  "Blocked. Update your server to 0.1.5 to unsubscribe."; a server that didn't say its version and answers "No such
+  route" gets those words as the problem, never a bare 404; Settings' Unsubscribing section says the server needs
+  updating in place of the key's field. Block sender alone stays a choice, with its own question ("Block Coffee Roasters
+  Monthly?"); the Feed's footer says both ask first. Unsubscribe's swipe shows the Blocked tab's icon
+  (`user-block-01`); the free set's unsubscribe-like icons aren't in the catalog yet. A post's header and its body move
+  as one (`SwipePart`, one `SwipeModel` per post): the box behind them spans the post, its words at the header, which
+  stays stuck at the top; the hairline after the post stays. A swipe starting on the mail's own content moves it too.
+  Seen in the simulator on the sample (2026-11-27): Archive and Seen behind a notification row, Archive behind a post
+  from its header and from its HTML, and the block question; the sample takes no action, so what they do there is the
+  menu's, not seen. The unsubscribe swipe and its question are tested (`SwipeActionTests`) and built for the iPhone,
+  not run: no simulator was opened for it, and no server has answered its request with the apps yet.
+- **A dot on a tab with mail not seen yet** (owner's words of 2026-11-27: "whenever in any of the tabs there is a new
+  item which I haven't seen ... I haven't opened it and I haven't seen it, maybe. Then I need to see a dot on the
+  tab"): Home, Feed, Receipts or Notifications at the card's foot gets an 8-point dot in the danger colour, ringed in
+  white, at its icon's top right (`NewDot`), and VoiceOver hears "New mail", while it lists, in the profile showing, an
+  unread thread that hasn't been there while the person looked at that tab (`TabNews`). Looking at a tab (its list, or
+  a mail opened from it, with the app in front) counts what it lists as seen; reading a mail anywhere, or ticking a
+  notification seen, takes it off too; new mail in a thread counts again. The chosen tab has none. The first time,
+  everything the tabs list counts as seen, so unread mail from before lights nothing. Kept on the iPhone
+  (`UserDefaults`, each tab's threads by id and newest mail's time, forgetting what the copy no longer holds); the
+  server keeps none, and the Mac shows no dots. Seen in the simulator on the sample with an empty record given at
+  launch: dots on Feed, Receipts and Notifications over Home, and Notifications' gone once looked at.
+- **A swipe in from the left edge goes back from a mail** (owner's words of 2026-11-26, "slide from left to right from
+  left of screen should act as back button like native ios gesture"): on the iPhone each list stays under the mail
+  opened from it, hidden and untouchable (`ReadingStack`, through `Pages.stacked`; the Mac still swaps one for the
+  other). A pan that starts within 30 points of the screen's left edge and moves right (`EdgePan`, `EdgeBack`; other
+  pans under it, the mail's scrolling, wait for it to fail) moves the page with the finger, a shadow at its edge, on an
+  opaque card ground; the list comes in from 30% of the width to its left, dimmed until the page has gone. Let go past
+  35% of the width, or flicked there (0.15 s at the finger's speed; a flick back toward the edge stays unless past
+  half), the page slides off and the mail closes with no fade of its own (`Pages.swipeBack`); short of it, the page
+  springs back. VoiceOver's escape goes back too. Opening a mail puts the keyboard away, since search's field stays
+  under it. A plain pan, not `UIScreenEdgePanGestureRecognizer`, whose start the simulator's injected touches never
+  made. Seen in the simulator on the sample: a short slow pull stayed, a long one went back to Home with the list
+  where it was, no flash; tapping a mail and the back button work as before.
 - **Pulling a list down checks for new mail** (owner's words of 2026-11-26, "Add pull down to reload on iphone"):
   Home, Screening, Feed, Notifications, Receipts, the Inbox page, To reply, Pinned and Snoozed (`checksForMail` in
   `Pages`, a `refreshable`; not a mail, search or Settings). It asks the server to sync the profile's inbox, or every

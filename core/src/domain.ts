@@ -10,6 +10,7 @@ import type { GoogleSignInInfo } from "./google.ts";
 import type { OwnerInfo } from "./owner.ts";
 import type { RemotePictures } from "./pictures.ts";
 import type { ScreeningPass } from "./screening.ts";
+import type { Unsubscribe } from "./unsubscribe.ts";
 
 /** Opaque identifier. Never parse it. */
 export type Id = string;
@@ -515,6 +516,8 @@ export interface BlockedSender {
   messagesSinceBlocked: number;
   /** The date of their newest stored mail in this inbox, before or after the block; null when none is held. */
   lastMessageAt: IsoTime | null;
+  /** Asking them to stop, when a person unsubscribed from them in this inbox (docs/contract.md, "Unsubscribing"). */
+  unsubscribe?: Unsubscribe;
 }
 
 /** A rule matches a message when every field that is set matches. */

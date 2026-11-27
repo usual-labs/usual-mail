@@ -129,6 +129,25 @@ export async function fetchWebBytes(url: string, options: FetchOptions = {}): Pr
   }
 }
 
+/**
+ * A sender's one-click unsubscribe (RFC 8058; docs/contract.md, "Unsubscribing"): "List-Unsubscribe=One-Click" POSTed
+ * to `url` from their mail, under the same rules for where the server connects, https only and following no redirect
+ * (the RFC asks that a one-click POST not be redirected). The answer's status, the body unread, or a `PictureRefused`
+ * saying why it couldn't be sent.
+ */
+export async function postOneClick(url: string, options: FetchOptions = {}): Promise<number> {
+  const limits = { ...PICTURE_LIMITS, ...options };
+  const deadline = AbortSignal.timeout(limits.totalTimeoutMs);
+  if (!/^https:/i.test(url)) throw new PictureRefused("one-click addresses are https only", "refused");
+  const target = await check(url, options, deadline);
+  const response = await request(target, options, limits.connectTimeoutMs, deadline, ONE_CLICK_BODY);
+  response.destroy();
+  return response.statusCode ?? 0;
+}
+
+/** What a one-click POST sends (RFC 8058, section 3.1). */
+const ONE_CLICK_BODY = "List-Unsubscribe=One-Click";
+
 /** The address to connect to for `value`, checked: protocol, port, no user name, and every address public. */
 async function check(value: string, options: FetchOptions, deadline: AbortSignal): Promise<Target> {
   let url: URL;
@@ -199,16 +218,22 @@ function pinned(addresses: ResolvedAddress[]): LookupFunction {
   };
 }
 
-function request(target: Target, options: FetchOptions, connectTimeoutMs: number, deadline: AbortSignal): Promise<IncomingMessage> {
+/** One request: a GET, or with `form` a POST of that form body. */
+function request(target: Target, options: FetchOptions, connectTimeoutMs: number, deadline: AbortSignal, form?: string): Promise<IncomingMessage> {
   return new Promise((resolve, reject) => {
     const send = target.protocol === "https:" ? https.request : http.request;
+    const headers: Record<string, string> = { "user-agent": PICTURE_USER_AGENT, accept: options.accept ?? ACCEPT, "accept-encoding": "identity" };
+    if (form !== undefined) {
+      headers["content-type"] = "application/x-www-form-urlencoded";
+      headers["content-length"] = String(Buffer.byteLength(form));
+    }
     const req = send({
       protocol: target.protocol,
       host: target.host,
       port: target.port,
       path: `${target.url.pathname}${target.url.search}`,
-      method: "GET",
-      headers: { "user-agent": PICTURE_USER_AGENT, accept: options.accept ?? ACCEPT, "accept-encoding": "identity" },
+      method: form === undefined ? "GET" : "POST",
+      headers,
       // A new connection for every hop, so it can only reach this hop's checked addresses.
       agent: false,
       lookup: pinned(target.addresses),
@@ -223,7 +248,7 @@ function request(target: Target, options: FetchOptions, connectTimeoutMs: number
       clearTimeout(timer);
       reject(refusal(error, deadline));
     });
-    req.end();
+    req.end(form);
   });
 }
 

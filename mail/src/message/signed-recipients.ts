@@ -34,6 +34,14 @@ import { asciiDomain, fieldName, namedDomain, parseAuthenticationResults, topAut
 
 export type RecipientField = "to" | "cc";
 
+/**
+ * Which of a newsletter's unsubscribe headers the sender's own signature vouches for (`ProviderMessage.signedUnsubscribe`;
+ * docs/contract.md, "Unsubscribing"; the security reviews of 2026-11-27): List-Unsubscribe and List-Unsubscribe-Post,
+ * each given once and named in every aligned signature's `h=`. Monotone as the recipient fields are. Nothing of the body
+ * is read: a link there may be someone else's words the sender's mail repeats.
+ */
+export type SignedUnsubscribePart = "list-unsubscribe" | "list-unsubscribe-post";
+
 /** Longer signatures, or more of them, are left unread: no signer writes them. */
 const LIMITS = { length: 16_384, signatures: 16 };
 
@@ -74,21 +82,46 @@ export function signedRecipients(headers: readonly HeaderField[], fromDomain: st
     if (name === "to" || name === "cc") counts[name]++;
   }
   if (counts.to > 1 || counts.cc > 1) return [];
+  const signed = signedFields(headers, fromDomain, options);
+  if (!signed) return [];
+  return (["to", "cc"] as const).filter((name) => counts[name] === 1 && signed.has(name));
+}
+
+/**
+ * The unsubscribe headers the sender's organisation's DKIM signatures all sign, each given once. Under the same rules
+ * and with the same caller's proof as `signedRecipients`.
+ */
+export function signedUnsubscribe(headers: readonly HeaderField[], fromDomain: string, options: AuthenticationOptions): SignedUnsubscribePart[] {
+  const counts = new Map<string, number>([["list-unsubscribe", 0], ["list-unsubscribe-post", 0]]);
+  for (const field of headers) {
+    const name = fieldName(field);
+    if (counts.has(name)) counts.set(name, counts.get(name)! + 1);
+  }
+  const signed = signedFields(headers, fromDomain, options);
+  if (!signed) return [];
+  return (["list-unsubscribe", "list-unsubscribe-post"] as const).filter((name) => counts.get(name) === 1 && signed.has(name));
+}
+
+/**
+ * The header fields every DKIM signature of the From address's organisation names in its `h=`; null when the checker's
+ * word or the signatures leave nothing to count (steps 1 to 3 above).
+ */
+function signedFields(headers: readonly HeaderField[], fromDomain: string, options: AuthenticationOptions): Set<string> | null {
   const top = topAuthenticationResults(headers);
   const parsed = top ? parseAuthenticationResults(top.value) : null;
   const organisation = options.organisationalDomain(fromDomain);
-  if (!parsed || !organisation) return [];
+  if (!parsed || !organisation) return null;
   const dkim = parsed.results.filter((entry) => entry.method === "dkim");
   // 1: a signature by the From address's organisation passed, by the checker's own word.
   const passedHere = dkim.some((entry) => {
     const signer = namedDomain(entry, "header.d") ?? namedDomain(entry, "header.i");
     return entry.result === "pass" && signer !== null && options.organisationalDomain(signer) === organisation;
   });
-  if (!passedHere) return [];
+  if (!passedHere) return null;
   // The first characters of each signature a result says didn't pass.
   const failedShown = dkim.filter((entry) => entry.result !== "pass").map((entry) => property(entry, "header.b")).filter((shown): shown is string => Boolean(shown));
   const signatures = headers.filter((field) => fieldName(field) === "dkim-signature");
-  if (signatures.length > LIMITS.signatures) return [];
+  if (signatures.length > LIMITS.signatures) return null;
   let covered = null as Set<string> | null;
   let matched = false;
   for (const field of signatures) {
@@ -97,10 +130,10 @@ export function signedRecipients(headers: readonly HeaderField[], fromDomain: st
     const signedFields = tags?.get("h");
     const signature = tags?.get("b");
     // 3: one that can't be read or placed could be the real one, so nothing counts.
-    if (!tags || !written || !signedFields || !signature) return [];
+    if (!tags || !written || !signedFields || !signature) return null;
     const domain = asciiDomain(written);
     const home = domain ? options.organisationalDomain(domain) : null;
-    if (!home || failedShown.some((shown) => signature.startsWith(shown))) return [];
+    if (!home || failedShown.some((shown) => signature.startsWith(shown))) return null;
     if (home !== organisation) continue;
     if (!matched) matched = dkim.some((entry) => entry.result === "pass" && fits(entry, domain!, signature));
     // 2: every signature of the organisation bounds what counts, matched to a result or not.
@@ -108,9 +141,8 @@ export function signedRecipients(headers: readonly HeaderField[], fromDomain: st
     const before: Set<string> | null = covered;
     covered = before === null ? names : new Set([...before].filter((name) => names.has(name)));
   }
-  if (covered === null || !matched) return [];
-  const signed: Set<string> = covered;
-  return (["to", "cc"] as const).filter((name) => counts[name] === 1 && signed.has(name));
+  if (covered === null || !matched) return null;
+  return covered;
 }
 
 /**

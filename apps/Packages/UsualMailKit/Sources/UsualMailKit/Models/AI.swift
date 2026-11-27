@@ -203,17 +203,22 @@ public struct AiSettings: Codable, Hashable, Sendable, Versioned {
     public var jobs: [AiJobSetting]
     /// True while the person paused the AI: nothing is sent to the service, for any inbox.
     public var paused: Bool
+    /// The browser agent that opens a sender's unsubscribe page when nothing cheaper works (docs/contract.md,
+    /// "Unsubscribing"), without its key; nil while none is set up. Apart from the AI's key: pausing the AI doesn't
+    /// stop it, and it never reads mail.
+    public var browserAgent: BrowserAgentSettings?
     /// Rises with every change, maybe by more than one. Of two copies, keep the higher.
     public var version: Int
 
     public init(
         connection: AiConnection? = nil, credentialsSet: Bool = false, jobs: [AiJobSetting] = [],
-        paused: Bool = false, version: Int = 1
+        paused: Bool = false, browserAgent: BrowserAgentSettings? = nil, version: Int = 1
     ) {
         self.connection = connection
         self.credentialsSet = credentialsSet
         self.jobs = jobs
         self.paused = paused
+        self.browserAgent = browserAgent
         self.version = version
     }
 
@@ -233,24 +238,41 @@ public struct AiSettingsPatch: Encodable, Hashable, Sendable {
         case remove
     }
 
+    /// A browser agent's key, or its removal (docs/contract.md, "Unsubscribing").
+    public enum BrowserAgentChange: Hashable, Sendable {
+        /// Replaces a stored key whole. Saving it is the person's yes to `BrowserAgentDisclosure`, shown first; the
+        /// server stores it, tests it with a request that starts nothing, and answers after that test.
+        case set(BrowserAgentCredentials)
+        /// Sent as `null`: removes it, so a sender's page is left for the person to open.
+        case remove
+    }
+
     public var credentials: CredentialsChange?
     /// A model id per job, or nil for the server's default (sent as `null`). Jobs left out keep their model.
     public var models: [AiJob: String?]?
     public var paused: Bool?
+    public var browserAgent: BrowserAgentChange?
 
-    public init(credentials: CredentialsChange? = nil, models: [AiJob: String?]? = nil, paused: Bool? = nil) {
+    public init(
+        credentials: CredentialsChange? = nil, models: [AiJob: String?]? = nil, paused: Bool? = nil,
+        browserAgent: BrowserAgentChange? = nil
+    ) {
         self.credentials = credentials
         self.models = models
         self.paused = paused
+        self.browserAgent = browserAgent
     }
 
-    /// The key in it, to keep out of anything shown again.
+    /// The keys in it, to keep out of anything shown again.
     public var secrets: [String] {
-        if case .set(let credentials) = credentials { [credentials.apiKey] } else { [] }
+        var keys: [String] = []
+        if case .set(let credentials) = credentials { keys.append(credentials.apiKey) }
+        if case .set(let agent) = browserAgent { keys.append(agent.apiKey) }
+        return keys
     }
 
     private enum Key: String, CodingKey {
-        case credentials, models, paused
+        case credentials, models, paused, browserAgent
     }
 
     public func encode(to encoder: any Encoder) throws {
@@ -262,6 +284,11 @@ public struct AiSettingsPatch: Encodable, Hashable, Sendable {
         }
         try container.encodeIfPresent(models, forKey: .models)
         try container.encodeIfPresent(paused, forKey: .paused)
+        switch browserAgent {
+        case .set(let value): try container.encode(value, forKey: .browserAgent)
+        case .remove: try container.encodeNil(forKey: .browserAgent)
+        case nil: break
+        }
     }
 }
 

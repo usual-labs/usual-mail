@@ -132,6 +132,13 @@ export class Ctx {
   aiQueue: AiQueue = noQueue;
   /** The AI's cost lookups (`ai/costs.ts`): told when one is added or the settings change. */
   costLookups: { wake(): void } = noLookups;
+  /** Unsubscribing in the background (`unsubscribe/queue.ts`): told when one is asked. */
+  unsubscribes: { wake(): void } = noLookups;
+  /**
+   * How the browser agent's service is reached: the real one unless tests give their own (`unsubscribe/browser-use.ts`);
+   * `off` in demo mode, which uses none.
+   */
+  browserAgentAccess: { fetch?: typeof fetch; base?: string; off?: boolean } = {};
   changes: Changes = noChanges;
   /** Sender pictures; null when the server carries no Public Suffix List, so it shows none and fetches nothing. */
   avatars: AvatarContext | null = null;

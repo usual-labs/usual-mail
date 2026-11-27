@@ -6,6 +6,7 @@
 import type { AiConnection, AiSettings, AiSettingsPatch, AiStatus } from "./ai.ts";
 import type { AiUsage, AiUsageQuery } from "./ai-usage.ts";
 import type { AiDisclosure } from "./ai-words.ts";
+import type { Unsubscribe } from "./unsubscribe.ts";
 import type {
   BlockedSender,
   ActionInput,
@@ -323,6 +324,13 @@ export interface MailService {
    * let in without a record) and the threads it changed.
    */
   allowSender(caller: Caller, input: AllowSenderInput): Promise<ActResult>;
+  /**
+   * Person only (`needs_person` for an agent): asks the thread's sender to stop sending, in the background, the
+   * cheapest way their mail offers (docs/contract.md, "Unsubscribing"), and answers at once with the request, `working`.
+   * One request per sender and inbox: asking again starts over, unless one is still working, which is answered as it
+   * is. `invalid` for a thread with no sender. It blocks nobody and changes no thread.
+   */
+  unsubscribe(caller: Caller, threadId: Id): Promise<Unsubscribe>;
 
   // Actions.
   act(caller: Caller, input: ActInput): Promise<ActResult>;

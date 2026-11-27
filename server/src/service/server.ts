@@ -8,6 +8,7 @@ import {
   type ActInput,
   type ActResult,
   type AllowSenderInput,
+  type Unsubscribe,
   type BlockedSender,
   type SendersQuery,
   type AiConnection,
@@ -107,6 +108,8 @@ import * as inboxes from "./inboxes.ts";
 import * as rules from "./rules.ts";
 import * as pictures from "./pictures.ts";
 import { listSenders } from "./senders.ts";
+import { Unsubscribes } from "../unsubscribe/queue.ts";
+import { requestUnsubscribe } from "../unsubscribe/requests.ts";
 import { getInbox } from "./store.ts";
 import { answerTeach } from "./teach.ts";
 import * as views from "./views.ts";
@@ -121,6 +124,11 @@ export interface MailServerOptions extends ServiceOptions {
   askAgain?: AskAgain;
   /** Sender pictures: the Public Suffix List (the shipped one unless set) and, for tests, the queue's limits. */
   avatars?: AvatarOptions;
+  /**
+   * The browser agent's service: for tests, their own fetch and address in place of Browser Use's; `off` in demo mode,
+   * where none is set up or used.
+   */
+  browserAgent?: { fetch?: typeof fetch; base?: string; off?: boolean };
 }
 
 export interface AttachmentFile {
@@ -136,6 +144,7 @@ export class MailServer implements MailService {
   readonly #changes: ChangeNotifier;
   readonly #runner: AiRunner;
   readonly #costs: CostLookups;
+  readonly #unsubscribes: Unsubscribes;
   readonly #avatars: Avatars;
   readonly #search: SearchIndex;
 
@@ -148,6 +157,8 @@ export class MailServer implements MailService {
     ctx.aiQueue = this.#runner;
     this.#costs = new CostLookups(ctx, (work) => engine.track(work));
     ctx.costLookups = this.#costs;
+    this.#unsubscribes = new Unsubscribes(ctx, (work) => engine.track(work));
+    ctx.unsubscribes = this.#unsubscribes;
     ctx.background = (work) => engine.track(work);
     this.#avatars = new Avatars(ctx, avatars, (work) => engine.track(work));
     this.#search = new SearchIndex(ctx, (work) => engine.track(work));
@@ -157,6 +168,7 @@ export class MailServer implements MailService {
   static async create(host: Host, options: MailServerOptions): Promise<MailServer> {
     const ctx = new Ctx(host, options.providers, options.models, options);
     ctx.google = options.google ?? null;
+    ctx.browserAgentAccess = options.browserAgent ?? {};
     const engine = new SyncEngine(ctx);
     ctx.hooks = engine.hooks();
     await upgradeStore(ctx);
@@ -193,6 +205,7 @@ export class MailServer implements MailService {
     if (signal?.aborted) return;
     this.#runner.start();
     this.#costs.start();
+    this.#unsubscribes.start();
     this.#avatars.start();
   }
 
@@ -201,6 +214,7 @@ export class MailServer implements MailService {
     this.#ctx.ownerCode = null;
     this.#runner.stop();
     this.#costs.stop();
+    this.#unsubscribes.stop();
     this.#avatars.stop();
     this.#search.stop();
     this.#changes.stop();
@@ -391,6 +405,10 @@ export class MailServer implements MailService {
 
   allowSender(caller: Caller, input: AllowSenderInput): Promise<ActResult> {
     return acting.allowSender(this.#ctx, caller, input);
+  }
+
+  unsubscribe(caller: Caller, threadId: Id): Promise<Unsubscribe> {
+    return this.#ctx.lock.run(() => requestUnsubscribe(this.#ctx, caller, threadId));
   }
 
   act(caller: Caller, input: ActInput): Promise<ActResult> {
@@ -600,6 +618,8 @@ export class MailServer implements MailService {
         return isPerson(caller);
       case "sender.changed":
         return isPerson(caller) && canSee(ctx, caller, event.inboxId);
+      case "unsubscribe.changed":
+        return isPerson(caller) && canSee(ctx, caller, event.unsubscribe.inboxId);
       case "inbox.changed":
         return canSee(ctx, caller, event.inbox.id);
       case "inbox.removed":

@@ -88,6 +88,7 @@ export class MemoryProvider implements MailProvider {
       for (const message of batch.upserted) {
         delete message.fromCheck;
         delete message.signedRecipients;
+        delete message.signedUnsubscribe;
       }
     }
     return batch;

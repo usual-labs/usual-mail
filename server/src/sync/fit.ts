@@ -43,7 +43,7 @@ const str = (value: string | undefined): number => (value === undefined ? 0 : ut
 export function storedBytes(m: ProviderMessage): number {
   return str(m.ref) + str(m.threadKey) + str(m.messageId) + str(m.inReplyTo) + json(m.references) + json(m.from) + json(m.to)
     + json(m.cc) + json(m.bcc) + json(m.replyTo) + str(m.subject) + str(m.text) + str(m.html) + str(m.listId)
-    + str(m.listUnsubscribe) + json(m.placement) + str(m.fromCheck?.result) + str(m.fromCheck?.result === "verified" ? m.fromCheck.domain : undefined)
+    + str(m.listUnsubscribe) + str(m.listUnsubscribePost) + json(m.signedUnsubscribe) + json(m.placement) + str(m.fromCheck?.result) + str(m.fromCheck?.result === "verified" ? m.fromCheck.domain : undefined)
     + 160;
 }
 
@@ -80,7 +80,7 @@ function cutHeaders<T extends ProviderMessage>(m: T, budget: number): T {
     from: cutAddress(m.from),
     attachments: m.attachments.map((file) => ({ ...file, filename: cut(file.filename, LONG_ID)!, mimeType: cut(file.mimeType, LONG_ID)! })),
   };
-  for (const [key, chars] of [["messageId", LONG_ID], ["inReplyTo", LONG_ID], ["listId", LONG_ID], ["listUnsubscribe", LONG_HEADER]] as const) {
+  for (const [key, chars] of [["messageId", LONG_ID], ["inReplyTo", LONG_ID], ["listId", LONG_ID], ["listUnsubscribe", LONG_HEADER], ["listUnsubscribePost", LONG_ID]] as const) {
     if (m[key] !== undefined) out[key] = cut(m[key], chars)!;
   }
   // The address lists, in order, while they fit what is left of the budget.

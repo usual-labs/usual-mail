@@ -25,6 +25,8 @@
         @State private var searchFocus = 0
         /// Whether the app has been in front before: coming back to the front asks the server again.
         @State private var wasActive = false
+        /// What each tab holds that hasn't been seen on this iPhone, for the dots on the tabs.
+        @State private var news = TabNews()
 
         var body: some View {
             let stage = MailStage.showing(store, onboarding: Onboarding.isNeeded(store))
@@ -75,7 +77,7 @@
                             session: session, nav: nav, feed: feed, expandedGroups: $expandedGroups, kept: kept,
                             search: search, searchFocus: searchFocus, read: read, leaveSearch: leaveSearch,
                             openAISettings: openAISettings, fixSync: fixSync,
-                            accountsSignInStarted: { nav.accountsSignInStarted() })
+                            accountsSignInStarted: { nav.accountsSignInStarted() }, swipeBack: { nav.back() })
                     }
                 }
                 // At the card's foot, over it: the lists scroll under the row and end above it.
@@ -84,6 +86,9 @@
                         UndoStrip()
                         WindowBar(
                             nav: $nav, screeningCount: screeningCount, namesSettingsTabs: false, compact: true,
+                            dots: news.dots(
+                                in: store.lists, inbox: nav.profile, now: store.now,
+                                except: nav.showsTabs ? nav.mailPlace.tab : nil),
                             back: back, act: { action, threadID in act(action, on: threadID) })
                     }
                     .padding(.horizontal, PhoneLayout.barMargin)
@@ -100,6 +105,19 @@
             .onChange(of: nav.reading) { _, id in
                 if id == nil { Task { await store.open(threadID: nil) } }
             }
+            // The tab looked at counts what it lists as seen, as the lists change (`TabNews`).
+            .onChange(of: newsLook, initial: true) { _, look in
+                guard look.loaded else { return }
+                news.update(lists: look.lists, inbox: look.inbox, now: store.now, looking: look.looking)
+            }
+        }
+
+        /// What the dots on the tabs follow: the lists, the profile, and the tab being looked at: the mail stack's
+        /// tab, its list or a mail from it showing (not search over it), while the app is in front.
+        private var newsLook: TabNews.Look {
+            let looking = nav.showsTabs && scenePhase == .active ? nav.mailPlace.tab : nil
+            return TabNews.Look(
+                lists: store.lists, inbox: nav.profile, looking: looking, loaded: store.hasLoadedFromDisk)
         }
 
         /// Reads a thread in the card.

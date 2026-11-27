@@ -258,11 +258,21 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
     set the password from a device on https, the server's machine or Tailscale) and "Disconnect from this server…"
     at the foot. It doesn't set the AI key; if it ever does, it must first show the server's disclosure, as
     onboarding does.
-  - **AI** (`AITab.swift`, `AIUsageSection.swift`, `UsageTable.swift`): Service (the connection, then a row per job
-    with its model), Status with how many wait, and Usage: the period in the system's segmented control ("Today", "7
-    days", "30 days"), on the Mac one table of requests, tokens and cost per job, on the iPhone a row per job and one
-    for the total ("not reported", "at least …"), asked of the server while Settings is open, at most every 5
-    seconds, hidden until it answers.
+  - **AI** (`AITab.swift`, `AIUsageSection.swift`, `UsageTable.swift`, `BrowserAgentSection.swift`): Service (the
+    connection, then a row per job with its model), Status with how many wait, and Usage: the period in the system's
+    segmented control ("Today", "7 days", "30 days"), on the Mac one table of requests, tokens and cost per job, on the
+    iPhone a row per job and one for the total ("not reported", "at least …"), asked of the server while Settings is
+    open, at most every 5 seconds, hidden until it answers. Then **Unsubscribing** (2026-11-27, the owner's request;
+    docs/contract.md, "Unsubscribing"), on a person's device only (where the AI's settings are): the optional browser
+    agent, Browser Use, that opens a sender's unsubscribe page when their mail offers nothing cheaper. Without one: a
+    line saying it is optional and only for a page, "Get a key from Browser Use" (cloud.browser-use.com), core's
+    `BROWSER_AGENT_DISCLOSURE` word for word above the field (`BrowserAgentDisclosure`, "What Browser Use is sent" and
+    its four lines, checked against core/src/unsubscribe.ts by a test), the key in a secure field and Save
+    (`PATCH /v1/ai` with `browserAgent`; the field is emptied as it is sent; `BrowserAgentSetup`). With one: a Browser
+    Use row, "Working", "Key refused", "Out of credit" or "Unavailable", the server's `detail` under it as it is (else a
+    line of its own unless it works), and "Remove the key" in red (`browserAgent: null`). A refusal shows in red in the
+    section, without the key, not over the lists. Built for the Mac and the iPhone (Settings is shared) and tested on
+    its words and its store calls; not run against a server yet.
   - **Appearance** (`AppearanceTab.swift`, `Shell/Background.swift`, `BackgroundPicture.swift`), an app setting on
     this Mac: "Choose a picture…" (the system picker; the sandbox's user-selected read-only entitlement) copies it at
     once into Application Support/UsualMail/Background, its first frame, at most 3840 px on the long side, JPEG or
@@ -275,7 +285,12 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
     the server's blocked senders in the profile, newest block first: initials, name and address, the inbox under all
     inboxes, "Blocked 12 Nov by you · 3 messages since" (by the agent's or rule's name; no count for zero), Unblock
     (`POST /v1/senders/allow`; "Unblocked." with Undo, no strip when no record came back). `sender.changed` keeps it
-    current; it reloads on reconnect. "No blocked senders."; the server's explanation once under the list.
+    current; it reloads on reconnect. "No blocked senders."; the server's explanation once under the list. Under a
+    sender the person unsubscribed from (2026-11-27; `BlockedSender.unsubscribe`, moved on by `unsubscribe.changed`),
+    one quiet line (`BlockedWords.unsubscribe`): "Unsubscribing…"; once done, "Unsubscribed" (one-click), "Asked by
+    email to stop" or "Unsubscribed by Browser Use"; "Their page is left to open" with a secondary "Open their page"
+    (the system's browser, only on the tap, only an https page: `Unsubscribe.page`); when it failed, the server's
+    `detail` as it is. Tested on its words; not seen with a server's answers yet.
   - **About** (`AboutTab.swift`): the manifesto (`WelcomeStep.manifesto`, as it is), mail.usual.dev, the source link
     (`ProjectLinks.repository`) hidden until `ProjectLinks.isPublished` is true, the app's version and build, and the
     server's and API version (`/v1/info`; "Sample data, no server" in the sample). No licence list exists to show.

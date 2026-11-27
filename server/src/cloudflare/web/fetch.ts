@@ -65,6 +65,21 @@ export async function fetchWebBytes(url: string, options: WorkerFetchOptions = {
   }
 }
 
+/**
+ * A sender's one-click unsubscribe (RFC 8058; docs/contract.md, "Unsubscribing"), as Node sends it
+ * (`postOneClick` in src/node/pictures/fetch.ts): "List-Unsubscribe=One-Click" POSTed to an https address from their
+ * mail under the same rules, following no redirect. The answer's status, or a `PictureRefused` saying why not.
+ */
+export async function postOneClick(url: string, options: WorkerFetchOptions = {}): Promise<number> {
+  const limits = { ...PICTURE_LIMITS, ...options };
+  const deadline = AbortSignal.timeout(limits.totalTimeoutMs);
+  if (!/^https:/i.test(url)) throw new PictureRefused("one-click addresses are https only", "refused");
+  const target = await check(url, options, deadline);
+  const response = await request(target, options.accept ?? "*/*", limits.connectTimeoutMs, deadline, "List-Unsubscribe=One-Click");
+  await response.body?.cancel().catch(() => undefined);
+  return response.status;
+}
+
 /** `value` checked: protocol, port, no user name, no IP address, and every address its name has public. */
 async function check(value: string, options: WorkerFetchOptions, deadline: AbortSignal): Promise<URL> {
   let url: URL;
@@ -115,15 +130,24 @@ function within<T>(work: Promise<T>, deadline: AbortSignal): Promise<T> {
   });
 }
 
-/** One request, without following a redirect, given up when no answer comes within `connectTimeoutMs`. */
-async function request(url: URL, accept: string, connectTimeoutMs: number, deadline: AbortSignal): Promise<Response> {
+/**
+ * One request, a GET or with `form` a POST of that form body, without following a redirect, given up when no answer
+ * comes within `connectTimeoutMs`.
+ */
+async function request(url: URL, accept: string, connectTimeoutMs: number, deadline: AbortSignal, form?: string): Promise<Response> {
   const answer = new AbortController();
   const timer = setTimeout(() => answer.abort(new PictureRefused("its site didn't answer in time")), connectTimeoutMs);
   try {
     return await fetch(url, {
-      method: "GET",
+      method: form === undefined ? "GET" : "POST",
       redirect: "manual",
-      headers: { "user-agent": PICTURE_USER_AGENT, accept, "accept-encoding": ACCEPT_ENCODING },
+      headers: {
+        "user-agent": PICTURE_USER_AGENT,
+        accept,
+        "accept-encoding": ACCEPT_ENCODING,
+        ...(form !== undefined && { "content-type": "application/x-www-form-urlencoded" }),
+      },
+      ...(form !== undefined && { body: form }),
       signal: AbortSignal.any([deadline, answer.signal]),
     });
   } catch (error) {

@@ -16,6 +16,10 @@ import UsualMailKit
 /// Each row has a seen tick at its right end (owner's words of 2026-11-20; `SeenTick`): seen is the read state, a group
 /// seen once all its threads are read; a click marks the row seen or unseen silently without opening it, and a seen
 /// row is dimmed in its place.
+///
+/// On the iPhone a row swiped either way does what Settings says (`SwipeList.notifications`: by default left marks it
+/// seen, right archives it, which takes it off the tab and archives the mail; the owner's words of 2026-11-27), to
+/// every thread the row stands for; an older row shown under its group, to its own.
 struct NotificationsView: View {
     /// The inbox the profile switch picked, or nil for every inbox.
     let inboxId: String?
@@ -114,9 +118,13 @@ private struct NotificationList: View {
                     }
                 }
             ) { openRow(row) }
+            // On the iPhone, a swipe either way does what Settings says (`SwipeList.notifications`), to every thread
+            // the row stands for.
+            .swipes(.notifications, row.threads)
             if isExpanded {
                 ForEach(row.older) { thread in
                     item(thread) { open(thread.id) }
+                        .swipes(.notifications, [thread])
                         .padding(.leading, Avatar.side + 6)
                         .transition(.blurReveal)
                 }

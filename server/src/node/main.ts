@@ -31,6 +31,7 @@ import { ownerCodeLines, ownerCodePath, readOwnerCode, removeOwnerCode, writeOwn
 import { parts } from "./parts.ts";
 import { DiskPictureSource } from "./pictures/cache.ts";
 import { NodeSiteIcons } from "./avatars/site.ts";
+import { postOneClick } from "./pictures/fetch.ts";
 import { SENDER_PICTURES_OFF, senderPicturesOn } from "../avatars/service.ts";
 import { SHIPPED_SUFFIXES, SHIPPED_SUFFIXES_SOURCE } from "../avatars/shipped.ts";
 
@@ -96,6 +97,8 @@ const host: Host = {
   ...(!config.demo && { pictures: new DiskPictureSource({ dir: join(config.dataDir, "pictures") }) }),
   // Sender pictures from organisations' own sites, under the same rules; kept in the store. Demo mode fetches nothing.
   ...(!config.demo && { siteIcons: new NodeSiteIcons() }),
+  // A sender's one-click unsubscribe, under the same rules. Demo mode sends none: its senders are made up.
+  ...(!config.demo && { oneClick: (url: string) => postOneClick(url) }),
   clientAddress: requestClient,
 };
 
@@ -148,6 +151,8 @@ const server = await MailServer.create(host, {
   ownerEmail: config.ownerEmail,
   // Demo mode keeps the sample as it is: only new mail goes to the (fake) AI.
   aiHistory: !config.demo,
+  // Nor does it reach a browser agent: its senders are made up.
+  ...(config.demo && { browserAgent: { off: true } }),
   // Demo mode's made-up mail is all at .example domains: its own list, so its sample pictures show.
   ...(config.demo && { avatars: { suffixes: DEMO_SUFFIXES } }),
 });

@@ -4,6 +4,16 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
+- **A store that ran the draft of migration 0023 needs resetting** (server, 2026-11-27, open for development stores
+  only). 0023 was amended before 0.1.5 shipped (the security review added `messages.signed_unsubscribe` and
+  `unsubscribes.tried` and `marker`). Drizzle picks migrations by their date, and the amended 0023 is newer than the
+  draft, so a store that ran the draft will most likely run 0023 again and stop at "table `unsubscribes` already
+  exists". The fix is to reset that store. No release ever carried the draft; only a development store from that day
+  could have run it.
+- **A lost Browser Use run outside the newest 50 isn't found** (server, 2026-11-27, open). When the answer to a run's
+  start is lost, the server looks for it by its marker among `GET /runs?limit=50`, whose order and reach Browser Use
+  doesn't document; a run past them goes on unstopped, its cost still held to the US$0.10 cap by Browser Use's own
+  `maxCostUsd`.
 - **Let in is offered for a sender already let in** (apps, 2026-11-26, open). A mail that skipped Screening keeps
   `skippedScreening` after its sender is let in (it says how the thread came out), and the apps offer Let in under
   its line. They hide it only once a sender picture shows (`WhyWords.senderChoices`; the server gives a picture only
@@ -746,6 +756,16 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
 
 ## Fixed
 
+- **Unsubscribing followed whatever a stored message said** (server and mail, found 2026-11-27 by the security review of
+  the unsubscribe work; fixed before release, `swipe-back`). The first build took any stored message whose From was the
+  sender, and the topmost List-Unsubscribe in it, so a forged message, or a header added above a signed one, could make
+  the server POST to an attacker's address, mail one from the person's inbox, or offer an attacker's page; and a mailto's
+  subject and body (500 characters each) went out as the person's words. Now only mail Gmail's checker proved from the
+  From domain by its organisation's DKIM signature is used, and of it only what that signature vouches for
+  (`signedUnsubscribe`), in mail its signed To or Cc says was sent to this inbox; an email has one plain address, a short
+  plain subject at most and the server's own body; pages are never IP addresses. The re-review found that a link in a
+  signed body could still be someone else's words (a name given at sign-up, or plain text turned into HTML by a
+  Content-Type added on top), so no link in a body is used at all ([server-unsubscribe.md](server-unsubscribe.md)).
 - **A sender's folded first line could add to Gmail's result** (mail, found 2026-11-26 by the final security review of
   the screening work; fixed before release, `screening-pass`). Gmail adds its `Authentication-Results` directly above
   the sender's headers; a first sender line starting with a space joined it as postal-mime reads it, so

@@ -173,7 +173,7 @@ export class MemoryMailbox {
       },
       automated: input.automated ?? false,
     };
-    for (const key of ["inReplyTo", "replyTo", "text", "html", "listId", "listUnsubscribe", "fromCheck", "signedRecipients"] as const) {
+    for (const key of ["inReplyTo", "replyTo", "text", "html", "listId", "listUnsubscribe", "listUnsubscribePost", "fromCheck", "signedRecipients", "signedUnsubscribe"] as const) {
       if (input[key] !== undefined) (message as unknown as Record<string, unknown>)[key] = input[key];
     }
     const files = new Map<string, Uint8Array>();

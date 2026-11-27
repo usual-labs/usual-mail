@@ -13,6 +13,8 @@ struct WindowBar: View {
     let screeningCount: Int
     var namesSettingsTabs = true
     var compact = false
+    /// On the iPhone, the tabs holding mail not seen yet (`TabNews`).
+    var dots: Set<Tab> = []
     let back: () -> Void
     /// Does what the person chose to the open mail.
     let act: (ActionInput, String) -> Void
@@ -31,7 +33,7 @@ struct WindowBar: View {
         ZStack(alignment: .leading) {
             TopBar(
                 place: $nav.mailPlace, screeningCount: screeningCount, mail: nav.showsTabs ? open : nil,
-                hidden: !nav.showsTabs, compact: compact, room: room, now: store.now, back: back, act: act)
+                hidden: !nav.showsTabs, compact: compact, room: room, now: store.now, dots: dots, back: back, act: act)
             TopBar(
                 place: .constant(nav.showsTabs ? .inbox : nav.place), screeningCount: 0,
                 mail: nav.showsTabs ? nil : open, returnTitle: nav.searchReturnTitle, hidden: nav.showsTabs,

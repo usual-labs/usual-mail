@@ -61,7 +61,9 @@ extension SampleServer {
     }
 
     /// Applies a settings patch as the contract says: credentials replace the stored ones (only whether they are set
-    /// and the connection come back), `null` removes them, models and the rest change as named.
+    /// and the connection come back), `null` removes them, models and the rest change as named. A browser agent's key
+    /// is tested at once and answered with `browserAgentTest` (working, unless a test says otherwise), never the key;
+    /// `null` removes it.
     func updateAi(_ patch: JSONValue) -> AiSettings {
         state.withLock { state in
             state.aiPatch = patch
@@ -88,6 +90,11 @@ extension SampleServer {
                 }
             }
             if case .bool(let paused)? = patch["paused"] { ai.paused = paused }
+            switch patch["browserAgent"] {
+            case .null?: ai.browserAgent = nil
+            case .some: ai.browserAgent = state.browserAgentTest
+            case nil: break
+            }
             ai.version += 1
             state.data.ai = ai
             return ai

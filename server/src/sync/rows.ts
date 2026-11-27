@@ -99,11 +99,15 @@ export async function insertMessage(
       // The list's id as rules and Message carry it: the part in angle brackets, lower case.
       listId: normalizeListId(m.listId),
       listUnsubscribe: m.listUnsubscribe ?? null,
+      // Whether that address takes a one-click POST, as sent (docs/contract.md, "Unsubscribing").
+      listUnsubscribePost: m.listUnsubscribePost ?? null,
       automated: m.automated,
       // What the provider's own checker proved about the From domain, when the server asked (sender pictures).
       fromCheck: m.fromCheck?.result ?? null,
       fromVerified: m.fromCheck?.result === "verified" ? m.fromCheck.domain : null,
       signedRecipients: m.fromCheck?.result === "verified" ? m.signedRecipients ?? [] : null,
+      // What of its unsubscribe the sender's signature vouches for: only that is ever used to unsubscribe.
+      signedUnsubscribe: m.fromCheck?.result === "verified" ? m.signedUnsubscribe ?? [] : null,
       placement: m.placement,
       seen: m.seen,
       listed,

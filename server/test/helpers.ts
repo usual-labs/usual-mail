@@ -69,6 +69,10 @@ export interface MakeOptions {
   limits?: HostLimits;
   /** Batches one sync takes before it queues the next; absent, the service's 10,000. */
   syncRounds?: number;
+  /** Sends a sender's one-click unsubscribe; absent, none is sent (as in demo mode). */
+  oneClick?: (url: string) => Promise<number>;
+  /** The browser agent's service: a fake fetch in place of Browser Use's, or `off` as in demo mode. */
+  browserAgent?: { fetch?: typeof fetch; base?: string; off?: boolean };
 }
 
 export async function makeServer(options: MakeOptions = {}): Promise<TestServer> {
@@ -88,6 +92,7 @@ export async function makeServer(options: MakeOptions = {}): Promise<TestServer>
     ...(options.pictures && { pictures: options.pictures }),
     ...(options.siteIcons && { siteIcons: options.siteIcons }),
     ...(options.limits && { limits: options.limits }),
+    ...(options.oneClick && { oneClick: options.oneClick }),
   };
   const mailboxes = new Map<string, MemoryMailbox>();
   const providers = new ProviderRegistry();
@@ -104,6 +109,7 @@ export async function makeServer(options: MakeOptions = {}): Promise<TestServer>
     ...(options.saveSyncWindowDays !== undefined && { saveSyncWindowDays: options.saveSyncWindowDays }),
     ...(options.avatars && { avatars: options.avatars }),
     ...(options.syncRounds !== undefined && { syncRounds: options.syncRounds }),
+    ...(options.browserAgent && { browserAgent: options.browserAgent }),
   });
   await server.start();
   const code = await server.ownerPairingCode();

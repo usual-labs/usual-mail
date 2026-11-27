@@ -137,6 +137,13 @@ export interface Host {
   /** Sender pictures from organisations' sites. Absent (demo mode, most tests): none is fetched, kept ones still show. */
   siteIcons?: SiteIconSource;
   /**
+   * Sends a sender's one-click unsubscribe (docs/contract.md, "Unsubscribing"): "List-Unsubscribe=One-Click" POSTed to
+   * an https address from their mail, under the pictures' rules for where the server connects, following no redirect.
+   * Resolves with the answer's status, or rejects with a `PictureRefused` saying why it wasn't sent. Absent (demo mode,
+   * most tests): no one-click is sent, and unsubscribing goes on to the next way.
+   */
+  oneClick?: (url: string) => Promise<number>;
+  /**
    * The server's own time zone, an IANA name ("Europe/Berlin"): the day each message was sent, as AI requests state it,
    * and the date the server gives a time said "today" (docs/contract-ai.md). Absent, or not a zone: UTC.
    */

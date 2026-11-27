@@ -105,6 +105,11 @@ export const ROUTES = {
   senders: { method: "GET", path: "/v1/senders", auth: "person", calls: "senders" },
   /** Person only: lets a sender in by `{ inboxId, address }`, as `allow_sender` on one of their threads would. */
   allowSender: { method: "POST", path: "/v1/senders/allow", auth: "person", calls: "allowSender" },
+  /**
+   * Person only: asks the thread's sender to stop sending (docs/contract.md, "Unsubscribing"). No body; answers the
+   * `Unsubscribe`, `working` at first. It blocks nobody: an app does `block_sender` too.
+   */
+  unsubscribe: { method: "POST", path: "/v1/threads/:id/unsubscribe", auth: "person", calls: "unsubscribe" },
 
   act: { method: "POST", path: "/v1/actions", auth: "any", calls: "act" },
   undo: { method: "POST", path: "/v1/actions/:id/undo", auth: "any", calls: "undo" },

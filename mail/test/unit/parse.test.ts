@@ -106,6 +106,7 @@ describe("parseMessage", () => {
     const m = await parse(fixture("newsletter.eml"));
     assert.equal(m.listId, "weekly.letters.example");
     assert.equal(m.listUnsubscribe, "<https://letters.example/unsub?u=1>, <mailto:unsub@letters.example>");
+    assert.equal(m.listUnsubscribePost, "List-Unsubscribe=One-Click");
     assert.equal(m.automated, true);
     assert.deepEqual(m.replyTo, [{ email: "hello@letters.example" }]);
     assert.equal(m.text, "Five good things\n\nCafé culture, naïve art & more.\n\n- One\n- Two\n\nbad Read online\n\nVote");

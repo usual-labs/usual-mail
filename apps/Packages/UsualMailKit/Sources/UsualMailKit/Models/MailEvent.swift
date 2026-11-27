@@ -24,12 +24,14 @@ public enum MailEvent: Codable, Hashable, Sendable {
     case briefReady(briefId: String)
     /// A sender became blocked or stopped being blocked, or mail from a blocked sender arrived. People's devices only.
     case senderChanged(SenderChange)
+    /// Unsubscribing from a sender began or moved on (docs/contract.md, "Unsubscribing"). People's devices only.
+    case unsubscribeChanged(Unsubscribe)
     /// A type a newer server sends. The app ignores it.
     case unknown(type: String)
 
     private enum Key: String, CodingKey {
         case type, inbox, inboxId, thread, threadId, record, draft, draftId, rule, ruleId, count, counts, status
-        case settings, briefId, address, blocked, sender
+        case settings, briefId, address, blocked, sender, unsubscribe
     }
 
     /// The `type` in the JSON, which is also the SSE `event:` name.
@@ -50,6 +52,7 @@ public enum MailEvent: Codable, Hashable, Sendable {
         case .aiSettingsChanged: "ai.settings.changed"
         case .briefReady: "brief.ready"
         case .senderChanged: "sender.changed"
+        case .unsubscribeChanged: "unsubscribe.changed"
         case .unknown(let type): type
         }
     }
@@ -90,6 +93,8 @@ public enum MailEvent: Codable, Hashable, Sendable {
                     address: try c.decode(String.self, forKey: .address),
                     blocked: try c.decode(Bool.self, forKey: .blocked),
                     sender: try c.decodeIfPresent(BlockedSender.self, forKey: .sender)))
+        case "unsubscribe.changed":
+            self = .unsubscribeChanged(try c.decode(Unsubscribe.self, forKey: .unsubscribe))
         default: self = .unknown(type: type)
         }
     }
@@ -125,6 +130,7 @@ public enum MailEvent: Codable, Hashable, Sendable {
             try c.encode(change.address, forKey: .address)
             try c.encode(change.blocked, forKey: .blocked)
             try c.encodeIfPresent(change.sender, forKey: .sender)
+        case .unsubscribeChanged(let unsubscribe): try c.encode(unsubscribe, forKey: .unsubscribe)
         case .unknown: break
         }
     }

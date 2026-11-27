@@ -14,6 +14,7 @@ import type {
   AiUsageJob,
   AiState,
   BriefSection,
+  BrowserAgentState,
   Category,
   CategorySource,
   DeviceKind,
@@ -28,6 +29,8 @@ import type {
   ProviderKind,
   ProviderPlacement,
   RuleDraft,
+  UnsubscribeState,
+  UnsubscribeWay,
   RuleMatch,
   RuleSource,
   ScreeningPass,
@@ -239,6 +242,14 @@ export const messages = sqliteTable("messages", {
   outgoing: bool("outgoing").notNull(),
   listId: text("list_id"),
   listUnsubscribe: text("list_unsubscribe"),
+  /** The List-Unsubscribe-Post header as sent (`ProviderMessage.listUnsubscribePost`); null without one. */
+  listUnsubscribePost: text("list_unsubscribe_post"),
+  /**
+   * Which of its unsubscribe headers the sender's own signature vouches for (`ProviderMessage.signedUnsubscribe`);
+   * null: not read (the From domain not proved, an IMAP inbox, mail stored before 0.1.5). Only what it names is ever used
+   * to unsubscribe.
+   */
+  signedUnsubscribe: json<Array<"list-unsubscribe" | "list-unsubscribe-post">>("signed_unsubscribe"),
   automated: bool("automated").notNull(),
   /**
    * What the provider's own checker proved about the From domain (`ProviderMessage.fromCheck`): null until the server
@@ -525,6 +536,14 @@ export const serverState = sqliteTable("server_state", {
   detailsAskedAgain: text("details_asked_again"),
   /** The last once-only pass of payment rules over stored details this store has had (`PAYMENT_RULES`, `ai/payment-store.ts`). */
   paymentRulesApplied: text("payment_rules_applied"),
+  /**
+   * The browser agent's credentials (`BrowserAgentCredentials`) as JSON, sealed like the AI's; null while none are set
+   * (docs/contract.md, "Unsubscribing").
+   */
+  browserAgentCredentials: text("browser_agent_credentials"),
+  /** How the browser agent's service last answered (`BrowserAgentState`), and why when it isn't working. */
+  browserAgentState: text("browser_agent_state").$type<BrowserAgentState>(),
+  browserAgentDetail: text("browser_agent_detail"),
 });
 
 /**
@@ -554,6 +573,37 @@ export const aiUsage = sqliteTable("ai_usage", {
  * model whose `ai_usage` row its cost goes to. No thread, no mail. Kept across restarts; dropped when looked up, given
  * up, or when no lookup can be made (no key, or a service without lookups).
  */
+/**
+ * Unsubscribing from a sender (docs/contract.md, "Unsubscribing"): one row per inbox and sender, the newest asked,
+ * served in `BlockedSender.unsubscribe`. While `working`, `step` says what comes next and `next_at` when: `start` tries
+ * the ways in order, `agent` asks the browser agent how its run (`run_id`) is going. `url` is the page for the person,
+ * once only a page is left.
+ */
+export const unsubscribes = sqliteTable("unsubscribes", {
+  inboxId: text("inbox_id").notNull().references(() => inboxes.id, { onDelete: "cascade" }),
+  address: text("address").notNull(),
+  threadId: text("thread_id").notNull(),
+  state: text("state").$type<UnsubscribeState>().notNull(),
+  way: text("way").$type<UnsubscribeWay>(),
+  url: text("url"),
+  detail: text("detail"),
+  step: text("step").$type<"start" | "agent">(),
+  /**
+   * The ways started on this asking, written before each one's side effect, so a server stopped mid-way never sends a
+   * second email or starts a second browser agent's run after it starts again.
+   */
+  tried: json<Array<"email" | "browser_agent">>("tried").notNull().default([]),
+  /** The words in a browser agent's run that find it again when its start's answer was lost. */
+  marker: text("marker"),
+  runId: text("run_id"),
+  /** The page the browser agent was sent to, kept for the person should the agent not finish. */
+  page: text("page"),
+  nextAt: integer("next_at"),
+  askedAt: integer("asked_at").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+  version: integer("version").notNull().default(1),
+}, (t) => [primaryKey({ columns: [t.inboxId, t.address] }), index("unsubscribes_due").on(t.nextAt)]);
+
 export const aiCostLookups = sqliteTable("ai_cost_lookups", {
   generationId: text("generation_id").primaryKey(),
   hour: integer("hour").notNull(),

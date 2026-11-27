@@ -24,27 +24,11 @@ struct FeedView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: Self.pinned) {
                 ForEach(Array(list.threads.enumerated()), id: \.element.id) { index, thread in
-                    let inbox = store.lists.inbox(id: thread.inboxId)
-                    // The first screenful comes into focus one after another; a post scrolled to, at once.
-                    let delay = index < 4 ? Motion.delay(at: index) : 0
-                    Section {
-                        FeedPost(
-                            thread: thread, inbox: inbox, state: posts.state(of: thread),
-                            last: index == list.threads.count - 1
-                        ) { open(thread.id) }
-                        // Only looks: never `store.open`, which marks the mail read and is the one mail open.
-                        .task(id: FeedPosts.Version(thread)) {
-                            await posts.load(thread) { await store.detail(threadID: $0) }
-                        }
-                        .revealOnAppear(delay: delay)
-                        .transition(.blurReveal)
-                    } header: {
-                        FeedPostHeader(thread: thread, inbox: inbox) { open(thread.id) }
-                            // The post the feed keeps its place by (`scrollPosition`).
-                            .id(thread.id)
-                            .revealOnAppear(delay: delay)
-                            .transition(.blurReveal)
-                    }
+                    FeedSection(
+                        thread: thread, inbox: store.lists.inbox(id: thread.inboxId), posts: posts,
+                        // The first screenful comes into focus one after another; a post scrolled to, at once.
+                        delay: index < 4 ? Motion.delay(at: index) : 0, last: index == list.threads.count - 1
+                    ) { open(thread.id) }
                 }
                 if list.threads.isEmpty && store.hasLoadedFromDisk {
                     Text(verbatim: CategoryList.emptyWords(for: .reads))
@@ -80,6 +64,39 @@ struct FeedView: View {
     #else
         static let pinned: PinnedScrollableViews = []
     #endif
+}
+
+/// One post: its header as the section's (stuck to the top on the iPhone) over the post. On the iPhone the two move as
+/// one under a finger moving sideways and do what Settings says (`SwipeList.feed`: by default left blocks the sender,
+/// asking first, and right archives the post; the owner's words of 2026-11-27), sharing one `SwipeModel`.
+private struct FeedSection: View {
+    let thread: MailThread
+    let inbox: Inbox?
+    let posts: FeedPosts
+    let delay: Double
+    let last: Bool
+    let open: () -> Void
+    @Environment(MailStore.self) private var store
+    @State private var swipe = SwipeModel()
+
+    var body: some View {
+        Section {
+            FeedPost(thread: thread, inbox: inbox, state: posts.state(of: thread), last: last, swipe: swipe, open: open)
+                // Only looks: never `store.open`, which marks the mail read and is the one mail open.
+                .task(id: FeedPosts.Version(thread)) {
+                    await posts.load(thread) { await store.detail(threadID: $0) }
+                }
+                .revealOnAppear(delay: delay)
+                .transition(.blurReveal)
+        } header: {
+            FeedPostHeader(thread: thread, inbox: inbox, open: open)
+                .swipes(.feed, [thread], model: swipe, part: .top)
+                // The post the feed keeps its place by (`scrollPosition`).
+                .id(thread.id)
+                .revealOnAppear(delay: delay)
+                .transition(.blurReveal)
+        }
+    }
 }
 
 /// A post's header, like an Instagram post's: the sender's avatar and name, and how long ago, one button that opens the
@@ -167,6 +184,8 @@ struct FeedPost: View {
     let state: FeedPosts.State
     /// The feed's last post: no hairline after it.
     let last: Bool
+    /// Where a swipe has moved the post, shared with its header (`SwipePart`).
+    var swipe: SwipeModel? = nil
     let open: () -> Void
     @Environment(MailStore.self) private var store
 
@@ -185,6 +204,8 @@ struct FeedPost: View {
                 }
                 content
             }
+            // The post moves with its header; the hairline after it stays.
+            .swipes(.feed, [thread], model: swipe, part: .bottom)
             if !last {
                 Rectangle()
                     .fill(Theme.hairline)

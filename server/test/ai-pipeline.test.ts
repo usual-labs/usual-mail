@@ -104,7 +104,7 @@ describe("history", () => {
     for (const days of [0, 7, 30]) {
       await assert.rejects(t.server.updateAiSettings(t.person, { historyDays: days } as never), (error: { code: string; message: string }) => {
         assert.equal(error.code, "invalid");
-        assert.match(error.message, /The AI settings' fields are credentials, models and paused/);
+        assert.match(error.message, /The AI settings' fields are credentials, models, paused and browserAgent/);
         return true;
       });
     }

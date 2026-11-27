@@ -56,6 +56,9 @@ extension MailStore {
         case .senderChanged(let change):
             apply(change)
             return
+        case .unsubscribeChanged(let unsubscribe):
+            apply(unsubscribe)
+            return
         case .unknown:
             break
         }

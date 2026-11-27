@@ -55,7 +55,8 @@ the software. Private planning stays in the parent workspace.
 - One file per part in `docs/agents/`, written by whoever builds it: `server.md` (with `server-ai.md`, the server's
   AI, `server-avatars.md`, sender pictures, `server-search.md`, search, `server-checks.md`, its check runs, `server-owner.md`, the owner's
   password (claiming, signing in, recovery codes, the owner email through Google), `server-screening.md`, mail that
-  skips Screening and senders let in without the AI, and `server-cloudflare.md`, the
+  skips Screening and senders let in without the AI, `server-unsubscribe.md`, unsubscribing from a sender (one click,
+  email, or a page, by Browser Use when a key is set), and `server-cloudflare.md`, the
   Cloudflare side: all seven build steps built and tested in local workerd, deployed once to a real account (the Worker, its Durable Object, the root
   `wrangler.jsonc` and `package.json`, the workerd tests; `server-cloudflare-limits.md`: the host's limits, start-up,
   pictures and site icons; `server-cloudflare-access.md`: the front Worker, the address, the Google client, the owner's

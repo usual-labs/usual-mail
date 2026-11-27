@@ -256,6 +256,9 @@ rules that let another inbox's address and a colleague at the inbox's own domain
 
 ## What is implemented
 
+- **Unsubscribing from a sender** (2026-11-27): the `unsubscribe` route, its queue and the browser agent's key are in
+  [server-unsubscribe.md](server-unsubscribe.md); the store gained `unsubscribes`, `messages.list_unsubscribe_post` and
+  the browser agent's fields on `server_state` (migration 0023).
 - **Store.** Threads: `category`, `categorized_by`, `categorized_by_actor` (who decided, by name: JSON of the actor,
   null for the mailbox and for decisions from before migration `0005`), `screened`, `screened_by_mailbox` (the mailbox filed it under
   Screening: such a filing holds even a one-time code), `gate_pending` (a stranger's thread awaiting the AI's first

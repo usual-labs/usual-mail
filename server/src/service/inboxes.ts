@@ -29,6 +29,7 @@ import {
   senders,
   teachPrompts,
   threads,
+  unsubscribes,
   type InboxRow,
 } from "../db/index.ts";
 import { errorMessage } from "../util.ts";
@@ -38,6 +39,8 @@ import { forgetPictures } from "./pictures.ts";
 import { toInbox } from "./rows.ts";
 import { check, ConnectInboxSchema, InboxPatchSchema } from "./schemas.ts";
 import { getInbox, runBatch } from "./store.ts";
+import { loadState } from "../ai/state.ts";
+import { cancelAgentRuns, openBrowserAgent } from "../unsubscribe/agent.ts";
 
 /** In the inbox list's order, by `position`. */
 export async function listInboxes(ctx: Ctx, caller: Caller): Promise<Inbox[]> {
@@ -351,6 +354,9 @@ export async function removeInbox(ctx: Ctx, caller: Caller, id: string): Promise
   const inbox = await requireInbox(ctx, caller, id);
   // A token the server got by signing in with Google is revoked at Google once the inbox is gone (below).
   const token = await signedInToken(ctx, inbox);
+  // A browser agent's runs for the inbox's senders are stopped first: nobody waits on them any more.
+  const agent = await ctx.lock.run(async () => openBrowserAgent(ctx, await loadState(ctx)));
+  if (agent) await cancelAgentRuns(ctx, agent, id);
   await ctx.lock.run(async () => {
     if (!await getInbox(ctx, id)) return;
     const agents = (await ctx.db.select({ id: devices.id, inboxIds: devices.inboxIds }).from(devices).where(eq(devices.kind, "agent")))
@@ -366,6 +372,7 @@ export async function removeInbox(ctx: Ctx, caller: Caller, id: string): Promise
       ctx.db.delete(teachPrompts).where(eq(teachPrompts.inboxId, id)),
       ctx.db.delete(drafts).where(eq(drafts.inboxId, id)),
       ctx.db.delete(senders).where(eq(senders.inboxId, id)),
+      ctx.db.delete(unsubscribes).where(eq(unsubscribes.inboxId, id)),
       ctx.db.delete(sentMessageIds).where(eq(sentMessageIds.inboxId, id)),
       ...agents.map((device) => ctx.db.update(devices)
         .set({ inboxIds: (device.inboxIds ?? []).filter((inboxId) => inboxId !== id) }).where(eq(devices.id, device.id))),

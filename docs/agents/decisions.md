@@ -950,3 +950,24 @@ the checks before the repository goes public are in [decisions-licence.md](decis
 Deploying beyond Cloudflare (the owner's decision of 2026-11-23: Docker with a guide for any VPS, Coolify, then Render
 and Railway buttons; home servers later), the image's entry point and the publishing workflow are in
 [decisions-deploy.md](decisions-deploy.md).
+
+## 2026-11-27: unsubscribing from a sender
+
+The owner's words, of the Feed's swipe: "unsubscribe from it, so I won't ever get that any feed from those or email from
+those, and I want this to be agentic ... maybe we will also let user or to add maybe their browser user account, I'm
+not sure, or like a headless browser". Then, to the proposal of the cheapest ways first: "Make the 1st step, and also
+then, let's make the 2nd step, but the 2nd step would be optional. So user can go into settings in the AI section and
+then set it up ... give out a browser use API key ... the cheapest way possible because it's not also a very hard task."
+
+- **Cheapest first, the agent last:** one click (RFC 8058, no browser and no AI), then an email to the header's address
+  from the inbox, then the page. Most bulk senders offer one click (Gmail and Yahoo have asked it of them since 2024).
+- **The app blocks the sender too,** so "won't ever get" holds whatever the sender does; the server's call blocks
+  nobody, so the block stays the person's own action, with its undo.
+- **Browser Use's cloud, not a browser on the server, and not the person's own browser:** nothing to run on each host
+  (a Worker can't run Chromium), and a page from a sender's mail is never opened where the person is signed in: an
+  agent following a link a sender chose, with the person's sign-ins, is what phishing wants. Its run gets no
+  sign-ins, the model `bu-fast` (its docs give no price for it apart), no proxy, a US$0.10 cap, and an instruction to type nothing but the inbox's
+  address and to ignore what the page says.
+- **Its key in the AI's settings** (the owner's "in the AI section"), apart from the AI's key: optional, tested on
+  saving, sealed, never shown.
+

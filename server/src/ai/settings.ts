@@ -9,6 +9,7 @@ import {
   AI_GATEWAYS,
   AI_JOBS,
   AI_PROVIDERS,
+  BROWSER_AGENT_SERVICES,
   aiDisclosure,
   ServiceError,
   type AiConnection,
@@ -27,6 +28,7 @@ import { dataBlock, CATEGORY_OPTIONS, boundaryId, categorizeInstructions } from 
 import { effectiveModels, loadState, openCredentials, saveState, sealCredentials } from "./state.ts";
 import { freshStart, recordAnswer, recordFailure } from "./status.ts";
 import { recordUsage } from "./usage.ts";
+import { assertBrowserAgentAllowed, browserAgentFields, cancelAgentRuns, openBrowserAgent, readBrowserAgent, testBrowserAgent } from "../unsubscribe/agent.ts";
 
 // Every message here is the server's own words: a wrong value is never repeated back, so a key can't be.
 const apiKey = v.pipe(
@@ -47,11 +49,16 @@ const modelId = v.nullable(v.pipe(
   v.maxLength(200, "a model's name is at most 200 characters"),
   v.regex(/^[A-Za-z0-9._:/@+-]+$/, "a model is named as the service names it, like provider/model"),
 ));
+const browserAgentSchema = v.strictObject({
+  service: v.picklist(BROWSER_AGENT_SERVICES, `service must be ${BROWSER_AGENT_SERVICES.join(" or ")}`),
+  apiKey,
+}, 'browserAgent must be { "service": "browser_use", "apiKey" } or null');
 const patchSchema = v.strictObject({
   credentials: v.optional(v.nullable(credentialsSchema)),
   models: v.optional(v.strictObject({ categorize: v.optional(modelId), summarize: v.optional(modelId) }, "models names categorize and summarize only")),
   paused: v.optional(v.boolean("paused is true or false")),
-}, "The AI settings' fields are credentials, models and paused");
+  browserAgent: v.optional(v.nullable(browserAgentSchema)),
+}, "The AI settings' fields are credentials, models, paused and browserAgent");
 
 function checkPatch(input: unknown): AiSettingsPatch {
   const result = v.safeParse(patchSchema, input);
@@ -69,11 +76,13 @@ export async function readAiSettings(ctx: Ctx): Promise<AiSettings> {
   const row = await loadState(ctx);
   const set = row.aiCredentials !== null && row.aiService !== null;
   const defaults = set ? ctx.models.defaults(row.aiService!) : null;
+  const browserAgent = readBrowserAgent(row);
   return {
     ...(set && { connection: structuredClone(row.aiService!) }),
     credentialsSet: set,
     jobs: AI_JOBS.map((job) => ({ job, model: row.aiModels[job] ?? null, defaultModel: defaults?.[job] ?? "" })),
     paused: row.aiPaused,
+    ...(browserAgent && { browserAgent }),
     version: row.settingsVersion,
   };
 }
@@ -110,7 +119,13 @@ export async function aiSettings(ctx: Ctx, caller: Caller): Promise<AiSettings> 
 export async function updateAiSettings(ctx: Ctx, caller: Caller, input: AiSettingsPatch): Promise<AiSettings> {
   requirePerson(caller, "change the AI's settings");
   const patch = checkPatch(input);
-  const { test } = await ctx.lock.run(async () => {
+  if (patch.browserAgent) assertBrowserAgentAllowed(ctx);
+  // A key replaced or removed stops what its runs are doing first, while the key still reaches them.
+  if (patch.browserAgent !== undefined) {
+    const old = await ctx.lock.run(async () => openBrowserAgent(ctx, await loadState(ctx)));
+    if (old) await cancelAgentRuns(ctx, old);
+  }
+  const { test, testAgent } = await ctx.lock.run(async () => {
     const row = await loadState(ctx);
     const next = { ...row, aiModels: { ...row.aiModels } };
     let test = false;
@@ -140,7 +155,11 @@ export async function updateAiSettings(ctx: Ctx, caller: Caller, input: AiSettin
       }
     }
     if (patch.paused !== undefined) next.aiPaused = patch.paused;
-    const fields = ["aiCredentials", "aiService", "aiPaused"] as const;
+    // The browser agent's key, apart from the AI's: a new one is tested at once; none stops it being used.
+    if (patch.browserAgent !== undefined && (patch.browserAgent !== null || row.browserAgentCredentials !== null)) {
+      Object.assign(next, await browserAgentFields(ctx, patch.browserAgent));
+    }
+    const fields = ["aiCredentials", "aiService", "aiPaused", "browserAgentCredentials"] as const;
     const changed = fields.some((key) => JSON.stringify(next[key]) !== JSON.stringify(row[key]))
       || JSON.stringify(next.aiModels) !== JSON.stringify(row.aiModels);
     if (changed) {
@@ -149,9 +168,10 @@ export async function updateAiSettings(ctx: Ctx, caller: Caller, input: AiSettin
       await saveState(ctx, rest);
     }
     if (changed) ctx.emit({ type: "ai.settings.changed", settings: await readAiSettings(ctx) });
-    return { test: test && next.aiCredentials !== null };
+    return { test: test && next.aiCredentials !== null, testAgent: Boolean(patch.browserAgent) };
   });
   if (test) await runTest(ctx);
+  if (testAgent) await testBrowserAgent(ctx);
   ctx.aiQueue.wake();
   // Resuming, a new key or none: the cost lookups carry on, or drop what waits.
   ctx.costLookups.wake();

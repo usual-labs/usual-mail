@@ -1,4 +1,5 @@
 import SwiftUI
+import UsualMailDesign
 import UsualMailKit
 
 /// The row above the card. On a page it is the four tabs (Home, Feed, Receipts, Notifications) and, at the right, the
@@ -26,7 +27,8 @@ import UsualMailKit
 /// (`ControlSize`); a back button is the arrow alone once a mail is open, so the mail's five buttons fit; To reply,
 /// Pinned, Snoozed and the Inbox page show no title capsule, as the switcher above the card names them; Settings' tabs
 /// sit in the middle of the row, not at its right; the chosen tab is named only when the row fits it (`BarFit`), else
-/// it is its lit icon alone; and snooze and more are the system's menus (`PhoneBarMenu`), where the Mac has popovers.
+/// it is its lit icon alone; snooze and more are the system's menus (`PhoneBarMenu`), where the Mac has popovers; and a
+/// tab holding mail not seen yet has a dot at its icon's corner (`TabNews`).
 struct TopBar: View {
     @Binding var place: Place
     let screeningCount: Int
@@ -46,6 +48,8 @@ struct TopBar: View {
     var room: CGFloat? = nil
     /// The moment the mail's buttons are drawn for: whether it still waits to come back (`BarAction.button`).
     var now = Date()
+    /// On the iPhone, the tabs holding mail not seen yet, each with a dot (`TabNews`); none on the Mac.
+    var dots: Set<Tab> = []
     let back: () -> Void
     let act: (ActionInput) -> Void
     @Namespace private var glass
@@ -182,15 +186,18 @@ struct TopBar: View {
             .accessibilityLabel("Back to \(tab.title)")
         } else {
             let selected = selectedTab == tab
+            let dot = dots.contains(tab) && !selected
             Button {
                 withAnimation(Motion.move) { place = .tab(tab) }
             } label: {
                 capsule(
-                    .tab(tab), icon: tab.icon, title: title(of: .tab(tab), names: names), tinted: false, lit: selected)
+                    .tab(tab), icon: tab.icon, title: title(of: .tab(tab), names: names), tinted: false, lit: selected,
+                    dot: dot)
             }
             .buttonStyle(PlainControlStyle())
             .tooltip(selected ? nil : tab.title)
             .accessibilityLabel(tab.title)
+            .accessibilityValue(dot ? "New mail" : "")
             .accessibilityAddTraits(selected ? .isSelected : [])
         }
     }
@@ -217,13 +224,18 @@ struct TopBar: View {
     /// Settings', is `lit` as the rail's current button is, white under its clear glass, so it reads over the sky and
     /// the hills alike (`TabChosenTests`); its icon and name are in the design's dark ink anyway. Its glass stays the
     /// others' and keeps its `glassEffectID`, so switching tabs only moves the light and the capsules' widths. With a
-    /// mail open it is the back button, tinted as every back button is.
+    /// mail open it is the back button, tinted as every back button is. A `dot` sits at its icon's top right corner: a
+    /// tab with mail not seen yet (`TabNews`).
     private func capsule(
         _ item: Item, icon: Icon, title: String?, tinted: Bool, lit: Bool = false, still: Bool = false,
-        spacing: CGFloat = 6, inset: CGFloat = ControlSize.inset
+        spacing: CGFloat = 6, inset: CGFloat = ControlSize.inset, dot: Bool = false
     ) -> some View {
         HStack(spacing: spacing) {
             icon.view(size: ControlSize.icon, tint: icon.isGrey ? Theme.icon : nil)
+                .overlay(alignment: .topTrailing) {
+                    if dot { NewDot().transition(.scale.combined(with: .opacity)) }
+                }
+                .animation(Motion.reveal, value: dot)
                 .id(icon)
                 .transition(.blurReveal)
             if let title {
@@ -367,5 +379,20 @@ struct TopBar: View {
             .tooltip(here ? nil : "Screening")
             .accessibilityLabel("Screening, \(screeningCount) waiting")
         }
+    }
+}
+
+/// A tab's dot for mail not seen yet (`TabNews`): 8 points of the danger colour, ringed in white so it reads on the
+/// glass over the sky and the hills alike, just past its icon's top right corner, as iOS badges an app.
+struct NewDot: View {
+    static let side: CGFloat = 8
+
+    var body: some View {
+        Circle()
+            .fill(UsualColor.danger)
+            .frame(width: Self.side, height: Self.side)
+            .overlay(Circle().strokeBorder(.white, lineWidth: 1.5).padding(-1.5))
+            .offset(x: 3, y: -2)
+            .accessibilityHidden(true)
     }
 }

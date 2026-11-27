@@ -156,6 +156,9 @@ batch's `progress`.
   File names lose path parts and direction-override characters.
 - `messageId`, `inReplyTo` (first id), `references`: without angle brackets (`stripBrackets` reads the closing run
   from its start: from every ">" of a long run, `>+$` read to its end, 25.6 s for 256 KB; 0.1.3). `listId`: lower case.
+  `listUnsubscribe` and, beside it since 2026-11-27, `listUnsubscribePost` (the List-Unsubscribe-Post header as sent,
+  kept only with a List-Unsubscribe): the server judges a one-click unsubscribe from them (docs/contract.md,
+  "Unsubscribing").
 - `automated`: Auto-Submitted other than "no"; Precedence bulk, list, junk or auto_reply; any List-* header;
   X-Autoreply, X-Autorespond or Feedback-ID; a multipart/report; an empty Return-Path; or a no-reply sender.
 - `outgoing`: the message is in Sent (the IMAP folder, Gmail's `SENT` label), nothing else. A From naming the
@@ -174,6 +177,11 @@ batch's `progress`.
   added it); with no such copy the proof stands as read. The Gmail provider then also has `fromChecks(refs)`: the
   same read again from the metadata form (`Authentication-Results`, `ARC-Authentication-Results` and `From` only, 20
   quota units a message) for mail stored before.
+- `signedUnsubscribe` (2026-11-27, the unsubscribe work's security reviews; docs/contract.md, "Unsubscribing"): under
+  the same conditions and the same intersection as `signedRecipients` below (`signedFields` in
+  `message/signed-recipients.ts`), `list-unsubscribe` and `list-unsubscribe-post` when each is given once and named in
+  every aligned signature's `h=`. The server unsubscribes only with what it names, so a header added above a signed
+  message is never followed. Nothing of the body is read for it (the re-review dropped an `l=` check with body links).
 - `signedRecipients` (2026-11-25, the screening gate's second security review;
   [contract](../contract-ai.md#mail-is-untrusted-input-to-a-model)): only when `fromCheck` is verified. Which of To and
   Cc the sender's own DKIM signature vouches for (`message/signed-recipients.ts`): none when the message gives To or Cc

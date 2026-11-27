@@ -37,9 +37,14 @@ extension MailStore {
         await act(.unread, on: threadIDs, reason: nil, asked: false)
     }
 
-    /// `asked` is false for what the app does on the person's behalf, such as marking an opened thread read.
-    private func act(_ action: ActionInput, on threadIDs: [String], reason: String?, asked: Bool) async {
-        guard !threadIDs.isEmpty else { return }
+    /// `asked` is false for what the app does on the person's behalf, such as marking an opened thread read. `words`
+    /// are the undo strip's, when the action's own don't fit (`RecentAction.words`). Returns whether the server took
+    /// it.
+    @discardableResult
+    func act(
+        _ action: ActionInput, on threadIDs: [String], reason: String?, asked: Bool, words: String? = nil
+    ) async -> Bool {
+        guard !threadIDs.isEmpty else { return false }
         let token = UUID()
         var before: [String: ThreadPlacement] = [:]
         var shown: [MailThread] = []
@@ -68,15 +73,18 @@ extension MailStore {
             await save(threads: threads, actions: records)
             if asked {
                 let undoable = records.filter { $0.state == .applied && $0.undoable }
-                lastAction = undoable.isEmpty ? nil : RecentAction(action: action, records: undoable)
+                lastAction = undoable.isEmpty ? nil : RecentAction(action: action, records: undoable, words: words)
                 show(result.teach)
             }
         } catch {
             let restored = (threadIDs + siblings).compactMap { pendingThreads.refused(token, for: $0) }
             await save(threads: restored)
             report(error, quietlyIfOffline: !asked)
+            await reloadLists()
+            return false
         }
         await reloadLists()
+        return true
     }
 
     /// Undoes an applied action. The record shows as undone at once; for the person's own actions the thread

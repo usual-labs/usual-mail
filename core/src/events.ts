@@ -5,6 +5,7 @@
  */
 import type { AiSettings, AiStatus } from "./ai.ts";
 import type { ActionRecord, BlockedSender, Counts, Draft, Id, Inbox, Rule, Thread } from "./domain.ts";
+import type { Unsubscribe } from "./unsubscribe.ts";
 
 export type MailEvent =
   | { type: "inbox.changed"; inbox: Inbox }
@@ -18,6 +19,8 @@ export type MailEvent =
    * as it is now; absent when they are no longer blocked. Sent to people's devices only.
    */
   | { type: "sender.changed"; inboxId: Id; address: string; blocked: boolean; sender?: BlockedSender }
+  /** Unsubscribing from a sender began or moved on (docs/contract.md, "Unsubscribing"). Sent to people's devices only. */
+  | { type: "unsubscribe.changed"; unsubscribe: Unsubscribe }
   | { type: "draft.changed"; draft: Draft }
   | { type: "draft.removed"; draftId: Id; inboxId: Id }
   /**

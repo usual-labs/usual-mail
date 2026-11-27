@@ -6,7 +6,9 @@ import UsualMailKit
 /// in every inbox, newest block first (`MailStore.blockedSenders`, asked for when the tab shows and kept by
 /// `sender.changed`). Each row: initials (a blocked sender never gets a picture), name and address, the inbox when every
 /// inbox shows, who blocked them and when, how many messages came since, and Unblock, which takes the row away with the
-/// undo strip when there is something to undo. What blocking means is said once, quietly, under the section.
+/// undo strip when there is something to undo. Under a sender the person unsubscribed from, one quiet line on how
+/// asking them to stop goes (`BlockedWords.unsubscribe`, kept by `unsubscribe.changed`), and when their page is left to
+/// the person, "Open their page". What blocking means is said once, quietly, under the section.
 struct BlockedTab: View {
     let inboxId: String?
     @Environment(MailStore.self) private var store
@@ -54,9 +56,9 @@ struct BlockedTab: View {
 }
 
 /// One blocked sender: their initials, name and address (and inbox), who blocked them and when, how many messages
-/// came since, and Unblock in the row's middle, the system's bordered button, a secondary one (owner's words of
-/// 2026-11-24: "should be like a button. not primary though, secondary"): small on the Mac, a finger's size on the
-/// iPhone.
+/// came since, how unsubscribing from them goes, and Unblock in the row's middle, the system's bordered button, a
+/// secondary one (owner's words of 2026-11-24: "should be like a button. not primary though, secondary"): small on the
+/// Mac, a finger's size on the iPhone. "Open their page" is the same kind of button, under the line.
 private struct BlockedRow: View {
     let sender: BlockedSender
     let inbox: String?
@@ -80,7 +82,12 @@ private struct BlockedRow: View {
     }
 
     private var unblockButton: some View {
-        Button("Unblock", action: unblock)
+        Self.secondary("Unblock", action: unblock)
+    }
+
+    /// A secondary button, the system's bordered one: small on the Mac.
+    private static func secondary(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
             .buttonStyle(.bordered)
             .tint(Theme.ink)
             #if os(macOS)
@@ -89,7 +96,24 @@ private struct BlockedRow: View {
             .pointer()
     }
 
-    /// Their name, address and inbox, the byline, and why an unblock was refused.
+    /// How unsubscribing from them goes, and their page to open when it is left to the person. The page comes from the
+    /// sender's mail, so it opens only on the tap, and only an https one (`Unsubscribe.page`).
+    @ViewBuilder private var unsubscribing: some View {
+        if let unsubscribe = sender.unsubscribe, let words = BlockedWords.unsubscribe(unsubscribe) {
+            Text(verbatim: words)
+                .font(Theme.sans(SettingsType.note))
+                .foregroundStyle(Theme.time)
+                .lineLimit(3)
+                .transition(.blurReveal)
+            if unsubscribe.state == .needsPerson, let page = unsubscribe.page {
+                Self.secondary("Open their page") { Links.open(page) }
+                    .padding(.top, 2)
+                    .transition(.blurReveal)
+            }
+        }
+    }
+
+    /// Their name, address and inbox, the byline, unsubscribing, and why an unblock was refused.
     private var details: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(verbatim: BlockedWords.name(sender))
@@ -108,6 +132,7 @@ private struct BlockedRow: View {
             .font(Theme.sans(SettingsType.note))
             .foregroundStyle(Theme.time)
             .lineLimit(2)
+            unsubscribing
             if let refusal {
                 SettingsView.refusal(refusal)
                     .transition(.blurReveal)
@@ -167,6 +192,27 @@ enum BlockedWords {
             return text.isEmpty ? "a rule" : "a rule: \(text)"
         case .ai: return "the AI"
         case .system: return "the server"
+        case .unknown: return nil
+        }
+    }
+
+    /// How asking them to stop goes, in one quiet line: "Unsubscribing…" while the server asks; once done, how it asked
+    /// ("Unsubscribed", "Asked by email to stop", "Unsubscribed by Browser Use"); "Their page is left to open" when only
+    /// their page is left; when it failed, the server's words as they are. Nothing for a state this app doesn't know.
+    static func unsubscribe(_ unsubscribe: Unsubscribe) -> String? {
+        let detail = unsubscribe.detail?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let failed = detail.flatMap { $0.isEmpty ? nil : $0 } ?? "Couldn't unsubscribe"
+        switch unsubscribe.state {
+        case .working: return "Unsubscribing…"
+        case .done:
+            switch unsubscribe.way {
+            case .email?: return "Asked by email to stop"
+            case .browserAgent?: return "Unsubscribed by Browser Use"
+            default: return "Unsubscribed"
+            }
+        // A page that can't be opened from here (not https) is as good as none.
+        case .needsPerson: return unsubscribe.page == nil ? failed : "Their page is left to open"
+        case .failed: return failed
         case .unknown: return nil
         }
     }

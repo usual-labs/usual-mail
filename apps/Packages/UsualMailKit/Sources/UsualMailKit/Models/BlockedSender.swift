@@ -16,10 +16,12 @@ public struct BlockedSender: Codable, Hashable, Sendable, Identifiable {
     public var messagesSinceBlocked: Int
     /// The date of their newest stored mail in this inbox; nil (the contract's `null`) when none is held.
     public var lastMessageAt: Date?
+    /// Asking them to stop, when a person unsubscribed from them in this inbox (docs/contract.md, "Unsubscribing").
+    public var unsubscribe: Unsubscribe?
 
     public init(
         inboxId: String, address: String, name: String? = nil, blockedAt: Date, blockedBy: Doer? = nil,
-        messagesSinceBlocked: Int = 0, lastMessageAt: Date? = nil
+        messagesSinceBlocked: Int = 0, lastMessageAt: Date? = nil, unsubscribe: Unsubscribe? = nil
     ) {
         self.inboxId = inboxId
         self.address = address
@@ -28,16 +30,18 @@ public struct BlockedSender: Codable, Hashable, Sendable, Identifiable {
         self.blockedBy = blockedBy
         self.messagesSinceBlocked = messagesSinceBlocked
         self.lastMessageAt = lastMessageAt
+        self.unsubscribe = unsubscribe
     }
 
     /// Who they are: the inbox and the address, compared without case.
     public var id: SenderKey { SenderKey(inboxId: inboxId, address: address) }
 
     private enum CodingKeys: String, CodingKey {
-        case inboxId, address, name, blockedAt, blockedBy, messagesSinceBlocked, lastMessageAt
+        case inboxId, address, name, blockedAt, blockedBy, messagesSinceBlocked, lastMessageAt, unsubscribe
     }
 
-    /// `name` and `blockedBy` are written only when present; `lastMessageAt` always, as `null` when there is none.
+    /// `name`, `blockedBy` and `unsubscribe` are written only when present; `lastMessageAt` always, as `null` when
+    /// there is none.
     public func encode(to encoder: any Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(inboxId, forKey: .inboxId)
@@ -47,6 +51,7 @@ public struct BlockedSender: Codable, Hashable, Sendable, Identifiable {
         try container.encodeIfPresent(blockedBy, forKey: .blockedBy)
         try container.encode(messagesSinceBlocked, forKey: .messagesSinceBlocked)
         try container.encode(lastMessageAt, forKey: .lastMessageAt)
+        try container.encodeIfPresent(unsubscribe, forKey: .unsubscribe)
     }
 }
 

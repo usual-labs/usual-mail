@@ -42,6 +42,39 @@ struct BlockedTabTests {
         #expect(BlockedWords.blocked(unknown, now: sample.now, calendar: calendar) == "Blocked 4 Mar 2025")
     }
 
+    /// Under a sender the person unsubscribed from: how it goes, in one quiet line, by state and way.
+    @Test func howUnsubscribingGoes() throws {
+        var request = Unsubscribe(
+            inboxId: "inb_personal", address: "deals@brightbuy.example", threadId: "thr_26", state: .working,
+            askedAt: sample.now, updatedAt: sample.now)
+        #expect(BlockedWords.unsubscribe(request) == "Unsubscribing…")
+        request.state = .done
+        let ways: [(UnsubscribeWay?, String)] = [
+            (.oneClick, "Unsubscribed"), (.email, "Asked by email to stop"),
+            (.browserAgent, "Unsubscribed by Browser Use"), (.page, "Unsubscribed"), (nil, "Unsubscribed"),
+        ]
+        for (way, words) in ways {
+            request.way = way
+            #expect(BlockedWords.unsubscribe(request) == words)
+        }
+        // Their page, left to the person, when it is one this app opens.
+        request.state = .needsPerson
+        request.way = .page
+        request.url = "https://brightbuy.example/unsubscribe"
+        #expect(BlockedWords.unsubscribe(request) == "Their page is left to open" && request.page != nil)
+        request.url = "http://brightbuy.example/unsubscribe"
+        #expect(BlockedWords.unsubscribe(request) == "Couldn't unsubscribe")
+        // Failed: the server's words as they are.
+        request.state = .failed
+        request.detail = "Their mail offers no way to unsubscribe."
+        #expect(BlockedWords.unsubscribe(request) == "Their mail offers no way to unsubscribe.")
+        request.detail = " "
+        #expect(BlockedWords.unsubscribe(request) == "Couldn't unsubscribe")
+        // A state a newer server sends says nothing.
+        request.state = .unknown("queued")
+        #expect(BlockedWords.unsubscribe(request) == nil)
+    }
+
     @Test func howManyMessagesSince() throws {
         #expect(BlockedWords.since(try sender("deals@brightbuy.example").messagesSinceBlocked) == "3 messages since")
         #expect(BlockedWords.since(try sender("outreach@linkboost.example").messagesSinceBlocked) == "1 message since")

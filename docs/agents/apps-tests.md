@@ -5,7 +5,33 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
 
 - `SwipeActionTests` (UI, 2026-11-25): Home's swipes on the iPhone, left marking seen and right snoozing unless
   Settings says otherwise; seen following New and Seen (read, or unread again), snooze asking when first, reply
-  later, pin and archive doing what the mail page's buttons do, the way back for a mail already there.
+  later, pin and archive doing what the mail page's buttons do, the way back for a mail already there. Since
+  2026-11-27 also Notifications' and the Feed's defaults and their own settings, a group's row acting on every thread
+  in it, and block asking first and needing a sender; and the Feed's left unsubscribing: asking first in its own words
+  ("Unsubscribe from Kestrel Roasters?", its red button), blocking the sender the row names, needing a sender, block
+  still a choice.
+- `UnsubscribeModelTests`, `BrowserAgentDisclosureTests`, `BlockedSenderUnsubscribeListTests` (Kit, 2026-11-27):
+  `Unsubscribe` decoded and written back as core has it (working without a way, page or words), every way and state
+  and an unknown one kept, only an https page with a host offered to open (not http, `javascript:`, `mailto:`); a
+  blocked sender carrying one only when asked; `unsubscribe.changed`; `AiSettings.browserAgent` and the patch's key or
+  `null`, the key a secret; the route (`POST /v1/threads/:id/unsubscribe`, no body, the id escaped); the disclosure's
+  title and four lines found word for word in core/src/unsubscribe.ts; the list keeping the higher version, and one
+  seen before its row given to the row.
+- `UnsubscribeStoreTests`, `BrowserAgentSetupTests` (Kit, 2026-11-27, against the stand-in server, which gained
+  `GET /v1/senders`, the unsubscribe route and `block_sender` adding the sender to its blocked list):
+  `unsubscribe(threadID:)` blocks first (the post done, the strip "Blocked. Asking them to stop.") then asks; the
+  Blocked tab's row carries the answer and `unsubscribe.changed` moves it on, a late older copy not taking it back;
+  Undo unblocks without taking the request back; the answer waiting for its row; an event during the load applied on
+  top; a refused request said in `problem` with the block kept; a refused block asking nothing; the sample asking
+  nothing. The Browser Use key: sent once, trimmed, the server's state kept, never in the copy on disk; a refused key
+  is the server's state; a refusal said in the setting without the key and not in `problem`; removing sends `null`.
+- `BlockedTabTests.howUnsubscribingGoes` and `SettingsTabsTests.theBrowserAgentsStateWords` (UI, 2026-11-27): the
+  Blocked tab's line by state and way (a page that isn't https as good as none, a failure in the server's words, an
+  unknown state saying nothing) and the AI tab's Unsubscribing words (the state's word, the server's detail or a
+  line of its own, where a key is made).
+- `TabNewsTests` (UI, 2026-11-27): the dot on a tab with mail not seen yet: mail from before lights nothing, new
+  unread mail lights its tab and not the chosen one, looking or reading puts it out, new mail in a thread counts
+  again, a profile sees its own, and what is kept survives a restart and forgets what the copy no longer holds.
 - `PhoneTests` (UI) also holds, since 2026-11-25, `BarFit` measuring the row as `TopBar` draws it, beside Settings'
   tabs centred on the iPhone only.
 - `SyncRetryTests` (UI, 2026-11-25, the review's): `SyncNoticeDispatch` opens the dashboard, moves the window or asks

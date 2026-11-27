@@ -178,6 +178,7 @@ function routeHandlers(server: MailServer, options: RestOptions): Record<RouteNa
       return c.json(await server.senders(caller, query));
     },
     allowSender: async ({ c, caller }) => c.json(await server.allowSender(caller, await body<AllowSenderInput>(c))),
+    unsubscribe: async ({ c, caller }) => c.json(await server.unsubscribe(caller, c.req.param("id")!)),
     act: async ({ c, caller }) => c.json(await server.act(caller, await body<ActInput>(c))),
     undo: async ({ c, caller }) => c.json(await server.undo(caller, c.req.param("id")!)),
     approve: async ({ c, caller }) => c.json(await server.approve(caller, field(await body(c), "actionIds") as string[])),

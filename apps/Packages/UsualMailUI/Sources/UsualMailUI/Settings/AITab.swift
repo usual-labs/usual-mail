@@ -2,9 +2,10 @@ import SwiftUI
 import UsualMailKit
 
 /// Settings' AI tab, in sections: Service, the service the server's AI reaches and each job's model (`AISettingsRows`);
-/// Status, how it stands and how much it still has to do; then Usage, what it used (`AIUsageSection`), asked for while
-/// the tab shows. It doesn't set the AI
-/// key; if it ever does, it must first show the server's disclosure, as onboarding does.
+/// Status, how it stands and how much it still has to do; Usage, what it used (`AIUsageSection`), asked for while the
+/// tab shows; then Unsubscribing, the optional browser agent for a sender's unsubscribe page (`BrowserAgentSection`),
+/// whose key it sets after core's words on what it is sent. It doesn't set the AI key; if it ever does, it must first
+/// show the server's disclosure, as onboarding does.
 struct AITab: View {
     @Environment(MailStore.self) private var store
 
@@ -26,6 +27,9 @@ struct AITab: View {
                 }
             }
             AIUsageSection()
+            if store.aiSettings != nil {
+                BrowserAgentSection()
+            }
         }
         .animation(Motion.reveal, value: store.aiUsage == nil)
         .fetchesAiUsage()

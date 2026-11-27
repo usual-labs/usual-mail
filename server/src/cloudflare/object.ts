@@ -108,6 +108,7 @@ export class UsualMailServer extends DurableObject<Env> {
       // Pictures from the web kept in the object's SQLite, and sites' icons, under Node's rules where Workers allow (web/).
       pictures: web.pictures,
       siteIcons: web.siteIcons,
+      oneClick: web.oneClick,
       // Smaller batches, plans and stored messages than Node's, and search's catch-up in the background (limits.ts).
       limits: options.limits ?? CLOUDFLARE_LIMITS,
       // CF-Connecting-IP of the request being answered, as the front Worker passed it on (the door keeps it; a client's

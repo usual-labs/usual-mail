@@ -99,6 +99,11 @@ export interface ProviderMessage {
   /** Headers the rules read. `listId` is the List-Id's id: the part in angle brackets, lower case. */
   listId?: string;
   listUnsubscribe?: string;
+  /**
+   * The List-Unsubscribe-Post header as sent: "List-Unsubscribe=One-Click" when the List-Unsubscribe's https address
+   * takes a one-click POST (RFC 8058; docs/contract.md, "Unsubscribing").
+   */
+  listUnsubscribePost?: string;
   /** True for bulk or machine-sent mail (Auto-Submitted, Precedence: bulk, a list header, no-reply). */
   automated: boolean;
   /**
@@ -113,6 +118,13 @@ export interface ProviderMessage {
    * A field given twice, or added after signing, isn't in it (docs/contract-ai.md, the screening gate).
    */
   signedRecipients?: Array<"to" | "cc">;
+  /**
+   * Which of its unsubscribe headers the sender's own DKIM signature vouches for, under the same rules as
+   * `signedRecipients` (docs/contract.md, "Unsubscribing"): `list-unsubscribe` and `list-unsubscribe-post`, each given
+   * once and named in the `h=` of every aligned signature. Read only when `fromCheck` is verified; absent or empty,
+   * neither is vouched for, and nothing of the message is used to unsubscribe.
+   */
+  signedUnsubscribe?: Array<"list-unsubscribe" | "list-unsubscribe-post">;
 }
 
 /**

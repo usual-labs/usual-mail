@@ -70,4 +70,24 @@ struct SettingsTabsTests {
         paused.pending = 0
         #expect(SettingsView.aiWords(paused) == "AI is paused on your server, so there are no new summaries.")
     }
+
+    /// The AI tab's Unsubscribing section: the browser agent's state in a word or two, the server's words under it
+    /// (else a line of its own unless it works), and where a key is made.
+    @Test func theBrowserAgentsStateWords() {
+        var agent = BrowserAgentSettings(service: .browserUse, state: .working)
+        #expect(BrowserAgentWords.short(agent) == "Working" && BrowserAgentWords.note(agent) == nil)
+        agent.state = .keyRefused
+        #expect(BrowserAgentWords.short(agent) == "Key refused")
+        #expect(BrowserAgentWords.note(agent) == "Browser Use refused the key. Remove it and save a new one.")
+        agent.state = .outOfCredit
+        agent.detail = "Add credit at cloud.browser-use.com."
+        #expect(BrowserAgentWords.short(agent) == "Out of credit")
+        #expect(BrowserAgentWords.note(agent) == "Add credit at cloud.browser-use.com.")
+        agent.state = .unavailable
+        agent.detail = nil
+        #expect(BrowserAgentWords.short(agent) == "Unavailable" && BrowserAgentWords.note(agent) != nil)
+        #expect(BrowserAgentWords.keys.absoluteString == "https://cloud.browser-use.com")
+        // Core's words on what Browser Use is sent are shown as they are.
+        #expect(BrowserAgentDisclosure.title == "What Browser Use is sent" && BrowserAgentDisclosure.lines.count == 4)
+    }
 }

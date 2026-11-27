@@ -61,6 +61,18 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
   - `MailThread.skippedScreening` (`ScreeningPass`, an open enum of core's kinds: code, sign-in, email confirmation,
     security, account, order, booking, payment): why a thread whose sender isn't let in is out of Screening; nil
     from a server before 0.1.4, written only when present (`ScreeningPassTests`).
+  - Unsubscribing (2026-11-27, the owner's request; `core/src/unsubscribe.ts`, docs/contract.md, "Unsubscribing";
+    `Models/Unsubscribe.swift`): `Unsubscribe` (inboxId, address, threadId, `state` `UnsubscribeState` working, done,
+    needsPerson, failed; `way` `UnsubscribeWay` oneClick, email, browserAgent, page; `url` kept as the server's text,
+    `detail`, askedAt, updatedAt, version; `key` its `SenderKey`; `page` the url only when it is https with a host, the
+    one thing a screen may open), `BlockedSender.unsubscribe` (written only when present), the event
+    `unsubscribe.changed` (`MailEvent.unsubscribeChanged`), `AiSettings.browserAgent` (`BrowserAgentSettings`: service
+    `BrowserAgentService` browserUse, `state` `BrowserAgentState` working, keyRefused, outOfCredit, unavailable,
+    `detail`; nil while none is set up) and `AiSettingsPatch.browserAgent` (`.set(BrowserAgentCredentials)` or
+    `.remove`, sent as `null`; its key joins `secrets`). `BrowserAgentDisclosure` is core's
+    `BROWSER_AGENT_DISCLOSURE` copied word for word (no route serves it); `BrowserAgentDisclosureTests` reads
+    core/src/unsubscribe.ts and fails when the two differ. `APIClient.unsubscribe(threadId:)`
+    (`POST /v1/threads/:id/unsubscribe`, no body, `APIClient+Senders.swift`).
   - Sender pictures (2026-11-19, `docs/contract-avatars.md`; `Models/SenderPicture.swift`, `Storage/SenderPictures.swift`):
     `MailThread.avatar`/`Message.avatar` (`SenderPicture`: picture, `fit` fill or inset with unknown as inset, size;
     written only when present). Only a picture of exactly `/v1/avatars/<32 lowercase hex>` has an `id`; anything else
@@ -208,6 +220,19 @@ on-device copy and the store the Mac screens read. The screens are in [apps.md](
   - **Actions** (`perform`, `undo`, `undoLastAction`, `approve`, `reject`) show at once. The answer's
     `ActResult.threads` and `records` replace what was shown, unless an event brought a higher version meanwhile. A
     refusal takes the change back. `PendingChanges` keeps unconfirmed changes on top of the server's newest copy.
+  - **Unsubscribing** (`Store/MailStore+Unsubscribe.swift`, 2026-11-27): `unsubscribe(threadID:)` does the person's
+    `block_sender` as `perform` does (the sender's threads archived at once, the strip "Blocked. Asking them to stop."
+    with Undo, which unblocks; `act` now returns whether the server took it and takes the strip's words), then, only
+    once the block went through, `POST /v1/threads/:id/unsubscribe`; the answer (`working`) goes to the blocked senders
+    as `unsubscribe.changed` would. A refused block asks nothing; a refused request goes to `problem` and the block
+    stays; the sample asks nothing. `BlockedSenderList` keeps the newest unsubscribe per sender by version, from rows
+    and events alike, and one that comes before its sender's row (the app blocks, then asks; the events can come in
+    either order) is given to the row when `sender.changed` brings it. While the list loads, `unsubscribe.changed`
+    waits with `sender.changed` (`BlockedSenderChange`) and is applied on top; before the list is loaded it is
+    dropped, since the load brings each sender's newest. `BrowserAgentSetup` (Settings' Unsubscribing section): `save
+    (key:)` (trimmed; nothing for an empty key) and `remove()` through `updateAiSettings`, `step` while it runs, and a
+    refusal in `refusal`, without the key, taken out of `problem`. Tested against the stand-in server
+    (`UnsubscribeStoreTests`), not against a real one: no server has answered these routes with the apps yet.
   - **Opening a thread marks it read** (`open(threadID:)`), as the person's own `read` action, without an Undo strip.
     `markingRead: false` only looks (the previews use it).
   - **Silent records:** the copy holds them; Handled leaves them out until `showSilent(true)`.

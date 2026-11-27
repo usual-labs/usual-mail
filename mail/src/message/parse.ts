@@ -9,7 +9,7 @@ import { fromCheckOf, sealedResultAgrees, type AuthenticationOptions } from "./a
 import { firstHeader, headerMap, isAutomated, listIdOf, messageIds, stripBrackets } from "./headers.ts";
 import { htmlToText } from "./html-to-text.ts";
 import { sanitizeHtml } from "./sanitize.ts";
-import { headerBlockReadable, signedRecipients } from "./signed-recipients.ts";
+import { headerBlockReadable, signedRecipients, signedUnsubscribe } from "./signed-recipients.ts";
 import { threadKeyFor } from "./thread.ts";
 
 export type ParsedMessage = Omit<ProviderMessage, "ref" | "seen" | "placement" | "outgoing" | "threadKey"> & {
@@ -83,6 +83,10 @@ export async function parseMessage(raw: Uint8Array | string, context: ParseConte
   if (listId) message.listId = listId;
   const listUnsubscribe = firstHeader(headers, "list-unsubscribe");
   if (listUnsubscribe) message.listUnsubscribe = listUnsubscribe;
+  // Kept beside it as sent: it says whether the https address takes a one-click POST (RFC 8058), which the server
+  // judges when a person unsubscribes, not here. Whether the sender's signature vouches for either is read below.
+  const listUnsubscribePost = firstHeader(headers, "list-unsubscribe-post");
+  if (listUnsubscribe && listUnsubscribePost) message.listUnsubscribePost = listUnsubscribePost;
   // The message's own headers only, top first: never those of a message attached to it.
   if (context.authentication) {
     message.fromCheck = fromCheckOf(email.headers, from.email, context.authentication);
@@ -92,6 +96,9 @@ export async function parseMessage(raw: Uint8Array | string, context: ParseConte
     if (message.fromCheck.result === "verified") {
       const sound = !context.headersIncomplete && headerBlockReadable(raw) && sealedResultAgrees(email.headers, context.authentication);
       message.signedRecipients = sound ? signedRecipients(email.headers, message.fromCheck.domain, context.authentication) : [];
+      // And which of its unsubscribe headers (docs/contract.md, "Unsubscribing"): only these are ever used to unsubscribe,
+      // so a header added above a signed message, or a forged one, is never followed.
+      message.signedUnsubscribe = sound ? signedUnsubscribe(email.headers, message.fromCheck.domain, context.authentication) : [];
     }
   }
   return message;

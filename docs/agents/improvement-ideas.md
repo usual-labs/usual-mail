@@ -358,3 +358,12 @@ and the notes:
   sender picture, so they still offer Let in to one without a picture ([known-issues.md](known-issues.md), "Let in is
   offered for a sender already let in"). A thread field saying whether its sender is let in (or the senders list in the
   apps) would hide it.
+- **Unsubscribing, what is left** (2026-11-27; built as [server-unsubscribe.md](server-unsubscribe.md) says):
+  http pages; mail stored before 0.1.5, which carries no signature check and so is never used; a link in the body for a
+  sender with no List-Unsubscribe, dropped for 0.1.5 by the re-review (a signed mail can repeat someone else's words, and
+  a Content-Type added on top turns signed text into links), and wanted again only with the reviewer's conditions: the
+  link inside HTML the sender's signature covers, the Content-Type and Content-Transfer-Encoding headers each given
+  once and signed, no `l=`, and the link's host the From address's own registrable domain;
+  showing the outcome where the swipe happened, not only in Settings' Blocked tab; Browser Use's EU address and its
+  zero-data-retention setting named in Settings; telling the person what a run cost (Browser Use's
+  `GET /sessions/:id/cost`).

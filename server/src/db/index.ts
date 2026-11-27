@@ -27,3 +27,4 @@ export type OwnerRow = typeof schema.owner.$inferSelect;
 export type TeachRow = typeof schema.teachPrompts.$inferSelect;
 export type ServerStateRow = typeof schema.serverState.$inferSelect;
 export type AvatarSiteRow = typeof schema.avatarSites.$inferSelect;
+export type UnsubscribeRow = typeof schema.unsubscribes.$inferSelect;

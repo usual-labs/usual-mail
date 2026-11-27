@@ -8,7 +8,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { AuthenticationOptions, HeaderField } from "../../src/message/auth-results.ts";
 import { parseMessage } from "../../src/message/parse.ts";
-import { headerBlockReadable, signedRecipients } from "../../src/message/signed-recipients.ts";
+import { headerBlockReadable, signedRecipients, signedUnsubscribe } from "../../src/message/signed-recipients.ts";
 
 const organisationalDomain = (domain: string): string | null => domain.split(".").slice(-2).join(".") || null;
 const GMAIL: AuthenticationOptions = { checker: "mx.google.com", organisationalDomain };
@@ -256,5 +256,53 @@ describe("a header line that is neither a field nor a fold (the fourth review's 
     assert.deepEqual(parsed.signedRecipients, ["to"], "only To, which names the attacker; the added Cc doesn't count");
     assert.equal(headerBlockReadable(lines(null)), true);
     assert.equal(headerBlockReadable("To : a@b.example\r\n folded\r\n\r\nBody: not a header"), true, "a space before the colon, a fold, then the body");
+  });
+});
+
+/**
+ * Which of a newsletter's unsubscribe headers its sender's signature vouches for (docs/contract.md, "Unsubscribing"; the
+ * security reviews of 2026-11-27): only these are ever used, so a List-Unsubscribe added above a signed message, or a
+ * second one, is never followed. Nothing of the body is read.
+ */
+describe("the unsubscribe headers the sender's signature vouches for", () => {
+  const unsubscribe = (...pairs: Array<[string, string]>) =>
+    signedUnsubscribe(fields(["Authentication-Results", RESULT], ...pairs), "brand.example", GMAIL);
+  const ONE_CLICK: Array<[string, string]> = [["List-Unsubscribe", "<https://brand.example/u>"], ["List-Unsubscribe-Post", "List-Unsubscribe=One-Click"]];
+
+  it("both headers when signed and given once", () => {
+    assert.deepEqual(unsubscribe(["DKIM-Signature", signature("from:to:list-unsubscribe:list-unsubscribe-post")], ...ONE_CLICK), ["list-unsubscribe", "list-unsubscribe-post"]);
+    assert.deepEqual(unsubscribe(["DKIM-Signature", signature("from:to:List-Unsubscribe")], ...ONE_CLICK), ["list-unsubscribe"], "the Post header unsigned");
+  });
+
+  it("a header added above a signed message, or given twice, counts for nothing", () => {
+    assert.deepEqual(unsubscribe(["List-Unsubscribe", "<https://attacker.example/u>"], ["DKIM-Signature", signature("from:to:subject")], ["To", "me@inbox.example"]), [], "unsigned: added after signing");
+    assert.deepEqual(unsubscribe(["List-Unsubscribe", "<https://attacker.example/u>"], ["DKIM-Signature", signature("from:to:list-unsubscribe")], ["List-Unsubscribe", "<https://brand.example/u>"]), [], "twice");
+    assert.deepEqual(unsubscribe(["DKIM-Signature", signature("from:to:list-unsubscribe", "Zz9xxxxxxxxx")], ...ONE_CLICK), [], "no signature the checker passed");
+    assert.deepEqual(unsubscribe(["DKIM-Signature", signature("from:to:list-unsubscribe", "AbCd1234forged")], ["DKIM-Signature", signature("from:to:list-unsubscribe-post")], ...ONE_CLICK), [], "every aligned signature bounds it: neither header is in both");
+  });
+
+  it("through the parser, only once the From domain is proved", async () => {
+    const message = (extra: string[], signedHeaders = "from:to:subject:date:list-unsubscribe:list-unsubscribe-post") => [
+      `ARC-Authentication-Results: i=1; ${RESULT}`,
+      `Authentication-Results: ${RESULT}`,
+      ...extra,
+      `DKIM-Signature: v=1; a=rsa-sha256; d=brand.example; s=s1; h=${signedHeaders}; bh=abc=; b=AbCd1234wxyz`,
+      "From: Brand <news@brand.example>",
+      "To: me@inbox.example",
+      "List-Unsubscribe: <https://brand.example/u>",
+      "List-Unsubscribe-Post: List-Unsubscribe=One-Click",
+      "Subject: Issue 1",
+      "Date: Wed, 25 Nov 2026 10:00:00 +0000",
+      "Message-ID: <n@brand.example>",
+      "",
+      "Hello",
+    ].join("\r\n");
+    const parsed = await parseMessage(message([]), { ownAddresses: [], authentication: GMAIL });
+    assert.deepEqual(parsed.signedUnsubscribe, ["list-unsubscribe", "list-unsubscribe-post"]);
+    const added = await parseMessage(message(["List-Unsubscribe: <https://attacker.example/u>"]), { ownAddresses: [], authentication: GMAIL });
+    assert.equal(added.listUnsubscribe, "<https://attacker.example/u>", "the parser reads the topmost");
+    assert.deepEqual(added.signedUnsubscribe, ["list-unsubscribe-post"], "so it isn't vouched for");
+    const unasked = await parseMessage(message([]), { ownAddresses: [] });
+    assert.equal(unasked.signedUnsubscribe, undefined, "not read without the checker");
   });
 });

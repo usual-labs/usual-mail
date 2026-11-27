@@ -29,6 +29,8 @@ struct Pages: View {
     let fixSync: @MainActor (SyncNotice.Action) -> Void
     /// Settings' Accounts tab took the sign-in it was opened for (`Navigation.accountsSignInStarted`).
     let accountsSignInStarted: @MainActor () -> Void
+    /// Closes the open mail without animating (`Navigation.back`), for the iPhone's swipe back (`ReadingStack`).
+    var swipeBack: @MainActor () -> Void = {}
     @Environment(MailStore.self) private var store
 
     var body: some View {
@@ -64,24 +66,34 @@ struct Pages: View {
         return SyncSnapshot(inbox)
     }
 
+    /// A list and the mail opened from it: on the iPhone, the mail over the list, which a swipe in from the left edge
+    /// shows again (`ReadingStack`); on the Mac, one or the other.
+    @ViewBuilder private func stacked(@ViewBuilder list: () -> some View) -> some View {
+        #if os(iOS)
+            ReadingStack(reading: nav.reading, back: swipeBack, list: list)
+                .transition(.handOver)
+        #else
+            if let reading = nav.reading {
+                ReadingView(threadID: reading)
+                    .transition(.handOver)
+            } else {
+                list()
+                    .transition(.handOver)
+            }
+        #endif
+    }
+
     @ViewBuilder private var page: some View {
         let inboxId = nav.activeProfile
         switch nav.place {
         case .tab(.home):
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 HomeView(inboxId: inboxId, open: read)
                     .environment(\.keptScroll, kept)
                     .checksForMail(inboxId)
-                    .transition(.handOver)
             }
         case .screening:
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 ScreeningView(inboxId: inboxId) { action, threadID in
                     Task { await store.perform(action, on: [threadID]) }
                 } open: { id in
@@ -89,59 +101,38 @@ struct Pages: View {
                 }
                 .environment(\.keptScroll, kept)
                 .checksForMail(inboxId)
-                .transition(.handOver)
             }
         case .tab(.reads):
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 FeedView(inboxId: inboxId, posts: feed, open: read)
                     .environment(\.keptScroll, kept)
                     .checksForMail(inboxId)
-                    .transition(.handOver)
             }
         case .tab(.notifications):
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 NotificationsView(inboxId: inboxId, expanded: $expandedGroups, open: read)
                     .environment(\.keptScroll, kept)
                     .checksForMail(inboxId)
-                    .transition(.handOver)
             }
         case .tab(let tab):
             // Receipts.
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 CategoryListView(tab: tab, inboxId: inboxId, open: read)
                     .environment(\.keptScroll, kept)
                     .checksForMail(inboxId)
                     .id(tab)
-                    .transition(.handOver)
             }
         case .inbox:
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 InboxView(inboxId: inboxId, top: kept.places.top(kept.key), open: read)
                     .checksForMail(inboxId)
-                    .transition(.handOver)
             }
         case .toReply, .pinned, .snoozed:
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 RailListView(place: nav.place, inboxId: inboxId, open: read)
                     .environment(\.keptScroll, kept)
                     .checksForMail(inboxId)
                     .id(nav.place)
-                    .transition(.handOver)
             }
         case .settings:
             SettingsView(
@@ -150,15 +141,11 @@ struct Pages: View {
             )
             .transition(.handOver)
         case .search:
-            if let reading = nav.reading {
-                ReadingView(threadID: reading)
-                    .transition(.handOver)
-            } else {
+            stacked {
                 SearchView(
                     model: search, inboxId: inboxId, focusRequest: searchFocus, open: read, leave: leaveSearch,
                     openAISettings: openAISettings
                 )
-                .transition(.handOver)
             }
         }
     }

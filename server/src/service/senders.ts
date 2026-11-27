@@ -2,7 +2,8 @@
 // 2026-11-20), and `sender.changed`, the event that says a sender became blocked or stopped being blocked, or that
 // mail from a blocked sender arrived. A block is a `senders` row with status `blocked`: `updated_at` is when the block
 // in force now was applied. Who blocked them is the actor of the newest applied `block_sender` record for that
-// address. The count is made from the stored messages each time it is asked for: no counter is kept.
+// address. The count is made from the stored messages each time it is asked for: no counter is kept. A sender a person
+// unsubscribed from carries how that stands (`unsubscribe`, docs/contract.md, "Unsubscribing").
 
 import { ServiceError, type BlockedSender, type Caller, type Page, type SendersQuery } from "@usualmail/core";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -14,6 +15,7 @@ import type { Ctx } from "./context.ts";
 import { publishedSecond, wholeSecond } from "./rows.ts";
 import { check, SendersQuerySchema } from "./schemas.ts";
 import { senderStatus, setSenderStatus } from "./store.ts";
+import { unsubscribesOf } from "../unsubscribe/requests.ts";
 
 interface BlockedRow {
   inboxId: string;
@@ -63,6 +65,7 @@ async function blockedItems(ctx: Ctx, rows: readonly BlockedRow[]): Promise<Bloc
       .from(actions).leftJoin(threads, eq(threads.id, actions.threadId))
       .where(and(eq(actions.inboxId, inboxId), eq(actions.kind, "block_sender"), eq(actions.state, "applied")))
       .orderBy(desc(actions.at), desc(actions.id));
+    const asked = await unsubscribesOf(ctx, inboxId, addresses);
     for (const row of mine) {
       const theirs = mail.filter((message) => message.from.email.toLowerCase() === row.email).sort((a, b) => b.date - a.date);
       const name = theirs.find((message) => message.from.name?.trim())?.from.name?.trim();
@@ -76,6 +79,7 @@ async function blockedItems(ctx: Ctx, rows: readonly BlockedRow[]): Promise<Bloc
         // A message's date in whole seconds, as it is served, against the block's.
         messagesSinceBlocked: theirs.filter((message) => message.date > row.updatedAt).length,
         lastMessageAt: theirs[0] ? iso(theirs[0].date) : null,
+        ...(asked.has(row.email) && { unsubscribe: asked.get(row.email)! }),
       });
     }
   }

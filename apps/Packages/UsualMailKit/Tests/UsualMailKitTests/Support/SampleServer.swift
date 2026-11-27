@@ -11,7 +11,8 @@ import Synchronization
 /// in that inbox; Handled holds rules', agents' and the AI's records, carries trashed threads and leaves silent records
 /// out unless asked (and with `attentionOnly` gives what needs a look); a sent draft without a note isn't kept; a
 /// paused inbox answers `conflict` to sending, files and syncs; new credentials make an inbox `connecting`; a wrong
-/// pairing code is `unauthorized`; the sample's sender pictures are drawn PNGs (`SampleServer+Avatars`). The counts and the AI's status are the state's own (tests change them); a settings
+/// pairing code is `unauthorized`; the sample's sender pictures are drawn PNGs (`SampleServer+Avatars`); `block_sender`
+/// adds the sender to the blocked senders, and unsubscribing answers a request (`SampleServer+Senders`). The counts and the AI's status are the state's own (tests change them); a settings
 /// patch is kept, and its key never comes back. Tests can make one route fail once, hold every answer back until a
 /// gate opens, hand out a teach prompt, make sending fail or carry a note, or make the provider refuse new
 /// credentials.
@@ -48,6 +49,10 @@ final class SampleServer: HTTPTransport {
         var revoked: [String] = []
         /// A sender picture's id → the reply to give instead of the sample's drawn picture.
         var avatarReplies: [String: StubReply] = [:]
+        /// The newest unsubscribe asked per sender (`SampleServer+Senders`).
+        var unsubscribes: [SenderKey: Unsubscribe] = [:]
+        /// What testing a new browser agent's key finds.
+        var browserAgentTest = BrowserAgentSettings(service: .browserUse, state: .working)
     }
 
     let state: Mutex<State>
@@ -151,6 +156,8 @@ final class SampleServer: HTTPTransport {
             let owner = state.withLock { $0.ownerInfo }
             return .json(ServerInfo(name: "usual-mail", version: "0.1.0", apiVersion: 1, owner: owner))
         } else if let reply = try ownerReply(method: method, parts: parts, body: body) {
+            return reply
+        } else if let reply = sendersReply(method: method, parts: parts) {
             return reply
         } else if route("POST v1/pair") != nil {
             let input = try MailJSON.decoder().decode(PairInput.self, from: body)
@@ -328,6 +335,7 @@ final class SampleServer: HTTPTransport {
                 state.data.threads[index].version += 1
                 state.data.actions.append(record)
                 records.append(record)
+                if input.action == .blockSender { SampleServer.noteBlocked(thread, in: &state) }
                 // Letting a sender in lets in every screened thread of theirs in the inbox.
                 if input.action == .allowSender, let sender = SampleServer.sender(of: id, in: state.data) {
                     for other in state.data.threads.indices

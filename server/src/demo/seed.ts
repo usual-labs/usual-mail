@@ -224,6 +224,8 @@ export async function seedSample(host: Host, demo: Demo, sample: SampleData, shi
       outgoing: message.outgoing,
       listId: message.listId ?? null,
       listUnsubscribe: null,
+      listUnsubscribePost: null,
+      signedUnsubscribe: null,
       automated: stored.automated,
       // A message the sample shows a sender picture for: its From domain counts as proved by the provider's checker.
       fromCheck: message.avatar ? "verified" : null,

@@ -55,6 +55,10 @@ in `core/src/ai-words.ts`; the words, lists, actions and the sorting of new mail
 - **Testing** (`testAi`, person only) sends one small request per job's model, with no mail in it, and answers with
   the status that follows.
 - **Pausing** (`paused: true`) stops all processing, for every inbox: nothing is sent. Resuming carries on.
+- **The browser agent** (`browserAgent`, since 2026-11-27) is set in the same settings but isn't the AI: an optional
+  Browser Use key that opens a sender's unsubscribe page when nothing cheaper works. It never reads mail, pausing the
+  AI doesn't stop it, and removing the AI's key leaves it. What it is sent and how its key is kept are in
+  [unsubscribing](contract.md#unsubscribing).
 - **A store from before the switch was removed** keeps its column, which nothing reads: an inbox that had AI off is
   processed from then on like every inbox, its waiting threads as history (newest first).
 

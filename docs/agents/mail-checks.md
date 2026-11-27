@@ -3,6 +3,8 @@
 What each pass ran and saw, newest first, split out of [mail.md](mail.md). Commands and the Docker notes are in
 mail.md, "Run and check".
 
+- **Unsubscribing (2026-11-27, `swipe-back`):** mail `npm run check`: tsc clean; 699 tests, 647 passed, 29 skipped, 23
+  failed, every failure in "IMAP on Dovecot", as before. New: the newsletter fixture's List-Unsubscribe-Post read.
 - **The narrow check's fixes (2026-11-26, `screening-pass`):** mail `npm test`: tsc clean; 699 tests, 647 passed, 29
   skipped, 23 failed, every failure in "IMAP on Dovecot", as before. New: the proof dropped when Gmail's sealed copy
   above disagrees (with no copy, standing), through the parser and the metadata re-read; `sealedResultAgrees` refusing a

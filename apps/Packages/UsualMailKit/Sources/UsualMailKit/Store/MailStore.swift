@@ -101,9 +101,9 @@ public final class MailStore {
     @ObservationIgnored var readsOnTheirWay: Set<String> = []
     /// The rows unblocking took away, by the record that unblocked them, so undoing it shows the row again at once.
     @ObservationIgnored var unblockedRows: [String: BlockedSender] = [:]
-    /// `sender.changed` events that came while the blocked senders were being fetched, to apply on top of the answer;
-    /// nil while no fetch is under way.
-    @ObservationIgnored var senderChangesWhileLoading: [SenderChange]?
+    /// `sender.changed` and `unsubscribe.changed` events that came while the blocked senders were being fetched, to
+    /// apply on top of the answer; nil while no fetch is under way.
+    @ObservationIgnored var senderChangesWhileLoading: [BlockedSenderChange]?
     @ObservationIgnored let watch = RefreshWatch()
     @ObservationIgnored private var refreshAgain = false
     @ObservationIgnored private var comeBackTimer: Task<Void, Never>?
@@ -143,8 +143,10 @@ public final class MailStore {
             switch update {
             case .connected:
                 connection = .live
-                // Changes made while the stream was down aren't replayed, so reload.
+                // Changes made while the stream was down aren't replayed, so reload; and the server may be a newer one
+                // (what it can do, as unsubscribing, goes by its version).
                 Task { await refresh() }
+                Task { await loadServerInfo() }
                 if blockedSenders != nil { Task { await loadBlockedSenders() } }
             case .event(let event):
                 await receive(event)

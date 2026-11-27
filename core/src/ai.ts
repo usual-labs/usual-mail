@@ -3,6 +3,7 @@
  * What the AI may do, what leaves the server and how mail is passed to a model are in docs/contract-ai.md.
  */
 import type { IsoTime } from "./domain.ts";
+import type { BrowserAgentCredentials, BrowserAgentSettings } from "./unsubscribe.ts";
 
 /**
  * A job the server's AI does, each with its own model. `categorize` sets a thread's category and `summarize` writes
@@ -62,6 +63,12 @@ export interface AiSettings {
   jobs: AiJobSetting[];
   /** True while the person paused the AI: nothing is sent to the service, for any inbox. */
   paused: boolean;
+  /**
+   * The browser agent that opens a sender's unsubscribe page when nothing cheaper works (docs/contract.md,
+   * "Unsubscribing"), without its key. Absent while none is set up. Optional, and apart from the AI's key: pausing the
+   * AI doesn't stop it, and it never reads mail.
+   */
+  browserAgent?: BrowserAgentSettings;
   /** Rises with every change and may rise by more than one. Of two copies, keep the higher. */
   version: number;
 }
@@ -80,6 +87,12 @@ export interface AiSettingsPatch {
   /** A model id per job, as the service names it, or null for the server's default. */
   models?: Partial<Record<AiJob, string | null>>;
   paused?: boolean;
+  /**
+   * A browser agent's key, which replaces a stored one whole, or null to remove it. Setting it is the person's consent
+   * to what `BROWSER_AGENT_DISCLOSURE` says, which an interface shows first. The server stores it, then tests it at
+   * once with a request that starts nothing, and answers after that test.
+   */
+  browserAgent?: BrowserAgentCredentials | null;
 }
 
 /**
