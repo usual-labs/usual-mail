@@ -1,5 +1,6 @@
 # Usual Mail's server with Docker Compose: the published image, or the image built from this repository.
 #
+#   docker compose up -d --no-build --wait   start from the published image and wait for the local dashboard
 #   docker compose up -d          start the server in the background (pulls the image, or builds it from a checkout
 #                                 of this repository when it can't be pulled)
 #   docker compose up -d --build  build the image from this checkout and start it, after changing the code
@@ -47,24 +48,15 @@ services:
     # can't change owners or users then (docs/deploy.md); the named volume below is node's from its first start:
     # cap_drop: [ALL]
     # user: "1000:1000"
-    # Optional settings; see docs/agents/server.md.
-    # environment:
-    #   # The server's time zone (UTC without it): the day mail was sent as the AI reads it, and the times in its words.
-    #   TZ: "Europe/Berlin"
-    #   USUAL_MAIL_POLL_SECONDS: "60"
-    #   # How many days of mail a new inbox's first sync takes (default 30). With Compose, set it here: it wins over
-    #   # /data/settings.json, which `usual-mail init` and `usual-mail sync-days` write for a server they run.
-    #   USUAL_MAIL_SYNC_DAYS: "30"
-    #   # Sign in with Google for Gmail (docs/google-setup.md): the address your browser reaches the server at, which
-    #   # Google sends people back to. Register it at Google followed by /v1/google/callback. The Google client goes
-    #   # into the volume as /data/google-client.json, readable only by the server's user.
-    #   USUAL_MAIL_PUBLIC_URL: "http://127.0.0.1:8484"
-    #   # Only signing in with Google as this address sets the server up (docs/deploy.md, "Claiming your server").
-    #   # Without it, whoever first opens the address and sets a password owns the server.
-    #   USUAL_MAIL_OWNER_EMAIL: "you@example.org"
-    #   # Behind a reverse proxy on this machine (the port above stays on 127.0.0.1): believe the client address it
-    #   # writes in X-Forwarded-For, so wrong passwords count per client (docs/deploy.md, "Behind a proxy").
-    #   USUAL_MAIL_TRUSTED_PROXIES: "private"
+    # Set these in .env beside this file. For a proxy on this host, use your HTTPS origin and trusted proxy range.
+    environment:
+      USUAL_MAIL_PUBLIC_URL: ${USUAL_MAIL_PUBLIC_URL:-http://127.0.0.1:8484}
+      USUAL_MAIL_TRUSTED_PROXIES: ${USUAL_MAIL_TRUSTED_PROXIES:-}
+      USUAL_MAIL_OWNER_EMAIL: ${USUAL_MAIL_OWNER_EMAIL:-}
+      USUAL_MAIL_GOOGLE_CLIENT_ID: ${USUAL_MAIL_GOOGLE_CLIENT_ID:-}
+      USUAL_MAIL_GOOGLE_CLIENT_SECRET: ${USUAL_MAIL_GOOGLE_CLIENT_SECRET:-}
+      TZ: ${TZ:-UTC}
+    # Other server settings, such as USUAL_MAIL_SYNC_DAYS, can be added under environment.
 
 volumes:
   # Everything the server keeps: the database, with mailbox passwords and the AI key stored sealed, and the key that

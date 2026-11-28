@@ -1,0 +1,14 @@
+# Import this file into an empty Railway project. Review the staged settings before deploying.
+services:
+  usual-mail:
+    image: ghcr.io/usual-labs/usual-mail:0.1.5
+    volumes:
+      - mail-data:/data
+    environment:
+      PORT: "8484"
+      USUAL_MAIL_TRUSTED_PROXIES: private
+      RAILWAY_DEPLOYMENT_DRAINING_SECONDS: "180"
+      # Replace in the staged service before deploying. An invalid email keeps the server from starting.
+      USUAL_MAIL_OWNER_EMAIL: enter-your-email
+volumes:
+  mail-data:

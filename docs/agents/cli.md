@@ -339,7 +339,9 @@ SIGKILL even if the process is still there; both are in [known-issues.md](known-
   Compose pulls the image, and builds it from the checkout when the pull fails;
   `--build` always builds), a named volume at `/data`, the port published on 127.0.0.1 only, `restart: unless-stopped`, `stop_grace_period: 3m` (the server's stop waits for the mail in hand; [decisions-deploy.md](decisions-deploy.md)), and comments on the owner's code (in the volume whenever no person's
   device is paired) and on reaching it from other devices: a private network such as Tailscale or WireGuard, or a
-  reverse proxy with HTTPS, never the bare port on every network. Its volume comment says the database holds the
+  reverse proxy with HTTPS, never the bare port on every network. The portable quick start uses this file by itself
+  with `--no-build --wait`. The public URL defaults to local loopback. Proxy trust, owner email, Google credentials,
+  time zone and the public URL can be set in an adjacent `.env`. Its volume comment says the database holds the
   mailbox passwords and the AI key sealed, and the volume the key that seals them.
 
 ## Decisions

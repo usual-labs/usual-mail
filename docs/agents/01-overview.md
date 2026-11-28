@@ -1,5 +1,9 @@
 # Overview
 
+The README introduces the features and has a short deploy guide; its Home image (`docs/images/home.jpg`) is a still
+from the Mac onboarding tour's sample mail. [docs/deploy.md](../deploy.md) is the entry point to the detailed hosting
+and setup guides.
+
 State on 2026-11-17. **Every part follows the contract's fifth revision** (as amended the same day): the mailbox is
 the main database, the server runs its own AI on mail with the person's own key (categories and summaries) for every
 inbox once the key is set (the owner removed the per-inbox switch later that day: below), categories replace piles, screening is a gate, Home replaces Now, and lists, counts
@@ -452,13 +456,14 @@ Dockerfile, docker-entrypoint.sh, .dockerignore   the server's image (starts as 
 compose.yaml            the image with Docker Compose on this machine (pulls it, or builds it from a checkout)
 compose.caddy.yaml      a VPS of your own: the image behind Caddy with Let's Encrypt, one file plus .env
 compose.coolify.yaml    Coolify v4 (no ports; the address and the key from Coolify's variables)
+deploy/                 Azure portal template and Bicep source, AWS CloudFormation stack, Railway Compose import
 render.yaml             a Render Blueprint (Dockerfile build, starter plan, 5 GB disk at /data)
 .github/workflows/image.yml   publishes the image to ghcr.io/usual-labs/usual-mail (amd64, arm64) on a release
 package.json, wrangler.jsonc   deploy the server to Cloudflare (`npm ci`, `npx wrangler deploy`) and test it in workerd
 LICENSE      the GNU AGPL-3.0 (every package.json says AGPL-3.0-only); THIRD_PARTY_NOTICES.md: what comes from others
 CONTRIBUTING.md, CLA.md   how to contribute, and the contributor agreement (a draft without a legal review)
 docs/        contract.md (the entry point), contract-ai.md, contract-sync.md, self-hosting.md, deploy.md (a VPS,
-             Coolify, Render, Railway), google-setup.md and google-setup-agent.md (for people running a server), and
+             Coolify, Render, Railway), deploy-cloud-vms.md (Azure and AWS), google-setup.md and google-setup-agent.md (for people running a server), and
              agents/ (this knowledge base; the deploy files' reasons in decisions-deploy.md)
 ```
 

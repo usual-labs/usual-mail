@@ -27,10 +27,9 @@ the software. Private planning stays in the parent workspace.
   reaching it, the Google client, pairing, Gmail, the AI key, `usual-mail doctor`; and "On Cloudflare": deploying,
   the Worker's settings, the address, the owner's code in Data Studio, how it differs, backup, what is unverified).
   The Mac app links to it.
-- [docs/deploy.md](docs/deploy.md): the public guide to running the server on an always-on host: what any host must
-  give it, a table to choose by, Docker on a VPS behind Caddy (`compose.caddy.yaml`), Coolify (`compose.coolify.yaml`),
-  Render (`render.yaml`) and Railway (no template yet); tried in Docker Desktop on a Mac only. The README's "Deploy
-  your own" leads with the Cloudflare and Render buttons and points here.
+- [docs/deploy.md](docs/deploy.md): local Docker Compose, a VPS with Caddy, an existing proxy, Coolify, Render
+  and Railway's Compose import. [docs/deploy-cloud-vms.md](docs/deploy-cloud-vms.md) covers the Azure and AWS VM
+  templates. The README leads with local Docker and links to each host.
 - [docs/google-setup.md](docs/google-setup.md): the host's guide to setting up Sign in with Google for Gmail (the
   Google Cloud client, its redirect address, the scope, test users, Google's rules).
 - [docs/google-setup-agent.md](docs/google-setup-agent.md): the same client set up by the host's own browser agent (a
