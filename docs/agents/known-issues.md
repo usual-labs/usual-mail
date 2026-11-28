@@ -763,7 +763,8 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
 ## Fixed
 
 - **Changing tabs and scrolling lagged on the iPhone with a large copy** (apps, the owner's report of 2026-11-27,
-  "sometimes lags on tab change and also scrolls"; fixed the same day on `swipe-back`, not yet in a build). Home, the
+  "sometimes lags on tab change and also scrolls"; fixed by 2026-11-28 in `96d5692`, in the iPhone build 202611280805
+  and the Mac build 202611280809). Home, the
   category tabs, Notifications, Screening and the rail's lists were a `VStack` in a `ScrollView`, so they built every row,
   not only those on screen: on choosing the tab, and again on every change to the copy (each new or sorted mail, a seen
   tick), when every row's body ran (162 of 162 Notifications rows for one changed thread, counted). Every row also

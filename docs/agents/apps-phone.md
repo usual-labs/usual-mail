@@ -310,6 +310,10 @@ Welcome, its copy untouched (seen 2026-11-24). Signed again, it opens on Home; d
   for both Mac and iPhone"), from `51ae4cd` (`v0.1.5`), each after its `--check`: iPhone 202611271637 and Mac
   202611271641, both valid in App Store Connect and in internal testing. Their version is still 0.1.0, as every build's
   has been. They unsubscribe against a server at 0.1.5 or newer, and only block against an older one.
+- **The builds of 2026-11-28** (the owner's "ship"), from `96d5692` on `main`, apps only (no server release, no version
+  bump), each after its `--check`: iPhone 202611280805 and Mac 202611280809, both valid in App Store Connect. They
+  build the lists lazily (the lag on changing tabs and scrolling, known-issues.md, Fixed), keep each list's place by
+  the row at its top, and swipe on Receipts. Version 0.1.0, as before.
 
 ## How to check
 

@@ -438,7 +438,9 @@ its queue, the browser agent's key in the AI's settings (Browser Use, only with 
 of which unsubscribe headers the sender's signature vouches for, and migration 0023; reviewed for security twice before
 it shipped (known-issues.md, Fixed). The iPhone app's builds that came with it unsubscribe from the Feed, swipe on
 Notifications and the Feed, dot the tabs with unseen mail and go back from a mail with a swipe from the left edge
-([apps-phone.md](apps-phone.md)).
+([apps-phone.md](apps-phone.md)). The apps' builds of 2026-11-28 (iPhone 202611280805, Mac 202611280809, from
+`96d5692`; no server release) build the lists lazily, so a long copy no longer lags on changing tabs, keep each list's
+place by the row at its top, and swipe on Receipts.
 
 ## Layout
 
