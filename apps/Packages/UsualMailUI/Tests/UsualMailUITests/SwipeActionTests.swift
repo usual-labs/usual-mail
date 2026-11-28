@@ -6,7 +6,8 @@ import UsualMailKit
 
 /// What swiping a mail on Home does on the iPhone, each way (`SwipeAction`; the owner's words of 2026-11-25): left
 /// marks it seen, right snoozes it, unless Settings says otherwise; each does what the row's menu does. Notifications
-/// and the Feed have their own (the owner's words of 2026-11-27), the Feed's left unsubscribing.
+/// and the Feed have their own (the owner's words of 2026-11-27), the Feed's left unsubscribing, and Receipts its own
+/// (2026-11-28).
 struct SwipeActionTests {
     /// A mail in New: unread, on no stack, not snoozed, not done.
     private func mail() throws -> MailThread {
@@ -28,13 +29,20 @@ struct SwipeActionTests {
     @Test func notificationsArchiveRightAndTheFeedUnsubscribesLeft() {
         #expect(SwipeList.notifications.leftDefault == .seen && SwipeList.notifications.rightDefault == .archive)
         #expect(SwipeList.feed.leftDefault == .unsubscribe && SwipeList.feed.rightDefault == .archive)
+        #expect(SwipeList.receipts.leftDefault == .seen && SwipeList.receipts.rightDefault == .archive)
         // Blocking alone is still a choice, on every list.
         #expect(SwipeAction.allCases.contains(.block) && SwipeAction.unsubscribe.title == "Unsubscribe")
         // Each list and way has its own setting; Home keeps the keys it had.
         let keys = SwipeList.allCases.flatMap { [$0.leftKey, $0.rightKey] }
-        #expect(Set(keys).count == 6)
+        #expect(Set(keys).count == 8)
         #expect(SwipeList.home.leftKey == "UsualMailSwipeLeft" && SwipeList.home.rightKey == "UsualMailSwipeRight")
-        #expect(Set(SwipeList.allCases.map(\.title)).count == 3)
+        // The others keep theirs, so a choice made before Receipts came stays.
+        #expect(SwipeList.notifications.leftKey == "UsualMailSwipeNotificationsLeft")
+        #expect(SwipeList.feed.rightKey == "UsualMailSwipeFeedRight")
+        #expect(SwipeList.receipts.leftKey == "UsualMailSwipeReceiptsLeft")
+        #expect(Set(SwipeList.allCases.map(\.title)).count == 4)
+        // Settings lists them in the card's order of tabs.
+        #expect(SwipeList.allCases == [.home, .feed, .receipts, .notifications])
     }
 
     @Test func seenMovesAMailBetweenNewAndSeen() throws {

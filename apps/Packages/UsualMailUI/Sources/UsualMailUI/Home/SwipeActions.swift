@@ -76,21 +76,40 @@ enum SwipeAction: String, CaseIterable, Identifiable, Sendable {
 /// the archive ... the other I don't know, choose something yourself", seen as Home's left and as the row's tick) and
 /// the Feed (left unsubscribe, right archive: the owner's words of 2026-11-27, swiping a post "should unsubscribe from
 /// it, so I won't ever get that any feed from those or email from those"; it blocks the sender too, every mail of
-/// theirs archived, now and later). Each list offers every action. Home's keys are the ones it had before the others
-/// came.
+/// theirs archived, now and later) and Receipts (left seen, right archive: the owner's words of 2026-11-28, "I also want
+/// the swipe right to swipe left gesture in receipts step", naming no actions; seen as every list's left but the
+/// Feed's, archive as filing a receipt away). Each list offers every action. Home's keys are the ones it had before the
+/// others came. In the card's order of tabs, as Settings lists them.
 enum SwipeList: String, CaseIterable, Identifiable, Sendable {
-    case home, notifications, feed
+    case home, feed, receipts, notifications
+
+    /// The list a tab's rows swipe as: each tab its own, so a new tab needs its own choice here.
+    init(_ tab: Tab) {
+        switch tab {
+        case .home: self = .home
+        case .reads: self = .feed
+        case .receipts: self = .receipts
+        case .notifications: self = .notifications
+        }
+    }
 
     var id: Self { self }
 
     var leftKey: String { self == .home ? "UsualMailSwipeLeft" : "UsualMailSwipe\(keyName)Left" }
     var rightKey: String { self == .home ? "UsualMailSwipeRight" : "UsualMailSwipe\(keyName)Right" }
 
-    private var keyName: String { self == .notifications ? "Notifications" : "Feed" }
+    private var keyName: String {
+        switch self {
+        case .home: "Home"
+        case .receipts: "Receipts"
+        case .notifications: "Notifications"
+        case .feed: "Feed"
+        }
+    }
 
     var leftDefault: SwipeAction {
         switch self {
-        case .home, .notifications: .seen
+        case .home, .receipts, .notifications: .seen
         case .feed: .unsubscribe
         }
     }
@@ -98,7 +117,7 @@ enum SwipeList: String, CaseIterable, Identifiable, Sendable {
     var rightDefault: SwipeAction {
         switch self {
         case .home: .snooze
-        case .notifications, .feed: .archive
+        case .receipts, .notifications, .feed: .archive
         }
     }
 
@@ -106,6 +125,7 @@ enum SwipeList: String, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .home: "Swiping on Home"
+        case .receipts: "Swiping on Receipts"
         case .notifications: "Swiping on Notifications"
         case .feed: "Swiping on Feed"
         }
@@ -115,6 +135,7 @@ enum SwipeList: String, CaseIterable, Identifiable, Sendable {
     var footer: String {
         switch self {
         case .home: "What a swipe on a mail on Home does."
+        case .receipts: "What a swipe on a receipt or an invoice does."
         case .notifications:
             "What a swipe on a notification does. On a row of several updates, it does it to all of them."
         case .feed:

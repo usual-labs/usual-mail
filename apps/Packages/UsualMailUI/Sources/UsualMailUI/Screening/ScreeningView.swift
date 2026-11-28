@@ -16,14 +16,16 @@ struct ScreeningView: View {
         let list = ScreeningList(store.lists, inbox: inboxId)
         let count = store.counts?.counts(for: inboxId)?.screened ?? list.groups.reduce(0) { $0 + $1.threads.count }
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            // Lazy, so only the senders near the screen are built (as Home's).
+            LazyVStack(alignment: .leading, spacing: 24) {
                 Text(ScreeningList.title(count: count))
                     .font(Theme.sans(12, weight: .semibold))
                     .foregroundStyle(Theme.listTitle)
                     .frame(maxWidth: .infinity)
                     .contentTransition(.numericText())
                     .revealOnAppear()
-                ForEach(Array(list.groups.enumerated()), id: \.element.id) { index, group in
+                    .id(ListRowID.words("count"))
+                ForEach(Array(list.groups.enumerated()), id: \.element.rowID) { index, group in
                     VStack(alignment: .leading, spacing: 16) {
                         ScreeningRow(
                             thread: group.latest, inbox: store.lists.inbox(id: group.latest.inboxId),
@@ -52,14 +54,17 @@ struct ScreeningView: View {
                         .foregroundStyle(Theme.sectionTitle)
                         .frame(maxWidth: .infinity)
                         .revealOnAppear()
+                        .id(ListRowID.words("empty"))
                 }
             }
+            .scrollTargetLayout()
             .padding(Theme.page)
             .animation(Motion.move, value: list.groups.map(\.id))
         }
         .scrollIndicators(.never)
-        // Where it was, coming back to the mail stack or from a mail (`ScrollPlaces`).
-        .keepsScroll()
+        .revealsFirstScreen(hasRows: !list.groups.isEmpty)
+        // Back at the row that was at the top, coming back to the mail stack or from a mail (`ScrollPlaces`).
+        .keepsTopRow(list.groups.map(\.rowID))
     }
 }
 

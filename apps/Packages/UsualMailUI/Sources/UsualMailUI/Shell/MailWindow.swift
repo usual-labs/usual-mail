@@ -167,7 +167,7 @@
             ScrollPlaces.Key(place: place, inbox: place.destination == .mail ? profile : nil)
         }
 
-        /// The list on show's kept place, for its scroll view (`keepsScroll`).
+        /// The list on show's kept place, for its scroll view (`keepsTopRow`, `ScrollPlaces.top`).
         private var kept: KeptScroll {
             scrolls.kept(scrollKey(nav.place, profile: nav.profile))
         }

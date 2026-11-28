@@ -1,10 +1,10 @@
 #if os(iOS)
     import SwiftUI
 
-    /// On the iPhone, Settings' choice of what swiping does on Home, Notifications and the Feed, each way
+    /// On the iPhone, Settings' choice of what swiping does on Home, Receipts, Notifications and the Feed, each way
     /// (`SwipeList`, `SwipeAction`; the owner's words of 2026-11-25, "these settings should be changable in settings",
-    /// and of 2026-11-27, "they need to be changeable into the settings"): a section of the Appearance tab per list, a
-    /// row a way, the system's menu at its right. Kept on this iPhone.
+    /// and of 2026-11-27, "they need to be changeable into the settings"): a section of the Appearance tab per list, in
+    /// the card's order of tabs, a row a way, the system's menu at its right. Kept on this iPhone.
     struct SwipeSettings: View {
         var body: some View {
             ForEach(SwipeList.allCases) { list in

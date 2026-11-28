@@ -32,7 +32,9 @@ Split out of [apps.md](apps.md) on 2026-11-25 to keep it under 500 lines: what e
   page and carry the row's right-click menu. Each post fetches its messages only as it comes near the screen
   (`LazyVStack`) through `MailStore.detail(threadID:)`; `FeedPosts`, held by `MailWindow`, fetches a thread once and
   again only when its message count or last time changes. **Showing a post doesn't mark it read**; opening it does.
-  Coming back from the mail page starts the feed at the top. Each HTML post is its own web view (likely its own
+  Coming back from the mail page, or to the mail stack, finds the feed at the post that was at its top (its header's
+  id, `scrollPosition(id:)` through `ScrollPlaces.top(_:)`; a post's height is known only once its mail is laid out).
+  Each HTML post is its own web view (likely its own
   WebKit process, and posts scrolled past stay alive), not measured yet.
 - **Notifications** (`Lists/NotificationsView.swift`, `NotificationSections.swift`, `EventWords.swift`, owner's "Yes,
   build both" of 2026-11-19): `notification` threads in sections Today (the event's date is the person's local

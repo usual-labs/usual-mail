@@ -23,6 +23,10 @@ enum Motion {
 
     /// The blur at the start of a reveal, in points.
     static let blur: CGFloat = 10
+
+    /// How long after a lazy list first has rows they still come into focus as they appear (`revealsFirstScreen`):
+    /// long enough for the first screenful, which is built at once; a row scrolled to later is simply there.
+    static let firstScreen = 0.5
 }
 
 /// A view at `progress` of a reveal: blurred and clear at 0, sharp and whole at 1.
@@ -57,21 +61,51 @@ extension AnyTransition {
     }
 }
 
-/// Reveals a view the first time it appears, after `delay`.
+/// Reveals a view the first time it appears, after `delay`; in a lazy list (`revealsFirstScreen`), only while the list
+/// first has rows, so a row built as it is scrolled to doesn't come into focus late.
 private struct RevealOnAppear: ViewModifier {
     let delay: Double
+    @Environment(\.revealSince) private var since
     @State private var shown = false
 
     func body(content: Content) -> some View {
+        let late = since.map { Date().timeIntervalSince($0) > Motion.firstScreen } ?? false
         content
-            .modifier(BlurReveal(progress: shown ? 1 : 0))
+            .modifier(BlurReveal(progress: shown || late ? 1 : 0))
             .onAppear {
                 withAnimation(Motion.reveal.delay(delay)) { shown = true }
             }
     }
 }
 
+/// Since when the list around a view has had rows, set by a lazy list (`revealsFirstScreen`): from its first rows, not
+/// from when it showed, so rows that come late (the first sync after pairing, a slow read of the copy) still come into
+/// focus one after another (the review of 2026-11-28).
+private struct RevealsFirstScreen: ViewModifier {
+    let hasRows: Bool
+    @State private var since: Date?
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.revealSince, since)
+            .onChange(of: hasRows, initial: true) {
+                if hasRows && since == nil { since = Date() }
+            }
+    }
+}
+
+extension EnvironmentValues {
+    /// When the lazy list around a view first had rows (`revealsFirstScreen`); nil outside one, and before.
+    @Entry var revealSince: Date? = nil
+}
+
 extension View {
+    /// For a lazy list's scroll view: its rows come into focus one after another as it first has rows (`hasRows`), as
+    /// a list built whole does; rows built later, as they are scrolled to, are simply there (`revealOnAppear`).
+    func revealsFirstScreen(hasRows: Bool) -> some View {
+        modifier(RevealsFirstScreen(hasRows: hasRows))
+    }
+
     /// Comes into focus when it appears, after `delay` (a list passes `Motion.delay(at:)`).
     func revealOnAppear(delay: Double = 0) -> some View {
         modifier(RevealOnAppear(delay: delay))

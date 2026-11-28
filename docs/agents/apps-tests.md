@@ -9,7 +9,8 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
   2026-11-27 also Notifications' and the Feed's defaults and their own settings, a group's row acting on every thread
   in it, and block asking first and needing a sender; and the Feed's left unsubscribing: asking first in its own words
   ("Unsubscribe from Kestrel Roasters?", its red button), blocking the sender the row names, needing a sender, block
-  still a choice.
+  still a choice. Since 2026-11-28 Receipts' defaults and keys too, the others' keys as they were, and Settings'
+  order (the card's).
 - `UnsubscribeModelTests`, `BrowserAgentDisclosureTests`, `BlockedSenderUnsubscribeListTests` (Kit, 2026-11-27):
   `Unsubscribe` decoded and written back as core has it (working without a way, page or words), every way and state
   and an unknown one kept, only an https page with a host offered to open (not http, `javascript:`, `mailto:`); a
@@ -29,6 +30,18 @@ Which tests guard what in `apps/` (UsualMailKit and UsualMailUI). The apps thems
   Blocked tab's line by state and way (a page that isn't https as good as none, a failure in the server's words, an
   unknown state saying nothing) and the AI tab's Unsubscribing words (the state's word, the server's detail or a
   line of its own, where a key is made).
+- `LongListTests` (UI, 2026-11-27, the owner's lag on changing tabs): Home, Receipts, Notifications, Screening and
+  Pinned laid out in an offscreen window as tall as an iPhone show about as fast with 3,000 threads as with 300 (under
+  3 times; about 1 to 1.5 now, 8 to 10 when they were built whole, which it was seen to catch). The fastest of five
+  tries each, so a busy machine doesn't decide it; it passed five full runs in a row.
+- `KeptPlaceTests` (UI, 2026-11-28, the review's kept places): the same five lists at 1,200 threads, each laid out
+  fresh with a kept row (on the first screen, a tenth of the way down, near the foot), come back with it at their top,
+  as the scroll view itself says (`onScrollTargetVisibilityChange`, after a point's scroll). It caught rows that were
+  each one of two views (Home and Notifications came back to the top for a row on the first screen) and Screening's
+  count without an id (every row lost). `StacksTests.aKeptTopRowThatLeftGivesWayToTheOneInItsPlace`: a kept row that
+  left gives way to the one now in its place; one that moved to the top on its own (row 150 of 300) leaves the list
+  at 151, the row that was under it; 40 rows coming above it keep it, and its place is kept up to date, so it leaving
+  after them is found where it was then; titles', rows' and words' ids never meet.
 - `TabNewsTests` (UI, 2026-11-27): the dot on a tab with mail not seen yet: mail from before lights nothing, new
   unread mail lights its tab and not the chosen one, looking or reading puts it out, new mail in a thread counts
   again, a profile sees its own, and what is kept survives a restart and forgets what the copy no longer holds.

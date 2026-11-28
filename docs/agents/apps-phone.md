@@ -137,6 +137,13 @@ points since 2026-11-25, below).
   from its header and from its HTML, and the block question; the sample takes no action, so what they do there is the
   menu's, not seen. The unsubscribe swipe and its question are tested (`SwipeActionTests`) and built for the iPhone,
   not run: no simulator was opened for it, and no server has answered its request with the apps yet.
+- **Receipts' swipes** (owner's words of 2026-11-28, "I also want the swipe right to swipe left gesture in receipts
+  step", naming no actions): the same swipe as Home's on each receipt or invoice, with its own two settings
+  ("Swiping on Receipts"; the same choices; `SwipeList(tab)`, so a new tab needs a choice of its own): left seen or
+  unseen, as every list's left but the Feed's, right archive, filing it away (done: the row leaves the tab and the mail
+  is archived in its mailbox). Settings now lists the four lists in the card's order of tabs (Home, Feed, Receipts,
+  Notifications); the others keep their keys, so a choice made before stays. Tested (`SwipeActionTests`) and built
+  for the iPhone, not run in a simulator.
 - **A dot on a tab with mail not seen yet** (owner's words of 2026-11-27: "whenever in any of the tabs there is a new
   item which I haven't seen ... I haven't opened it and I haven't seen it, maybe. Then I need to see a dot on the
   tab"): Home, Feed, Receipts or Notifications at the card's foot gets an 8-point dot in the danger colour, ringed in

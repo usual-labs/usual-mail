@@ -13,7 +13,7 @@ struct Pages: View {
     let feed: FeedPosts
     /// The notification groups shown expanded, kept by the window.
     @Binding var expandedGroups: ExpandedGroups
-    /// The list on show's kept place, for its scroll view (`keepsScroll`).
+    /// The list on show's kept place, for its scroll view (`keepsTopRow`, `ScrollPlaces.top`).
     let kept: KeptScroll
     /// The search page's query and answers, kept by the window.
     let search: SearchModel

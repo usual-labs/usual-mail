@@ -27,8 +27,9 @@ struct RailListView: View {
         let list = RailList(store.lists, place: place, inbox: inboxId)
         let today = CalendarDay(now, in: timeZone)
         return ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                ForEach(Array(list.threads.enumerated()), id: \.element.id) { index, thread in
+            // Lazy, so only the rows near the screen are built (as Home's).
+            LazyVStack(alignment: .leading, spacing: 24) {
+                ForEach(Array(list.threads.enumerated()), id: \.element.rowID) { index, thread in
                     let inbox = store.lists.inbox(id: thread.inboxId)
                     HomeItem(
                         thread: thread, inbox: inbox,
@@ -46,6 +47,7 @@ struct RailListView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 8)
                         .revealOnAppear()
+                        .id(ListRowID.words("empty"))
                 }
                 if let note = AIWords.note(status: store.aiStatus, threads: list.threads) {
                     Text(verbatim: note)
@@ -55,13 +57,16 @@ struct RailListView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 8)
                         .revealOnAppear(delay: Motion.longestWait)
+                        .id(ListRowID.words("note"))
                 }
             }
+            .scrollTargetLayout()
             .padding(Theme.page)
             .animation(Motion.move, value: list.threads.map(\.id))
         }
         .scrollIndicators(.never)
-        // Where it was, coming back to this stack or from a mail (`ScrollPlaces`).
-        .keepsScroll()
+        .revealsFirstScreen(hasRows: !list.threads.isEmpty)
+        // Back at the row that was at the top, coming back to this stack or from a mail (`ScrollPlaces`).
+        .keepsTopRow(list.threads.map(\.rowID))
     }
 }

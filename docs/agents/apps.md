@@ -81,7 +81,8 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   sidebar will each be their own stack", which replaced their earlier request the same day for one "← {previous}"
   capsule on the rail pages): six stacks, `Destination`: mail (the switcher's profiles), To reply, Pinned, Snoozed,
   the Inbox page and Settings, each kept as left for the session (the mail stack its profile, tab and open mail; each
-  list its open mail and scroll; Settings its tab). The mail stack shows the tabs; Settings only its own tabs; the four
+  list its open mail and the row at its top, `keepsTopRow`, or the row now in its place once that one has gone, as a
+  lazy list's distances are only estimates; Settings its tab). The mail stack shows the tabs; Settings only its own tabs; the four
   others one quiet title capsule (icon and name, clear glass, not clickable), which becomes "← {page}" with a mail open.
   No stack has a way back; the current stack's rail button is lit and does nothing pressed again. **Chosen is lit**
   everywhere (2026-11-20, after captures showed tints 2–9 levels apart over the sky): the current rail button, the
@@ -96,7 +97,9 @@ The design is the Figma file "Untitled", frame "MacBook Pro 14" - 1" (node 1:2, 
   anything appearing; a quicker blur-out (0.18 s) for anything leaving. Switching tabs, the last tab's name blurs out
   as its capsule narrows and the new one's comes into focus as it widens; the screening count reveals. A screen
   (`handOver`) only fades out while the next reveals its own parts: Home's section titles and items one after another
-  (35 ms apart, none waiting more than 0.3 s), the reading view's back button, header and each message, a
+  (35 ms apart, none waiting more than 0.3 s; the lists are lazy since 2026-11-27, so this is only as a list first has
+  rows, and a row built later as it is scrolled to is simply there: `revealsFirstScreen`; another profile keeps the list, so
+  its rows come in through their insertion's blur together, not one after another), the reading view's back button, header and each message, a
   placeholder, Settings, the pairing card. The hover time reveals and blurs out in place. Under Reduce Motion only the
   opacity changes. The owner clicked through it on 2026-11-17 and said it "feels right"; this session never watched it
   run (no pointer, and the capture tool finds the window after the reveal ends).

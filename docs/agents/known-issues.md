@@ -4,6 +4,12 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
 
 ## Open
 
+- **No test proves that scrolling a lazy list writes back the row kept at its top** (apps, 2026-11-28, the review of
+  the kept places). `KeptPlaceTests` proves a list comes back with its kept row, and the kept row is SwiftUI's
+  `scrollPosition(id:)` binding, which SwiftUI writes as the person scrolls: offscreen, the review saw a scroll wheel's
+  events write it, and a program's `scroll(to:)` on the scroll view didn't (seen in writing `KeptPlaceTests`). Scrolling with the keyboard on the Mac and with a finger
+  on the iPhone are not checked: if one didn't write it, coming back would find the row last written.
+
 - **A store that ran the draft of migration 0023 needs resetting** (server, 2026-11-27, open for development stores
   only). 0023 was amended before 0.1.5 shipped (the security review added `messages.signed_unsubscribe` and
   `unsubscribes.tried` and `marker`). Drizzle picks migrations by their date, and the amended 0023 is newer than the
@@ -755,6 +761,36 @@ against the test server with memory mailboxes) and the proposed fix; none is bui
   differences instead, but a refusal then is only logged instead of failing the records.
 
 ## Fixed
+
+- **Changing tabs and scrolling lagged on the iPhone with a large copy** (apps, the owner's report of 2026-11-27,
+  "sometimes lags on tab change and also scrolls"; fixed the same day on `swipe-back`, not yet in a build). Home, the
+  category tabs, Notifications, Screening and the rail's lists were a `VStack` in a `ScrollView`, so they built every row,
+  not only those on screen: on choosing the tab, and again on every change to the copy (each new or sorted mail, a seen
+  tick), when every row's body ran (162 of 162 Notifications rows for one changed thread, counted). Every row also
+  started its reveal and its sender picture's load at once, and on the iPhone carried its swipe's gesture and dialogs.
+  Measured on this Mac, offscreen at an iPhone's size, with the sample copied to 1,233 threads: Home took 71 ms to show,
+  Receipts 56, Notifications 98, growing with every row (a frame has 8 to 16 ms); a phone is slower. Now each is a
+  `LazyVStack` (Home's and Notifications' sections one stack of titles and rows since the kept places' fix below): 4 to
+  13 ms whatever the count, and 15 rows rebuilt on a change.
+  Rows still come into focus one after another when a list first shows; a row built later, as it is scrolled to, is
+  simply there (`revealsFirstScreen`, its clock started by the list's first rows, so rows that come late, after
+  pairing or a slow read of the copy, still come in one after another), or it would blur in late. `LongListTests`
+  guards it. Not measured: what was left on the phone itself (no profile run there), and the card's two masks over the
+  scrolling content, a cost for the graphics chip on every frame of a scroll. The tab dots (`TabNews`) add about 1 ms a
+  redraw and 2 ms a tab change at 1,233 threads.
+  **Lazy, their kept scroll places landed off** (the review of 2026-11-28, before any build): they came back by
+  distance, and a fresh lazy list only estimates the rows it hasn't built, so Home at 1,233 threads came back to row 122
+  for 116 at 8,000 points, and to row 210 for 204 at 14,000, saving a shorter distance that drifted further each time:
+  on the Mac, where a list is made again after each mail, the row just read could be off screen, about 35 rows a round
+  trip near the end. Now the five lists keep the row at their top, as the Feed does (`keepsTopRow`,
+  `scrollPosition(id:)`), or when that row has left (read into Seen, archived) or moved away on its own (new mail
+  sorting it to the top, more than about a screenful from its place and not with the row under it) the one now in its
+  place, so the list doesn't go with it; the kept row's place is kept up to date as rows come above it; Home's and
+  Notifications' sections are one stack of titles and rows (`TitledRows`). Two things kept a list from coming back to a
+  row, both found by `KeptPlaceTests`: rows that were each one of two views (a `switch`, title or mail) lost a row on
+  the first screen, and a view without an id of the list's kind above the rows (Screening's count) lost every row; each
+  item is now one view and every view in the stack has an id (`ListRowID`). Seen only offscreen on the Mac, not on the
+  iPhone.
 
 - **Unsubscribing followed whatever a stored message said** (server and mail, found 2026-11-27 by the security review of
   the unsubscribe work; fixed before release, `swipe-back`). The first build took any stored message whose From was the

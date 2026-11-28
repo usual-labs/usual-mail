@@ -53,14 +53,14 @@ private struct NotificationList: View {
 
     var body: some View {
         let sections = NotificationSections(store.lists, inbox: inboxId, today: today, now: now)
-        let parts = sections.parts
         let rows = sections.rows
+        let items = TitledRows(sections.parts.map { (title: $0.title, rows: $0.rows) })
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                ForEach(Array(parts.enumerated()), id: \.element.id) { index, part in
-                    // Each title and row one place further into the list than the last.
-                    section(part, from: parts[..<index].reduce(0) { $0 + $1.rows.count + 1 })
-                }
+            // Lazy, so only the rows near the screen are built, on choosing the tab, each minute and on each change to
+            // the copy (as Home's); one stack of titles and rows, so its kept place is a row (`keepsTopRow`).
+            LazyVStack(alignment: .leading, spacing: 24) {
+                // Each title and row comes into focus one place further into the list than the last, as Home's do.
+                TitledRowsContent(rows: items) { row in rowView(row) }
                 if sections.isEmpty && store.hasLoadedFromDisk {
                     Text(verbatim: CategoryList.emptyWords(for: .notifications))
                         .font(Theme.sans(12))
@@ -68,6 +68,7 @@ private struct NotificationList: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 8)
                         .revealOnAppear()
+                        .id(ListRowID.words("empty"))
                 }
                 if let note = AIWords.note(status: store.aiStatus, threads: sections.all) {
                     Text(verbatim: note)
@@ -75,34 +76,21 @@ private struct NotificationList: View {
                         .foregroundStyle(Theme.time)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
                         .revealOnAppear(delay: Motion.longestWait)
+                        .id(ListRowID.words("note"))
                 }
             }
+            .scrollTargetLayout()
             .padding(Theme.page)
-            .animation(Motion.move, value: parts.map { $0.rows.map(\.threadIDs) })
+            .animation(Motion.move, value: sections.parts.map { $0.rows.map(\.threadIDs) })
         }
         .scrollIndicators(.never)
-        // Where it was, coming back to the mail stack or from a mail (`ScrollPlaces`).
-        .keepsScroll()
+        .revealsFirstScreen(hasRows: !items.items.isEmpty)
+        // Back at the row that was at the top, coming back to the mail stack or from a mail (`ScrollPlaces`).
+        .keepsTopRow(items.ids)
         // A group whose threads changed shows collapsed, and stays so.
         .onChange(of: rows.map(\.threadIDs), initial: true) { expanded.forgetChanged(rows) }
-    }
-
-    /// A section whose title and rows come into focus one after another, `first` places into the list, as Home's do.
-    private func section(_ part: NotificationSections.Part, from first: Int) -> some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text(verbatim: part.title)
-                .font(Theme.sans(12, weight: .semibold))
-                .foregroundStyle(Theme.sectionTitle)
-                .frame(maxWidth: .infinity)
-                .accessibilityAddTraits(.isHeader)
-                .revealOnAppear(delay: Motion.delay(at: first))
-            ForEach(Array(part.rows.enumerated()), id: \.element.id) { index, row in
-                rowView(row)
-                    .revealOnAppear(delay: Motion.delay(at: first + 1 + index))
-                    .transition(.blurReveal)
-            }
-        }
     }
 
     /// A row, and under it, while its group is expanded, the group's older threads, newest first, indented as far as

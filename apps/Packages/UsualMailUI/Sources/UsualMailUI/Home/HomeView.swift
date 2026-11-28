@@ -12,10 +12,16 @@ struct HomeView: View {
 
     var body: some View {
         let list = HomeList(store.lists, inbox: inboxId)
+        let rows = TitledRows([(title: "New", rows: list.new), (title: "Seen", rows: list.seen)])
         ScrollView {
-            VStack(alignment: .leading, spacing: 32) {
-                if !list.new.isEmpty { section("New", list.new, from: 0) }
-                if !list.seen.isEmpty { section("Seen", list.seen, from: list.new.count + 1) }
+            // Lazy, so a tab with hundreds of threads builds only the rows near the screen, on choosing it and on each
+            // change to the copy; one stack of titles and rows, so its kept place is a row (`keepsTopRow`).
+            LazyVStack(alignment: .leading, spacing: 24) {
+                TitledRowsContent(rows: rows) { thread in
+                    HomeItem(thread: thread, inbox: store.lists.inbox(id: thread.inboxId)) { open(thread.id) }
+                        // On the iPhone, a swipe either way does what Settings says (`SwipeAction`).
+                        .homeSwipes(thread)
+                }
                 if list.isEmpty && store.hasLoadedFromDisk {
                     Text("Nothing needs you.")
                         .font(Theme.sans(12))
@@ -23,6 +29,7 @@ struct HomeView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.top, 8)
                         .revealOnAppear()
+                        .id(ListRowID.words("empty"))
                 }
                 if let note = AIWords.note(status: store.aiStatus, threads: list.new + list.seen) {
                     Text(verbatim: note)
@@ -30,34 +37,19 @@ struct HomeView: View {
                         .foregroundStyle(Theme.time)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity)
+                        .padding(.top, 8)
                         .revealOnAppear(delay: Motion.longestWait)
+                        .id(ListRowID.words("note"))
                 }
             }
+            .scrollTargetLayout()
             .padding(Theme.page)
-            .animation(Motion.move, value: list.new.map(\.id) + list.seen.map(\.id))
+            .animation(Motion.move, value: rows.ids)
         }
         .scrollIndicators(.never)
-        // Where it was, coming back to the mail stack or from a mail (`ScrollPlaces`).
-        .keepsScroll()
-    }
-
-    /// A section whose title and items come into focus one after another, `first` places into the list.
-    private func section(_ title: String, _ threads: [MailThread], from first: Int) -> some View {
-        VStack(alignment: .leading, spacing: 24) {
-            Text(title)
-                .font(Theme.sans(12, weight: .semibold))
-                .foregroundStyle(Theme.sectionTitle)
-                .frame(maxWidth: .infinity)
-                .accessibilityAddTraits(.isHeader)
-                .revealOnAppear(delay: Motion.delay(at: first))
-            ForEach(Array(threads.enumerated()), id: \.element.id) { index, thread in
-                HomeItem(thread: thread, inbox: store.lists.inbox(id: thread.inboxId)) { open(thread.id) }
-                    // On the iPhone, a swipe either way does what Settings says (`SwipeAction`).
-                    .homeSwipes(thread)
-                    .revealOnAppear(delay: Motion.delay(at: first + 1 + index))
-                    .transition(.blurReveal)
-            }
-        }
+        .revealsFirstScreen(hasRows: !rows.items.isEmpty)
+        // Back at the row that was at the top, coming back to the mail stack or from a mail (`ScrollPlaces`).
+        .keepsTopRow(rows.ids)
     }
 }
 

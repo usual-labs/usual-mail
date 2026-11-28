@@ -303,15 +303,58 @@ struct StacksTests {
         let scrolls = ScrollPlaces()
         let home = ScrollPlaces.Key(place: .tab(.home), inbox: "inb_harbor")
         let pinned = ScrollPlaces.Key(place: .pinned, inbox: nil)
-        #expect(scrolls.offset(home) == 0 && scrolls.top(pinned).wrappedValue == nil)
-        scrolls.keep(420, at: home)
+        let ids: [ListRowID] = [.row("thr_1"), .row("thr_2"), .row("thr_3")]
+        #expect(scrolls.top(home, in: ids).wrappedValue == nil && scrolls.top(pinned).wrappedValue == nil)
+        scrolls.top(home, in: ids).wrappedValue = .row("thr_2")
         scrolls.top(pinned).wrappedValue = "thr_10"
         // Another profile's Home is another list.
-        #expect(scrolls.offset(home) == 420 && scrolls.offset(.init(place: .tab(.home), inbox: nil)) == 0)
+        #expect(scrolls.top(home, in: ids).wrappedValue == .row("thr_2"))
+        #expect(scrolls.top(.init(place: .tab(.home), inbox: nil), in: ids).wrappedValue == nil)
         #expect(scrolls.kept(pinned).places.top(pinned).wrappedValue == "thr_10")
         // Another tab or profile in the mail stack forgets the one left, so it starts at the top again.
         scrolls.forget(home)
-        #expect(scrolls.offset(home) == 0 && scrolls.top(pinned).wrappedValue == "thr_10")
+        #expect(scrolls.top(home, in: ids).wrappedValue == nil && scrolls.top(pinned).wrappedValue == "thr_10")
+    }
+
+    /// The row kept at a list's top, found where it is now; once it has left the list (read and moved to Seen,
+    /// archived), the row now in its place, or the last row when the list got shorter.
+    @Test func aKeptTopRowThatLeftGivesWayToTheOneInItsPlace() {
+        let scrolls = ScrollPlaces()
+        let key = ScrollPlaces.Key(place: .tab(.receipts), inbox: nil)
+        let rows = { (ids: [String]) in ids.map { ListRowID.row($0) } }
+        scrolls.top(key, in: rows(["a", "b", "c", "d"])).wrappedValue = .row("c")
+        // New mail above it: still the same row.
+        #expect(scrolls.top(key, in: rows(["new", "a", "b", "c", "d"])).wrappedValue == .row("c"))
+        // It left: the row now third from the top, where it was.
+        #expect(scrolls.top(key, in: rows(["a", "b", "d"])).wrappedValue == .row("d"))
+        #expect(scrolls.top(key, in: rows(["a", "b"])).wrappedValue == .row("b"))
+        #expect(scrolls.top(key, in: []).wrappedValue == nil)
+        // A row that moved on its own, new mail sorting it to the top, leaves the list where it was: the row that was
+        // under it is the place (the review of 2026-11-28).
+        let many = (0..<300).map { ListRowID.row("r\($0)") }
+        scrolls.top(key, in: many).wrappedValue = many[150]
+        var sorted = many
+        sorted.insert(sorted.remove(at: 150), at: 0)
+        let place = scrolls.top(key, in: sorted).wrappedValue.flatMap { sorted.firstIndex(of: $0) }
+        #expect(place == 151 && sorted[151] == .row("r151"))
+        // Rows coming above it in a body, more than a screenful, move it with the rows around it: still the same row.
+        scrolls.top(key, in: many).wrappedValue = many[150]
+        let newer = (0..<40).map { ListRowID.row("new\($0)") } + many
+        #expect(scrolls.top(key, in: newer).wrappedValue == .row("r150"))
+        // Its place is kept up to date, so it leaving after them is found where it was then, not 40 rows up.
+        let left = newer.filter { $0 != .row("r150") }
+        #expect(scrolls.top(key, in: left).wrappedValue == .row("r151"))
+        // The words above the rows at the top (Screening's count): the list's top.
+        scrolls.top(key, in: rows(["a"])).wrappedValue = .words("count")
+        #expect(scrolls.top(key, in: rows(["a"])).wrappedValue == nil)
+        // A title's id and a row's never meet, and a row moved to another section is another row there.
+        let titled = TitledRows([(title: "New", rows: [Row(id: "New")]), (title: "Seen", rows: [Row(id: "x")])])
+        #expect(titled.ids == [.title("New"), .row("New", section: "New"), .title("Seen"), .row("x", section: "Seen")])
+        #expect(Set(titled.ids + [.words("New"), Row(id: "New").rowID]).count == 6)
+    }
+
+    private struct Row: Identifiable {
+        let id: String
     }
 
     // MARK: Launch
