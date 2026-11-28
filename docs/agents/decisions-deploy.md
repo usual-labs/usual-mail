@@ -1,6 +1,6 @@
 # Deploying beyond Cloudflare: decisions
 
-State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the checks run are in [cli.md](cli.md)
+Updated 2026-11-28. The public guide is [docs/deploy.md](../deploy.md); the checks run are in [cli.md](cli.md)
 (Checks); the hosts' traps are in [known-issues.md](known-issues.md) ("Hosting platforms").
 
 ## The owner's decision (2026-11-23)
@@ -9,6 +9,12 @@ State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the che
   then **Render and Railway buttons**.
 - **Home servers (Unraid, CasaOS, Umbrel) come later**; nothing is built for them now.
 - Test on this Mac by updating Docker Desktop (done the same day: 4.36.0 to 4.100.1, [cli.md](cli.md)).
+
+## Portable default (2026-11-26)
+
+The README and the guide linked from the app start with Docker Compose and the published image. A local install
+downloads one Compose file and binds to loopback. Hosts with a domain can use the Caddy file or point an existing
+HTTPS proxy at the local service. The platform buttons are alternatives in the quick guide.
 
 ## One image for every host
 
@@ -76,7 +82,7 @@ State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the che
   set it, and the guide says to deploy when no first sync runs. **Railway**'s `RAILWAY_DEPLOYMENT_DRAINING_SECONDS`,
   "the SIGTERM to SIGKILL buffer time", defaults to 0 (docs.railway.com/reference/variables; also a Settings field
   and `drainingSeconds` in its config file, docs.railway.com/guides/deployment-teardown), and its pages give no
-  maximum: the guide's step 4 sets it to 180. Neither tried on the host itself.
+  maximum: the Railway import sets it to 180. Neither tried on the host itself.
 - **The stop closes every inbox together** (`SyncEngine.stop`, 2026-11-24, after the final review): each inbox is
   marked closing before any close waits, so the stop waits for the longest batch in hand, not one after another.
   Before, inboxes closed in turn, and one whose close hadn't begun went on starting batches (a unit test saw a second
@@ -119,9 +125,27 @@ State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the che
   `USUAL_MAIL_SECRET_KEY` with `generateValue` (256 random bits in base64, which the server takes);
   `autoDeployTrigger: "off"`, quoted because YAML 1.1 readers take a bare `off` for false. Render's JSON schema and
   `render blueprints validate` (read-only, against the owner's workspace) accepted it: valid, one service to create.
-- **Railway:** no file, because its templates are made in its dashboard; the guide says how to set up the service
-  and make the template, and the README holds a placeholder. The key stays on the volume: Railway's template
-  generator isn't known to make base64 of 32 bytes.
+- **Railway** imports [one service and its named volume](../../deploy/railway/compose.yaml). The importer stages
+  settings for review. An invalid initial owner email stops the image if someone deploys before setting their address.
+  Set the HTTPS origin after generating the domain. The volume holds the key. A native deploy button needs the URL
+  of a Railway template. [Railway template sharing](https://docs.railway.com/templates/publish-and-share)
+- **Azure and AWS** use the released Caddy Compose file and pin its Usual Mail image to the matching release.
+  A dedicated disk mounted by UUID holds Docker’s volumes. Both hosts require the owner email at creation so the
+  host can finish setup by SSH and pairing code. Azure allocates a DNS name. On AWS the host points a name they own
+  at the stack’s Elastic IP. [VM deployment guide](../deploy-cloud-vms.md)
+- **Launch links** use each provider’s supported entry point. Azure’s button loads `deploy/azure/main.json` from
+  public `main`. Regenerate it with `bicep build deploy/azure/main.bicep` after changing the Bicep or embedded shell
+  script. AWS accepts a local template upload. A prefilled AWS launch URL requires a template hosted in S3.
+  Coolify accepts a Compose resource in the host’s own dashboard while external catalog submissions are paused.
+  [Azure buttons](https://learn.microsoft.com/en-us/azure/azure-resource-manager/templates/deploy-to-azure-button) ·
+  [AWS quick-create links](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/cfn-console-create-stacks-quick-create-links.html) ·
+  [Coolify catalog](https://coolify.io/docs/contribute/service)
+
+**Local checks on 2026-11-28.** Bicep compiled the portal JSON and `cfn-lint` accepted the stack. Ubuntu 24.04’s
+disk tools distinguished a blank image from ext4. On Docker Desktop, the VM Compose file served `/healthz` with
+Caddy’s local CA. The VM, Coolify and Railway configurations all reported the expected Google redirect, accepted
+the owner’s pairing code and kept the password after replacing the container. The Railway import’s initial invalid
+email stopped the server as intended. These checks used local volumes and simulated platform settings.
 
 ## Publishing the image
 
@@ -173,4 +197,5 @@ State on 2026-11-24. The public guide is [docs/deploy.md](../deploy.md); the che
 ## What waits for the owner
 
 - A Railway template made in Railway's dashboard, and its address in the README's button.
-- Trying a real VPS, Coolify, Render and Railway now that the image is published.
+- An S3-hosted copy of the AWS template for a prefilled CloudFormation launch link.
+- First installs on Azure, AWS, Coolify, Render, Railway and a standalone VPS, including public HTTPS and persistence.

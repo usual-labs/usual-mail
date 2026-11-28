@@ -195,7 +195,7 @@ Record each as: what happens, why (from the code), the fix or the workaround, an
   IPv4 isn't counted by any wider block (improvement-ideas.md). Who the client is depends on the host: on Node behind
   a proxy every connection is the proxy's address, so one client could lock everyone out unless
   `USUAL_MAIL_TRUSTED_PROXIES` names the proxy (the Caddy and Coolify files set `private`, Render's
-  `private,cloudflare`, Railway by hand; `usual-mail init` passes none of it on, self-hosting.md says how). Behind
+  `private,cloudflare`, Railway’s import `private`; `usual-mail init` passes none of it on, self-hosting.md says how). Behind
   Cloudflare's proxy the server sees Cloudflare's edge unless the setting holds `cloudflare` and the proxy in between
   trusts Cloudflare too (Caddy's `trusted_proxies`, Traefik's `forwardedHeaders.trustedIPs`); then anything connecting
   from Cloudflare's addresses (another account's Worker) may write the address it counts under, under the same

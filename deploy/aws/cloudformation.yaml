@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Usual Mail on Ubuntu with Docker, Caddy, an Elastic IP and a separate encrypted mail disk.
+Parameters:
+  Vpc:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC containing the public subnet.
+  Subnet:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public subnet in that VPC with a route to an internet gateway.
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: Select the zone of that subnet for the mail disk.
+  KeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: SSH key for the ubuntu user.
+  AdminIPv4:
+    Type: String
+    Description: Your public IPv4 address for SSH, without /32.
+    AllowedPattern: '([0-9]{1,3}\.){3}[0-9]{1,3}'
+  Domain:
+    Type: String
+    Description: The DNS name you own for Usual Mail.
+    AllowedPattern: '([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z][a-z0-9-]+'
+  OwnerEmail:
+    Type: String
+    Description: Your email. This closes public password claims from the first start.
+    MaxLength: 254
+    AllowedPattern: '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+  UbuntuImage:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/24.04/stable/current/amd64/hvm/ebs-gp3/ami-id
+Resources:
+  Firewall:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public HTTPS and certificate issuance, SSH from the owner
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80, ToPort: 80, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 443, ToPort: 443, CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 22, ToPort: 22, CidrIp: !Sub '${AdminIPv4}/32' }
+  Address:
+    Type: AWS::EC2::EIP
+    Properties: { Domain: vpc }
+  MailDisk:
+    Type: AWS::EC2::Volume
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      Encrypted: true
+      Size: 20
+      VolumeType: gp3
+      Tags:
+        - { Key: Name, Value: !Sub '${AWS::StackName}-mail' }
+  Server:
+    Type: AWS::EC2::Instance
+    Properties:
+      AvailabilityZone: !Ref AvailabilityZone
+      ImageId: !Ref UbuntuImage
+      InstanceType: t3.small
+      KeyName: !Ref KeyPair
+      MetadataOptions: { HttpTokens: required }
+      NetworkInterfaces:
+        - DeviceIndex: '0'
+          SubnetId: !Ref Subnet
+          GroupSet: [!Ref Firewall]
+          AssociatePublicIpAddress: true
+      Tags:
+        - { Key: Name, Value: !Ref 'AWS::StackName' }
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euo pipefail
+          disk_id=$(echo '${MailDisk}' | tr -d -)
+          disk=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$disk_id
+          for i in $(seq 1 120); do [ -b "$disk" ] && break; sleep 2; done
+          test -b "$disk"
+          signature=$(wipefs --noheadings --output TYPE "$disk")
+          if [ -z "$signature" ]; then mkfs.ext4 "$disk"; fi
+          test "$(blkid -s TYPE -o value "$disk")" = ext4
+          uuid=$(blkid -s UUID -o value "$disk")
+          mkdir -p /var/lib/docker /opt/usual-mail
+          entry="UUID=$uuid /var/lib/docker ext4 defaults 0 2"
+          grep -qxF "$entry" /etc/fstab || echo "$entry" >> /etc/fstab
+          mountpoint -q /var/lib/docker || mount /var/lib/docker
+          test "$(findmnt -n -o UUID --mountpoint /var/lib/docker)" = "$uuid"
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get -o Acquire::Retries=3 update
+          apt-get -o Acquire::Retries=3 install -y ca-certificates curl docker.io docker-compose-v2
+          cd /opt/usual-mail
+          umask 077
+          printf '%s\n' 'USUAL_MAIL_DOMAIN=${Domain}' 'USUAL_MAIL_OWNER_EMAIL=${OwnerEmail}' > .env
+          release=0.1.5
+          curl --retry 5 -fsSLo compose.release.yaml "https://raw.githubusercontent.com/usual-labs/usual-mail/v$release/compose.caddy.yaml"
+          sed "s|ghcr.io/usual-labs/usual-mail:latest|ghcr.io/usual-labs/usual-mail:$release|" compose.release.yaml > compose.yaml
+          rm compose.release.yaml
+          systemctl enable --now docker
+          docker compose up -d --wait
+  MountDisk:
+    Type: AWS::EC2::VolumeAttachment
+    Properties:
+      InstanceId: !Ref Server
+      VolumeId: !Ref MailDisk
+      Device: /dev/sdf
+  BindAddress:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      InstanceId: !Ref Server
+      AllocationId: !GetAtt Address.AllocationId
+Outputs:
+  Dashboard:
+    Value: !Sub 'https://${Domain}'
+  PublicIPv4:
+    Description: Point the domain A record here.
+    Value: !Ref Address
+  MailDiskId:
+    Description: This EBS volume is retained on stack deletion.
+    Value: !Ref MailDisk

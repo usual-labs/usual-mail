@@ -1,0 +1,247 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.49.2.45890",
+      "templateHash": "16784841085036535281"
+    }
+  },
+  "parameters": {
+    "ownerEmail": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 254,
+      "metadata": {
+        "description": "Your email. Public password claims stay closed until you prove ownership."
+      }
+    },
+    "adminIPv4": {
+      "type": "string",
+      "metadata": {
+        "description": "Your public IPv4 address for SSH, without /32."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "mailadmin",
+      "metadata": {
+        "description": "Linux account used for SSH."
+      }
+    },
+    "sshPublicKey": {
+      "type": "string",
+      "metadata": {
+        "description": "Your SSH public key for the Linux account."
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Choose a region with the selected VM size available."
+      }
+    },
+    "vmSize": {
+      "type": "string",
+      "defaultValue": "Standard_B2ls_v2",
+      "allowedValues": [
+        "Standard_B2ts_v2",
+        "Standard_B2ls_v2",
+        "Standard_B2s_v2"
+      ],
+      "metadata": {
+        "description": "A Bsv2 size with an x64 CPU and SCSI data disks."
+      }
+    }
+  },
+  "variables": {
+    "$fxv#0": "#!/bin/bash\nset -euo pipefail\nowner=$(printf '%s' '__OWNER_BASE64__' | base64 -d)\n# Only a single plain address may be placed in the dotenv file.\nif ! [[ \"$owner\" != *$'\\n'* && \"$owner\" =~ ^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$ ]]; then\n  echo 'Enter a single owner email address.' >&2\n  exit 1\nfi\n\ndisk=/dev/disk/azure/scsi1/lun0\nfor i in $(seq 1 120); do [ -b \"$disk\" ] && break; sleep 2; done\ntest -b \"$disk\"\nsignature=$(wipefs --noheadings --output TYPE \"$disk\")\nif [ -z \"$signature\" ]; then mkfs.ext4 \"$disk\"; fi\ntest \"$(blkid -s TYPE -o value \"$disk\")\" = ext4\nuuid=$(blkid -s UUID -o value \"$disk\")\nmkdir -p /var/lib/docker /opt/usual-mail\nentry=\"UUID=$uuid /var/lib/docker ext4 defaults 0 2\"\ngrep -qxF \"$entry\" /etc/fstab || echo \"$entry\" >> /etc/fstab\nmountpoint -q /var/lib/docker || mount /var/lib/docker\ntest \"$(findmnt -n -o UUID --mountpoint /var/lib/docker)\" = \"$uuid\"\n\nexport DEBIAN_FRONTEND=noninteractive\napt-get -o Acquire::Retries=3 update\napt-get -o Acquire::Retries=3 install -y ca-certificates curl docker.io docker-compose-v2\ncd /opt/usual-mail\numask 077\nprintf 'USUAL_MAIL_DOMAIN=%s\\nUSUAL_MAIL_OWNER_EMAIL=%s\\n' '__DOMAIN__' \"$owner\" > .env\nrelease=0.1.5\ncurl --retry 5 -fsSLo compose.release.yaml \"https://raw.githubusercontent.com/usual-labs/usual-mail/v$release/compose.caddy.yaml\"\nsed \"s|ghcr.io/usual-labs/usual-mail:latest|ghcr.io/usual-labs/usual-mail:$release|\" compose.release.yaml > compose.yaml\nrm compose.release.yaml\nsystemctl enable --now docker\ndocker compose up -d --wait\n",
+    "prefix": "[format('usual-mail-{0}', uniqueString(resourceGroup().id))]",
+    "nicName": "[format('{0}-nic', variables('prefix'))]",
+    "subnetName": "mail"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-firewall', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "web",
+            "properties": {
+              "priority": 100,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "Internet",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRanges": [
+                "80",
+                "443"
+              ]
+            }
+          },
+          {
+            "name": "owner-ssh",
+            "properties": {
+              "priority": 110,
+              "direction": "Inbound",
+              "access": "Allow",
+              "protocol": "Tcp",
+              "sourceAddressPrefix": "[format('{0}/32', parameters('adminIPv4'))]",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "22"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-network', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.77.0.0/24"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.77.0.0/24"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2024-05-01",
+      "name": "[format('{0}-ip', variables('prefix'))]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard"
+      },
+      "properties": {
+        "publicIPAllocationMethod": "Static",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('prefix')]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2024-05-01",
+      "name": "[variables('nicName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-firewall', variables('prefix')))]"
+        },
+        "ipConfigurations": [
+          {
+            "name": "public",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIPAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', variables('prefix')))]"
+              },
+              "subnet": {
+                "id": "[format('{0}/subnets/{1}', resourceId('Microsoft.Network/virtualNetworks', format('{0}-network', variables('prefix'))), variables('subnetName'))]"
+              }
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', variables('prefix')))]",
+        "[resourceId('Microsoft.Network/networkSecurityGroups', format('{0}-firewall', variables('prefix')))]",
+        "[resourceId('Microsoft.Network/virtualNetworks', format('{0}-network', variables('prefix')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2024-07-01",
+      "name": "[variables('prefix')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "[parameters('vmSize')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "ubuntu-24_04-lts",
+            "sku": "server",
+            "version": "latest"
+          },
+          "osDisk": {
+            "createOption": "FromImage",
+            "managedDisk": {
+              "storageAccountType": "StandardSSD_LRS"
+            },
+            "deleteOption": "Delete"
+          },
+          "dataDisks": [
+            {
+              "name": "[format('{0}-mail', variables('prefix'))]",
+              "lun": 0,
+              "createOption": "Empty",
+              "diskSizeGB": 20,
+              "managedDisk": {
+                "storageAccountType": "StandardSSD_LRS"
+              },
+              "deleteOption": "Detach"
+            }
+          ]
+        },
+        "osProfile": {
+          "computerName": "usual-mail",
+          "adminUsername": "[parameters('adminUsername')]",
+          "customData": "[base64(replace(replace(variables('$fxv#0'), '__OWNER_BASE64__', base64(parameters('ownerEmail'))), '__DOMAIN__', reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', variables('prefix'))), '2024-05-01').dnsSettings.fqdn))]",
+          "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+              "publicKeys": [
+                {
+                  "path": "[format('/home/{0}/.ssh/authorized_keys', parameters('adminUsername'))]",
+                  "keyData": "[parameters('sshPublicKey')]"
+                }
+              ]
+            }
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', variables('prefix')))]",
+        "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "dashboard": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', variables('prefix'))), '2024-05-01').dnsSettings.fqdn)]"
+    },
+    "sshHost": {
+      "type": "string",
+      "value": "[format('{0}@{1}', parameters('adminUsername'), reference(resourceId('Microsoft.Network/publicIPAddresses', format('{0}-ip', variables('prefix'))), '2024-05-01').dnsSettings.fqdn)]"
+    }
+  }
+}

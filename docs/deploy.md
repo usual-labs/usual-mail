@@ -1,13 +1,37 @@
 # Deploying Usual Mail's server
 
-Usual Mail's server is one program in one container image, so it runs anywhere that runs containers and keeps a
-folder for it. This page covers four ways to run it on a machine that is always on: **Docker on a server of your own
-(a VPS)**, **Coolify**, **Render** and **Railway**. To run it on your own computer, or in your own Cloudflare account,
-read [Running your own Usual Mail server](self-hosting.md); its sections on the Google client, pairing the Mac app,
-Gmail and the AI key apply wherever the server runs.
+Docker Compose is the recommended way to run Usual Mail. Choose how you want to reach your server:
+
+| Where you want to use it | How to start |
+|---|---|
+| On this computer | [Run the published image locally](#on-this-computer). Docker keeps the dashboard on loopback. |
+| On a server with your own domain | [Use Docker with Caddy](#docker-on-a-server-of-your-own). Caddy gets and renews your HTTPS certificate. |
+| On a new cloud VM | [Azure with a generated domain](deploy-cloud-vms.md#azure) or [AWS with your own domain](deploy-cloud-vms.md#aws). Both set up Docker and Caddy. |
+| Behind an HTTPS proxy you already run | [Use the local Compose file with your proxy](#use-an-existing-https-proxy). |
+
+You can also deploy on [Coolify](#coolify), [Render](#render), [Railway](#railway) or [Cloudflare](self-hosting.md#on-cloudflare)
+(Gmail only). For the Node and CLI setup, see [self-hosting](self-hosting.md#1-what-you-need-first).
+
+## On this computer
+
+Install Docker with Compose 2.23.1 or newer and start Docker. In an empty folder, run:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/usual-labs/usual-mail/main/compose.yaml
+docker compose up -d --no-build --wait
+```
+
+Open [the dashboard](http://127.0.0.1:8484) on the same computer and set the owner's password. You can connect an IMAP
+mailbox from the dashboard. For Gmail, [create your Google client](google-setup.md) and give it to the server from
+the paired app or through the two Google variables in a private `.env` beside the Compose file. Run
+`docker compose up -d --no-build --wait` again after changing that file. To use the Mac app, build it from this repo
+and sign in with the same address and password. [Mac setup](self-hosting.md#5-pair-the-mac-app)
+
+Use the same folder for future Compose commands. `docker compose stop` stops the server and keeps the named data
+volume. For updates, back up the data first, then run `docker compose pull` and repeat the start command.
 
 **Early.** The image is `ghcr.io/usual-labs/usual-mail` (amd64 and arm64), published from each release as its
-version (`0.1.5`), its minor line (`0.1`) and `latest`. To run code that isn't released yet, build the image from a
+version (such as `0.1.5`), its minor line (`0.1`) and `latest`. To run code that isn't released yet, build the image from a
 copy of this repository (`git clone https://github.com/usual-labs/usual-mail.git`) with
 `docker build -t ghcr.io/usual-labs/usual-mail:latest .` on the machine that runs it: only Docker Compose on that same
 machine finds an image built there. (Render builds from the repository itself, and Railway can.) What has been tried
@@ -18,7 +42,7 @@ restart and a new container, a backup and its restore, a volume owned by root (e
 and one holding other files, which it leaves alone), a read-only mount (the folder's own `:ro`, also at a path with
 a space, a read-only mount above it, and a container started with `--read-only`), a container without capabilities
 (`--cap-drop ALL --user 1000:1000`), and stopping it while two IMAP inboxes' first syncs ran. Not tried
-yet: a real VPS, Let's Encrypt, Coolify, Render and Railway themselves.
+yet: a real VPS, public certificate issuance, or a deployment on Azure, AWS, Coolify, Render or Railway.
 
 ## What any host must give it
 
@@ -77,14 +101,15 @@ back to `node`. Reading (`cat /data/owner-pairing-code`) is fine; run anything t
 
 ## Claiming your server
 
-A new server has no owner. **Whoever opens its address first and sets a password owns it**, and scanners that read
-new HTTPS certificates find new addresses within minutes. So either:
+On a local install, open the loopback address and set your password. On a **public server**, set
+`USUAL_MAIL_OWNER_EMAIL` before the first start. With the Cloudflare button, set it in the Worker's settings
+immediately after deployment. Until it is set, the first visitor can set a password and take ownership.
 
-- **set `USUAL_MAIL_OWNER_EMAIL`** to your email before the server first starts (Render and Coolify ask for it; with
-  Compose, in `.env`): the exact address your Google account shows, since it is compared as written (only upper and
-  lower case don't matter; dots and a `+` part are not removed). Then the server is set up only by signing in with
-  Google as that address, which needs the Google client (`USUAL_MAIL_GOOGLE_CLIENT_ID` and `_SECRET`, or the file); or
-- **open the address and set the password at once**, as soon as the server is up.
+- **With a Google client configured**, sign in with Google to set the password. Use the exact owner address
+  your Google account shows, including any dots or `+` suffix. Matching ignores letter case.
+- **With access to the host**, read the owner's pairing code, choose **Sign in with a pairing code**, then
+  set your password under **Account**. On Docker the code is in `/data/owner-pairing-code` inside the server
+  container. On Cloudflare it is in [Data Studio](self-hosting.md#the-first-pairing-code).
 
 Then sign in to the dashboard and the apps with that password. Claiming ends the owner's code that waited (each
 host's steps below say where it is): before anyone claims the server, that code gets you in without a password; after,
@@ -122,8 +147,8 @@ and private networks). The server then takes the client from the `X-Forwarded-Fo
 address in it that isn't one of those proxies), and ignores that header from anyone else. Set it only when every
 connection comes through those proxies. A `/0` range (`0.0.0.0/0`, `::/0`) would believe anyone's header, so the
 server refuses it and doesn't start. Without the setting, every client counts as the proxy, and one client's wrong
-passwords could make everyone wait for ten minutes (signed-in devices keep working). The Caddy and Coolify files set
-`private`, and the Render file `private,cloudflare`; on Railway, set it yourself. Caddy and Traefik (Coolify's proxy)
+passwords could make everyone wait for ten minutes (signed-in devices keep working). The Caddy, Coolify and Railway files use
+`private`. Render uses `private,cloudflare`. Caddy and Traefik (Coolify's proxy)
 write the address that reached them as the last entry, the one the server takes; Railway's edge is reported to connect
 from `100.64.0.0/10`, which `private` covers. None of this has been tried on Coolify, Render or Railway.
 
@@ -148,14 +173,14 @@ project.
 
 | | Docker on a VPS | Coolify | Render | Railway |
 |---|---|---|---|---|
-| File | [`compose.caddy.yaml`](../compose.caddy.yaml) | [`compose.coolify.yaml`](../compose.coolify.yaml) | [`render.yaml`](../render.yaml) | a template made in Railway (none yet) |
+| File | [`compose.caddy.yaml`](../compose.caddy.yaml) | [`compose.coolify.yaml`](../compose.coolify.yaml) | [`render.yaml`](../render.yaml) | [Compose import](../deploy/railway/compose.yaml) |
 | Data | the volume `usual-mail_usual-mail-data` at `/data` | a Coolify volume at `/data` | a 5 GB disk at `/data` | a volume at `/data` |
 | Public address | `https://` and your domain, from `.env` | your HTTPS domain, set in Coolify before the first deploy | the `onrender.com` address or your domain, typed in once | `https://${{RAILWAY_PUBLIC_DOMAIN}}` or your domain |
 | Volume's owner | `node` (a new Docker volume takes it from the image) | `node`, the same way | not known; the image handles root or `node` | root; the image gives it to `node` |
 | Secret key | `/data/secret.key` | a Coolify variable | a Render variable | `/data/secret.key` |
 | SMTP for IMAP inboxes | Hetzner Cloud blocks 25 and 465; DigitalOcean blocks 25, 465 and 587 | your server's provider decides | not checked | Pro plan and above only |
 | Backups | stop, copy the volume, start | Coolify's volume backup, stopping containers | Render's daily disk snapshots, kept 7 days | not checked |
-| Time to stop | 3 minutes (the file's) | 3 minutes for a deploy; 30 seconds for Stop and Restart | 30 seconds, not changeable with a disk | none unless `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` is set (step 4) |
+| Time to stop | 3 minutes (the file's) | 3 minutes for a deploy; 30 seconds for Stop and Restart | 30 seconds, not changeable with a disk | 3 minutes with the import settings |
 | Cost (2026-11) | the server: DigitalOcean from $4 a month (512 MB), Hetzner Cloud from €5.49 | Coolify is free on your own server; Coolify Cloud from $5 a month, plus the server | the smallest paid instance (`starter`) and the disk, [render.com/pricing](https://render.com/pricing) | Hobby $5 a month including $5 of use; a volume $0.15 per GB a month |
 
 Free plans don't fit: Render's free instances sleep and have no disk, and Railway's free plan sleeps.
@@ -204,8 +229,10 @@ image and stands alone: you don't need a copy of the repository on the server.
 
 3. **Start it:** `docker compose up -d`. `docker compose logs caddy` shows the certificate being issued;
    `curl https://mail.example.org/healthz` answers `{"ok":true}`.
-4. **Claim it:** open `https://mail.example.org` and set the server's password (after signing in with Google as the
-   owner email, when `.env` names one). Sign in to the dashboard and the apps with it
+4. **Claim it:** open your HTTPS address. If you set the owner email and Google client, sign in with that Google
+   account and set a password. If you set the owner email and plan to add Google later, read the owner's code with
+   `docker compose exec usual-mail cat /data/owner-pairing-code`, sign in to the dashboard with the code, then set
+   your password on **Account**. If you left the owner email empty, set a password as soon as the server starts. Sign in to the dashboard and the apps with it
    ([self-hosting.md](self-hosting.md#5-pair-the-mac-app)). To pair the `usual-mail` command on your own computer
    afterwards, make a pairing code on the dashboard's **Devices and agents** page and run
    `usual-mail init --server https://mail.example.org --code <that code>`. Claiming ends the owner's code. Before
@@ -271,22 +298,36 @@ every Droplet. That only affects inboxes connected over IMAP, which send through
 through Google's API over HTTPS and isn't affected. On such a host, use port 587 where it is open, or choose another
 provider for IMAP inboxes.
 
-**Another proxy instead of Caddy** (nginx, Traefik, or one you already run): use [`compose.yaml`](../compose.yaml),
-which publishes the server on `127.0.0.1:8484` for the proxy, and set `USUAL_MAIL_PUBLIC_URL` there. The proxy must
+## Use an existing HTTPS proxy
+
+For a proxy running on the same host, use [the local Docker setup](#on-this-computer). Claim the dashboard on
+loopback before enabling the public route. On a remote server you can reach that private dashboard through
+`ssh -L 8484:127.0.0.1:8484 user@your-server` and open `http://127.0.0.1:8484` on your computer.
+
+Put the following in `.env` beside `compose.yaml`, using your own domain. Run
+`docker compose up -d --no-build --wait` again. Configure your proxy to serve that domain over HTTPS and forward to
+`127.0.0.1:8484` on the host. For a containerized proxy, loopback points inside its own container. Connect it to the
+server's Compose network and use `usual-mail:8484` as the upstream instead.
+
+```dotenv
+USUAL_MAIL_PUBLIC_URL=https://mail.example
+USUAL_MAIL_TRUSTED_PROXIES=private
+```
+
+The proxy must
 pass the `Host` header through (the web dashboard marks its sign-in cookie `Secure` only when it sees the public name,
 not `127.0.0.1`; nginx sends its upstream's address unless told `proxy_set_header Host $host`), set
 `X-Forwarded-Proto: https` (or the dashboard's sign-in page warns that it isn't on HTTPS), and not buffer
 `GET /v1/events`, a stream of server-sent events (the server sends `X-Accel-Buffering: no` for nginx, and a comment
 every 25 seconds; keep the proxy's read timeout above that). Caddy does all three by itself. Have the proxy set
-`X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr`) and set `USUAL_MAIL_TRUSTED_PROXIES:
-private` in `compose.yaml`'s `environment` ([Behind a proxy](#behind-a-proxy)): with the port published on
-`127.0.0.1`, only this machine's proxy reaches the server.
+`X-Forwarded-For` (nginx: `proxy_set_header X-Forwarded-For $remote_addr`). See [Behind a proxy](#behind-a-proxy) for how to choose the trusted ranges.
 
 ## Coolify
 
 [Coolify](https://coolify.io) runs containers on your own server and gives each one a domain and HTTPS.
 [`compose.coolify.yaml`](../compose.coolify.yaml) is written for Coolify v4 and checked with plain Docker Compose; it
-hasn't run on Coolify itself yet. It pulls the published image.
+hasn't run on Coolify itself yet. Import the Compose file in your own dashboard. Coolify has paused external
+submissions to its [one-click service catalog](https://coolify.io/docs/contribute/service).
 
 1. Point a domain's DNS at the Coolify server, as for a VPS.
 2. In Coolify: **New Resource**, then **Docker Compose Empty**, and paste the file.
@@ -294,12 +335,11 @@ hasn't run on Coolify itself yet. It pulls the published image.
    server's port: `https://mail.example.org:8484` (the port tells Coolify where to send requests; the address people
    use stays `https://mail.example.org`). **Don't keep the address Coolify makes up** (an `sslip.io` name): it is plain
    HTTP, which the server refuses, so the container would stop at every start.
-4. Under Environment Variables, set `USUAL_MAIL_OWNER_EMAIL` to your email (strongly suggested: [Claiming your
-   server](#claiming-your-server)), and optionally `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET`.
-5. **Deploy,** then open `https://mail.example.org` and set the server's password. Before anyone claims it, the
-   owner's code also gets you in: in the service's log, or in its terminal with `cat /data/owner-pairing-code`, for
-   `usual-mail init --server https://mail.example.org --code <that code>`. After claiming, pair the command with a
-   code from the dashboard's **Devices and agents** page instead.
+4. Under **Environment Variables**, set `USUAL_MAIL_OWNER_EMAIL` to your email. For Google sign-in, also set
+   `USUAL_MAIL_GOOGLE_CLIENT_ID` and `USUAL_MAIL_GOOGLE_CLIENT_SECRET`.
+5. Deploy and open your HTTPS domain. If you supplied a Google client, sign in as the owner. Otherwise run
+   `cat /data/owner-pairing-code` in the service terminal, choose **Sign in with a pairing code**, and set
+   your password under **Account**.
 
 Coolify fills `USUAL_MAIL_PUBLIC_URL` from the domain without the port (`SERVICE_URL_USUALMAIL`). The file also
 names `SERVICE_URL_USUALMAIL_8484`, which tells Coolify's proxy the port, but that variable's value keeps the port
@@ -362,37 +402,23 @@ next start. To be safe, deploy when no inbox's first sync runs (`usual-mail inbo
 
 ## Railway
 
-Railway's templates are made in its dashboard, not from a file in the repository. **There is no Usual Mail template
-yet**, and nothing here has been tried on Railway; Railway's buttons open a template, so the README has none until
-it exists. To run it now, or to
-make the template, set up one service:
+1. Download [the Railway Compose file](../deploy/railway/compose.yaml). Create an empty Railway project and drag
+   the file onto its canvas. Railway stages one image service and a volume. [Railway Compose import](https://docs.railway.com/builds/dockerfiles#docker-compose)
+2. Before deploying, confirm the volume mounts at `/data`. Under **Networking**, generate a domain targeting
+   port **8484**. Set the health check path to `/healthz` and keep one replica with **Serverless** off.
+3. Under **Variables**, replace `enter-your-email` in `USUAL_MAIL_OWNER_EMAIL` with your email. Set
+   `USUAL_MAIL_PUBLIC_URL` to `https://${{RAILWAY_PUBLIC_DOMAIN}}`, or to your own HTTPS origin. Check that
+   `PORT=8484`, `USUAL_MAIL_TRUSTED_PROXIES=private`, and `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=180` came through.
+   The last setting gives the server three minutes to finish work when Railway stops it.
+4. Deploy the staged changes. Open your domain followed by `/healthz` and check for `{"ok":true}`. In the
+   service shell (`railway ssh`), run `cat /data/owner-pairing-code`. Open the dashboard at your domain, choose
+   **Sign in with a pairing code**, then set your password under **Account**. To use Gmail, add
+   [your Google client](google-setup.md).
+5. Back up the volume before changing the image tag. Keep the same volume when redeploying. It holds both the
+   database and the key that unlocks it.
 
-1. **New Project**, then **Deploy a Docker Image**: `ghcr.io/usual-labs/usual-mail:latest` (or a GitHub repository,
-   which Railway builds from the Dockerfile).
-2. **Volume:** add one to the service, mounted at `/data`. Railway's volumes belong to root; the image gives the
-   folder to `node` when it starts, so `RAILWAY_RUN_UID` isn't needed. (Railway's documentation suggests
-   `RAILWAY_RUN_UID=0` for images that run as another user; this image starts as root and drops to `node` itself.
-   Tested with a volume owned by root; not on Railway.)
-3. **Networking:** generate a domain for the service with target port **8484**, or add your own.
-4. **Variables:** `USUAL_MAIL_PUBLIC_URL` = `https://${{RAILWAY_PUBLIC_DOMAIN}}` (or your domain with `https://`);
-   `USUAL_MAIL_OWNER_EMAIL`, your email (strongly suggested: [Claiming your server](#claiming-your-server));
-   `USUAL_MAIL_TRUSTED_PROXIES` = `private` ([Behind a proxy](#behind-a-proxy));
-   `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` = `180`, the time to stop; optionally the two Google variables. Railway's
-   default for the time between SIGTERM and SIGKILL is 0 seconds
-   ([Railway: variables](https://docs.railway.com/reference/variables),
-   [Railway: deployment teardown](https://docs.railway.com/guides/deployment-teardown), which says it can also be
-   set in the service's Settings), so without it a redeploy during a first sync cuts off the batch being fetched
-   (fetched again at the next start). Railway's pages give no maximum. The secret key stays in the volume
-   (`/data/secret.key`); to keep it apart from the data instead, set `USUAL_MAIL_SECRET_KEY` to 32 random bytes in
-   base64 (`openssl rand -base64 32`) before the first start, and never change it.
-5. **Settings:** health check path `/healthz`; one replica (Railway allows no more with a volume).
-6. Deploy, then open the address and set the server's password. Before anyone claims it, the owner's code also gets
-   you in: in the deploy log, or `railway ssh`, then `cat /data/owner-pairing-code`. After claiming, pair the command
-   with a code from the dashboard's **Devices and agents** page instead.
+Choose Hobby or above for an always-on server. Gmail sends over HTTPS. Sending from IMAP inboxes needs Pro or
+above for outbound SMTP. [Railway plans](https://docs.railway.com/pricing/free-plan) · [Outbound networking](https://docs.railway.com/networking/outbound-networking)
 
-It needs the Hobby plan or above: the free plan sleeps. **Railway allows SMTP only on Pro and above**, so on Hobby
-inboxes connected over IMAP can't send; Gmail can. A service with a volume is down for a moment at each redeploy.
-
-**Making the template** (the maintainer): set up the service as above with
-`USUAL_MAIL_PUBLIC_URL` referring to `RAILWAY_PUBLIC_DOMAIN`, publish it as a template, and put its address in the
-README's Railway button.
+The README links here until Usual Mail has a shareable Railway template. Railway issues its deploy button for a
+template created in a Railway workspace. [Template sharing](https://docs.railway.com/templates/publish-and-share)

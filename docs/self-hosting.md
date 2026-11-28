@@ -1,9 +1,10 @@
 # Running your own Usual Mail server
 
 Usual Mail's apps talk to a server you run yourself. It keeps a copy of your mailboxes, sorts them, and, if you
-choose, runs AI on them with your own AI key. This page takes you from nothing to the Mac app paired with your
-server and your Gmail connected: on a computer of your own (sections 1 to 8), or in your own Cloudflare account
-([On Cloudflare](#on-cloudflare), below). On a VPS with Docker, Coolify, Render or Railway: [deploy.md](deploy.md).
+choose, runs AI on them with your own AI key. **Start with [Docker Compose](deploy.md)** for a local computer, a server
+with its own domain, or an existing HTTPS proxy. Once your dashboard is running, continue with
+[Google setup for Gmail](#4-give-the-server-its-google-client-for-gmail) or [pair the Mac app](#5-pair-the-mac-app).
+For a CLI-managed installation, follow sections 1–3 below. Cloudflare has [its own instructions](#on-cloudflare).
 
 **Usual Mail is early: 0.1.0 is its first release.** Everything below is built, but much of it hasn't been proven
 outside this project's own tests: the Docker image has run only on a Mac, the Cloudflare version has been deployed
@@ -12,6 +13,8 @@ once and has not yet connected a mailbox there, signing in with Google has worke
 an OpenAI or Anthropic key of their own). Expect rough edges, and keep your mailbox's own app at hand.
 
 ## 1. What you need first
+
+These prerequisites are for installing the optional CLI from source. The Compose setup above uses the published image.
 
 - **A computer that stays on** while you want your mail sorted: your Mac is fine to start with. The server only
   works while it runs.
@@ -52,12 +55,11 @@ usual-mail init --mode node
 usual-mail init --mode docker
 ```
 
-From a copy of the repository it builds the image the first time. `compose.yaml` is there for people who prefer
-Docker Compose; its comments say how to pair with it.
+The CLI builds a missing image from the checkout. For the published image, follow the [Compose setup](deploy.md).
 
 In a container the server works in UTC unless it is given `TZ`, a time zone name like `Europe/Berlin`: the day each
 message was sent, as the AI reads it, and the times in its words (an inbox that "hasn't synced since 25 Nov, 14:02").
-Set it under `environment` in `compose.yaml`. `usual-mail init --mode docker` doesn't pass one yet; with Node the
+With Compose, set `TZ` in the `.env` beside `compose.yaml`. `usual-mail init --mode docker` doesn't pass one yet; with Node the
 server uses your computer's own.
 
 Either way, by default:
@@ -116,7 +118,7 @@ To use it from your phone or another computer, never open the port to every netw
   restarts the server), so export the variable in your shell's profile, not only for one command; **with Docker**, the
   container `usual-mail` makes is given only its address, so behind a proxy run the server with
   [`compose.yaml`](../compose.yaml) instead, which publishes it on `127.0.0.1:8484` the same way and has the setting
-  ready to turn on ([deploy.md](deploy.md#docker-on-a-server-of-your-own), "Another proxy instead of Caddy"). Without
+  available in `.env` ([use an existing HTTPS proxy](deploy.md#use-an-existing-https-proxy)). Without
   it, one client's wrong passwords can make everyone wait for ten minutes.
 
 Pairing codes and tokens must never travel without HTTPS outside a private network. `usual-mail doctor` warns when
@@ -160,8 +162,8 @@ The app needs the server's address and a pairing code, or the server's password 
 
 - **The address:** `http://127.0.0.1:8484` when the app runs on the server's Mac (with another port, that port).
 - **A pairing code:** run `usual-mail pair`. It prints a code that works once, for 15 minutes.
-- **The password:** `usual-mail init` paired the command with the server, so the server has an owner but no password
-  yet. Once the app is paired, set one in the app's **Settings**, **Accounts** (or on the dashboard's **Account**
+- **The password:** if you claimed the dashboard after starting Docker Compose, use that password in the app. If
+  `usual-mail init` paired the command with the server, the server has an owner but no password yet. Once the app is paired, set one in the app's **Settings**, **Accounts** (or on the dashboard's **Account**
   page): from then on the app on another Mac, the iPhone app and the dashboard sign in with the address and it.
 
 In the Mac app, press **Get started**, choose **Your own server** and press **Continue**. Under **Connect to your
@@ -172,8 +174,8 @@ code**, and press **Connect**. With a password set, enter it as **Password** ins
 whoever opens its address and sets its password first owns it, in a browser or in the app (**Connect** with a new
 password offers **Set up your server**: type it twice, and an email if you like). On a server others can reach, do
 it at once, or set `USUAL_MAIL_OWNER_EMAIL` to your email before it first starts (the exact address your Google account
-shows: dots and a `+` part count): then only signing in with Google as that address sets it up
-([deploy.md](deploy.md#claiming-your-server)). Once used (a password set, a device paired, even one since signed out,
+shows, including dots and a `+` suffix). Then a public claim needs Google sign-in as that address. You can also
+use the owner’s code from the host and set the password on **Account**. [First sign-in](deploy.md#claiming-your-server). Once used (a password set, a device paired, even one since signed out,
 or an inbox), a server can never be claimed again; claiming ends the owner's code, so pair the `usual-mail` command
 afterwards with a code from the dashboard's **Devices and agents** page.
 
